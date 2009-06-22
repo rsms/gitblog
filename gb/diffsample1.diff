@@ -1,0 +1,12 @@
+diff --git a/posts/2008-08-29-reading-a-book.html b/posts/2008-08-29-reading-a-book.html
+index e8b9dd6..4581e02 100644
+--- a/posts/2008-08-29-reading-a-book.html
++++ b/posts/2008-08-29-reading-a-book.html
+@@ -1,6 +1,5 @@
+ title: Reading a book är gtt
+-tags: photography, music, 
+-	technology, video
++tags: photo:graphy, music, technology, video
+ publish-date: 2009-06-20 20:09:38 +0200
+ 
+ <a href="http://flickr.com/photos/rsms/2806502959/"><img src="http://farm4.static.flickr.com/3215/2806502959_85c9e6d955.jpg" width="500" height="500" /></a>

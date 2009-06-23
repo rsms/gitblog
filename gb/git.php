@@ -625,6 +625,16 @@ class GitRepository {
 		if (!is_dir($this->gitdir) && !mkdir($this->gitdir, $mkdirmode, true))
 			return false;
 		$this->exec($cmd);
+		
+		if (!$bare) {
+			$dirname = dirname($this->gitdir);
+			mkdir("$dirname/content/posts", $mkdirmode, true);
+			mkdir("$dirname/content/pages", $mkdirmode);
+		}
+		
+		$skeleton = dirname(realpath(__FILE__)).'/skeleton';
+		copy("$skeleton/hooks/post-commit", "{$this->gitdir}/hooks/post-commit");
+		
 		return true;
 	}
 }

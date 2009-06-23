@@ -19,10 +19,15 @@ function proc_open2($cmd, $cwd=null, $env=null) {
 
 
 function fileext($path) {
-	$p = strrpos($path, '/');
-	return substr(strrchr(substr($path, $p), '.'), 1);
+	$p = strpos($path, '.', strrpos($path, '/'));
+	return $p > 0 ? substr($path, $p+1) : '';
 }
 
+# path w/o extension
+function filenoext($path) {
+	$p = strpos($path, '.', strrpos($path, '/'));
+	return $p > 0 ? substr($path, 0, $p) : $path;
+}
 
 /** Like readline, but acts on a byte array. Keeps state with $p */
 function sreadline(&$p, &$str, $sep="\n") {
@@ -919,7 +924,7 @@ class GitContent {
 				$data = file_get_contents($path);
 		if ($data === false)
 			return null;
-		return (object)unserialize($data);
+		return unserialize($data);
 	}
 	
 	/** todo: comment */
@@ -931,8 +936,12 @@ class GitContent {
 		$records = GitObjectIndex::tail($repo, 'stage-published-posts.rchlog', $limit);
 		$posts = array();
 		
-		foreach ($records as $rec)
-			$posts[] = self::contentForName($repo, 'content/posts/'.$rec['name']);
+		foreach ($records as $rec) {
+		  $name =& $rec['name'];
+			$post = self::contentForName($repo, "content/posts/$name");
+			$post->slug = filenoext($name);
+			$posts[] = $post;
+		}
 		
 		return $posts;
 	}

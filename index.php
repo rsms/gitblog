@@ -21,7 +21,7 @@ $repo->batchLoadPending();
 	<body>
 		<h1>Some blog</h1>
 		<? foreach ($posts as $post): ?>
-			<h2><?= $post->meta->title ?></h2>
+			<h2><a href="post.php?slug=<?= urlencode($post->slug) ?>"><?= $post->meta->title ?></a></h2>
 			<div id="post-meta">
 				<h3>Details</h3>
 				<ul>

@@ -1,8 +1,8 @@
 <?
 error_reporting(E_ALL);
 include 'mime_type.php';
-
-$conf = json_decode(file_get_contents(dirname(realpath(__FILE__)).'/config.json'), true);
+define('GITBLOG_DIR', dirname(realpath(__FILE__)));
+$conf = json_decode(file_get_contents(GITBLOG_DIR.'/config.json'), true);
 
 $_ENV['PATH'] .= ':/opt/local/bin'; # xxx local
 
@@ -262,6 +262,7 @@ class GitCommit {
 	public $comitterDate; # UTC timestamp
 	public $message;
 	public $files; # array example: array(GitPatch::CREATE => array('file1', 'file3'), GitPatch::DELETE => array('file2'))
+	public $previousFiles; # available for GitPatch::RENAME and COPY. array('file1', 'file2', ..)
 	
 	static public $fields = array(
 		'id','tree',
@@ -277,11 +278,13 @@ class GitCommit {
 			'treeish' => 'HEAD',
 			'limit' => -1,
 			'sortrcron' => true,
-			'detectRC' => false
+			'detectRC' => true,
+			'mapnamestoc' => false # if true, returns a 3rd arg: map[name] => commit
 		);
 		$kwargs = $kwargs ? array_merge($defaultkwargs, $kwargs) : $defaultkwargs;
 		$commits = array();
 		$existing = array(); # tracks existing files
+		$ntoc = $kwargs['mapnamestoc'] ? array() : null;
 		
 		$cmd = "log --name-status --pretty='format:".self::$logFormat."' "
 			."--encoding=UTF-8 --date=iso --dense";
@@ -345,24 +348,63 @@ class GitCommit {
 			
 			foreach ($files as $line) {
 				$line = explode("\t", $line);
-				$t = $line[0];
+				$t = $line[0]{0};
 				$name = $line[1];
+				$previousName = null;
+				
+				# R|C have two names wherether the last is the new name
+				if ($t === GitPatch::RENAME or $t === GitPatch::COPY) {
+				  $previousName = $name;
+				  $name = $line[2];
+				  if ($c->previousFiles === null)
+				    $c->previousFiles = array($previousName);
+				  else
+				    $c->previousFiles[] = $previousName;
+			  }
+				
+				# add to files[tag] => [name, ..]
 				if (isset($c->files[$t]))
 					$c->files[$t][] = $name;
 				else
 					$c->files[$t] = array($name);
-				# update cached objects
+				
+			  # if kwarg mapnamestoc == true
+			  if ($ntoc !== null) {
+			    if (!isset($ntoc[$name]))
+			      $ntoc[$name] = array($c);
+			    else
+			      $ntoc[$name][] = $c;
+		    }
+		    
+			  # update cached objects
 				if (isset($repo->objectCacheByName[$name])) {
 					$obj = $repo->objectCacheByName[$name];
 					if ($obj->_commit === null)
 						$obj->_commit = $c;
 				}
-				# update existing # todo: make it work with $rcron -- currently relies on a cronol. sequence.
+				
+				# update existing
+				# todo: make it work with $rcron -- currently relies on a cronol. sequence. Idea: post-process (slow but robust)
 				if (!$rcron) {
-					if ($t === GitPatch::CREATE)
+					if ($t === GitPatch::CREATE or $t === GitPatch::COPY)
 						$existing[$name] = $c;
 					elseif ($t === GitPatch::DELETE and isset($existing[$name]))
 						unset($existing[$name]);
+					elseif ($t === GitPatch::RENAME) {
+					  if (isset($existing[$previousName])) {
+					    # move original CREATE
+					    $existing[$name] = $existing[$previousName];
+					    unset($existing[$previousName]);
+				    }
+				    else {
+  					  $existing[$name] = $c;
+  				  }
+  				  # move commits from previous file if kwarg mapnamestoc == true
+  				  if ($ntoc !== null and isset($ntoc[$previousName])) {
+  				    $ntoc[$name] = array_merge($ntoc[$previousName], $ntoc[$name]);
+  				    unset($ntoc[$previousName]);
+				    }
+				  }
 				}
 			}
 			
@@ -373,7 +415,7 @@ class GitCommit {
 			$a = $b + 2;
 		}
 		
-		return array($commits, $existing);
+		return array($commits, $existing, $ntoc);
 	}
 }
 
@@ -646,8 +688,8 @@ class GitRepository {
 
 class GitPatch {
 	const EDIT_IN_PLACE = 'M';
-	const EDIT_BY_COPY = 'C';
-	const EDIT_BY_RENAME = 'R';
+	const COPY = 'C';
+	const RENAME = 'R';
 	const CREATE = 'A';
 	const DELETE = 'D';
 	
@@ -756,7 +798,7 @@ class GitPatch {
 			elseif ($start3 === 'cop') {
 				$x = strpos($line, ' ', 5);
 				$currpatch->meta['copy_'.substr($line, 5, $x-5)] = rtrim(substr($line, $x+1));
-				$currpatch->action = self::EDIT_BY_COPY;
+				$currpatch->action = self::COPY;
 			}
 		
 			# rename from <path>
@@ -764,7 +806,7 @@ class GitPatch {
 			elseif ($start3 === 'ren') {
 				$x = strpos($line, ' ', 7);
 				$currpatch->meta['rename_'.substr($line, 7, $x-7)] = rtrim(substr($line, $x+1));
-				$currpatch->action = self::EDIT_BY_RENAME;
+				$currpatch->action = self::RENAME;
 			}
 		
 			# similarity index <number>
@@ -1069,14 +1111,23 @@ class GitObjectIndex {
 				),
 				'message' => $c->message
 			);
-			if ($ccommit === null and isset($c->files[GitPatch::CREATE]) and 
-			    in_array($object->name, $c->files[GitPatch::CREATE], true)) {
-				$ccommit = $co;
+			if ($ccommit === null) {
+			  if (
+			    (isset($c->files[GitPatch::CREATE]) and in_array($object->name, $c->files[GitPatch::CREATE], true))
+			    or
+			    (isset($c->files[GitPatch::RENAME]) and in_array($object->name[1], $c->files[GitPatch::RENAME], true))
+			  ) {
+				  $ccommit = $co;
+			  }
 			}
 			$acommits[$c->comitterDate] = $co;
 		}
 		
 		krsort($acommits, SORT_NUMERIC);
+		$acommits = array_values($acommits);
+		
+		if ($ccommit === null and $acommits)
+		  $ccommit = $acommits[0];
 		
 		$data = (object)array(
 			'meta' => (object)$meta,
@@ -1101,9 +1152,10 @@ class GitObjectIndex {
 	}
 
 	static function rebuild($repo) {
-		$v = GitCommit::find($repo, array('sortrcron' => false));
+		$v = GitCommit::find($repo, array('sortrcron' => false, 'mapnamestoc' => true));
 		$commits =& $v[0];
 		$existing =& $v[1];
+		$name_to_commits =& $v[2];
 		
 		# index buffers
 		$stage = array(); # objects on stage, keyed by object id
@@ -1140,17 +1192,27 @@ class GitObjectIndex {
 		mkdir($newstagedir, self::STAGE_DIRMODE);
 		
 		# build map of name => array(commit, .. )
-		$name_to_commits = array();
+		/*$name_to_commits = array();
 		foreach ($commits as $c) {
 			foreach ($c->files as $t => $cfiles) {
 				foreach ($cfiles as $name) {
-					if (!isset($name_to_commits[$name]))
-						$name_to_commits[$name] = array($c);
-					else
-						$name_to_commits[$name][] = $c;
+				  if ($t === GitPatch::RENAME or $t === GitPatch::COPY) {
+				    foreach ($name as $n) {
+    					if (!isset($name_to_commits[$n]))
+    						$name_to_commits[$n] = array($c);
+    					else
+    						$name_to_commits[$n][] = $c;
+  					}
+					}
+					else {
+  					if (!isset($name_to_commits[$name]))
+  						$name_to_commits[$name] = array($c);
+  					else
+  						$name_to_commits[$name][] = $c;
+					}
 				}
 			}
-		}
+		}*/
 		
 		# build indexes
 		foreach ($existing as $name => $c) {
@@ -1294,7 +1356,6 @@ class GitObjectIndex {
 ##########################################
 
 $debug_time_started = microtime(true);
-$repo = new GitRepository($conf['git']['repository']);
-#$repo->init();
+$repo = new GitRepository(dirname(GITBLOG_DIR)."/db/.git");
 
 ?>

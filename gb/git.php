@@ -878,6 +878,12 @@ class GitContent {
 			}
 			
 			# published
+			# todo: translate these rules to english:
+			#- Om headern saknas defaultar den till true.
+      #- Om published värde inte kan parsas av strtotime (typ om man anger 
+      #  2102-01-01 (out of bounds) eller "mosmaster") tolkas det som false.
+      #- Om headern tolkas som true (el. implicit saknas) används datumet från
+      #  den commit som skapade filen (genom create eller copy).
 			if (isset($nmeta['published'])) {
 				$lc = strtolower($nmeta['published']);
 				if ($lc) {
@@ -885,8 +891,12 @@ class GitContent {
 						$nmeta['published'] = 0;
 					elseif ($lc{0} === 'f' || $lc{0} === 'n')
 						$nmeta['published'] = 2147483647; # MAX (Jan 19, 2038)
-					else
-						$nmeta['published'] = strtotime($nmeta['published']);
+					else {
+						$ts = strtotime($nmeta['published']);
+						if ($ts === false or $ts === -1) # false in PHP >=5.1.0, -1 in PHP <5.1.0
+						  $ts = 2147483647; # MAX (Jan 19, 2038)
+						$nmeta['published'] = $ts;
+					}
 				}
 			}
 			

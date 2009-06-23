@@ -67,6 +67,18 @@ function gb_parse_headers($raw) {
 	return $headers;
 }
 
+function gb_atomic_write($filename, &$data) {
+	$tempnam = tempnam(dirname($filename), basename($filename));
+	$f = fopen($tempnam, 'w');
+	fwrite($f, $data);
+	fclose($f);
+	if (!rename($tempnam, $filename)) {
+		unlink($tempnam);
+		return false;
+	}
+	return true;
+}
+
 
 class GitError extends Exception {}
 class GitUninitializedRepoError extends GitError {}
@@ -599,8 +611,15 @@ class GitRepository {
 		return $objects;
 	}
 	
-	function init($bare=true, $mkdirmode=0750) {
-		$cmd = "init --quiet";
+	function init($shared=true, $bare=false) {
+		$mkdirmode = 0755;
+		if ($shared) {
+			$shared = 'true';
+			$mkdirmode = 0775;
+		}
+		else
+			$shared = 'false';
+		$cmd = "init --quiet --shared=$shared";
 		if ($bare)
 			$cmd .= " --bare";
 		if (!is_dir($this->gitdir) && !mkdir($this->gitdir, $mkdirmode, true))
@@ -788,7 +807,8 @@ class GitContent {
 	static function parseData(&$data, $load_body=true) {
 		$meta = array(
 			'title' => null,
-			'tags' => array()
+			'tags' => array(),
+			'published' => 0
 		);
 		$body = '';
 		
@@ -799,10 +819,25 @@ class GitContent {
 		}
 		else {
 			$nmeta = gb_parse_headers(substr($data, 0, $p));
+			
+			# tags
 			if (isset($nmeta['tags'])) {
-				$meta['tags'] = preg_split('/[, ]+/', $nmeta['tags']);
-				unset($nmeta['tags']);
+				$nmeta['tags'] = preg_split('/[, ]+/', $nmeta['tags']);
 			}
+			
+			# published
+			if (isset($nmeta['published'])) {
+				$lc = strtolower($nmeta['published']);
+				if ($lc) {
+					if ($lc{0} === 't' || $lc{0} === 'y')
+						$nmeta['published'] = 0;
+					elseif ($lc{0} === 'f' || $lc{0} === 'n')
+						$nmeta['published'] = 2147483647; # MAX (Jan 19, 2038)
+					else
+						$nmeta['published'] = strtotime($nmeta['published']);
+				}
+			}
+			
 			$meta = array_merge($meta, $nmeta);
 			$body = $load_body ? substr($data, $p+2) : $p+2;
 		}
@@ -811,6 +846,33 @@ class GitContent {
 			self::applyFilters('body', $body);
 		
 		return array($meta, $body);
+	}
+	
+	/** todo: comment */
+	static function contentForName($repo, $name) {
+		$path = "{$repo->gitdir}/info/gitblog/stage/$name";
+		$data = @file_get_contents($path);
+		if ($data === false)
+			if (GitObjectIndex::assureIntegrity($repo))
+				$data = file_get_contents($path);
+		if ($data === false)
+			return null;
+		return (object)unserialize($data);
+	}
+	
+	/** todo: comment */
+	static function postForSlug($repo, $slug, $type='html') {
+		return self::contentForName($repo, "content/posts/$slug.$type");
+	}
+	
+	static function publishedPosts($repo, $limit=25) {
+		$records = GitObjectIndex::tail($repo, 'stage-published-posts.rchlog', $limit);
+		$posts = array();
+		
+		foreach ($records as $rec)
+			$posts[] = self::contentForName($repo, 'content/posts/'.$rec['name']);
+		
+		return $posts;
 	}
 }
 
@@ -928,7 +990,7 @@ class GitBlogPost {
 class GitObjectIndex {
 	const HEAD_SIZE = 109; # must not be changed
 	const NAME_SIZE = 200; # might be changed but will break compat.
-	const STAGE_DIRMODE = 0755;
+	const STAGE_DIRMODE = 0775;
 	
 	static function encodeRec($timestamp, $commit, $object, $name='') {
 		# size in bytes = HEAD_SIZE + NAME_SIZE
@@ -968,16 +1030,17 @@ class GitObjectIndex {
 	}
 	
 	/** write named index in an atomic manner */
-	static function write($repo, $indexname, &$data) {
-		$path = "{$repo->gitdir}/info/gitblog/index/{$indexname}";
-		$f = fopen("{$path}.tmp", 'w');
-		fwrite($f, $data);
-		fclose($f);
-		return rename("{$path}.tmp", $path);
+	static function write($repo, $indexname, &$data, $mode) {
+		$filename = "{$repo->gitdir}/info/gitblog/index/{$indexname}";
+		if (gb_atomic_write($filename, $data)) {
+			chmod($filename, $mode);
+			return true;
+		}
+		return false;
 	}
 	
 	/** Returns the number of bytes written, or FALSE on failure. */
-	static function writeContentObjectToStage($stagedir, $object, $commits) {
+	static function writeContentObjectToStage($stagedir, $object, $commits, &$meta, &$body) {
 		$ccommit = null;
 		$acommits = array();
 		
@@ -1005,12 +1068,9 @@ class GitObjectIndex {
 		
 		krsort($acommits, SORT_NUMERIC);
 		
-		$data = $object->data;
-		$meta_and_body = GitContent::parseData($data);
-		
 		$data = (object)array(
-			'meta' => (object)$meta_and_body[0],
-			'body' => $meta_and_body[1],
+			'meta' => (object)$meta,
+			'body' => $body,
 			'id' => $object->id,
 			'mimeType' => $object->mimeType,
 			'commits' => array_values($acommits),
@@ -1024,36 +1084,10 @@ class GitObjectIndex {
 			if (!is_dir($dirpath))
 				mkdir($dirpath, self::STAGE_DIRMODE, true);
 		}
-		return file_put_contents("{$stagedir}/{$object->name}", $data, LOCK_EX);
-	}
-	
-	static function stageDir($repo) {
-		return "{$repo->gitdir}/info/gitblog/stage";
-	}
-	
-	static function activateStage($repo, $newstagedir) {
-		$stagedir = self::stageDir($repo);
-		$intermediatestagedir = "{$stagedir}.old";
 		
-		if (!file_exists($stagedir))
-			return rename($newstagedir, $stagedir);
-		
-		if (rename($stagedir, $intermediatestagedir)) {
-			if (rename($newstagedir, $stagedir)) {
-				exec("rm -rf ".escapeshellarg($intermediatestagedir));
-				return true;
-			}
-			else {
-				if (rename($intermediatestagedir, $stagedir))
-					trigger_error("failed to rename $newstagedir => $stagedir -- old stage still active");
-				else
-					trigger_error("failed to rename $newstagedir => $stagedir -- CRITICAL: no active stage!");
-			}
-		}
-		else {
-			trigger_error("failed to rename $stagedir => $intermediatestagedir -- old stage still active");
-		}
-		return false;
+		$filename = "{$stagedir}/{$object->name}";
+		$bw = file_put_contents($filename, $data, LOCK_EX);
+		chmod($filename, 0664);
 	}
 
 	static function rebuild($repo) {
@@ -1064,7 +1098,6 @@ class GitObjectIndex {
 		# index buffers
 		$stage = array(); # objects on stage, keyed by object id
 		$stage_rcron = ''; # reverse-chronologically ordered list of published objects
-		$stage_posts_rcron = ''; # reverse-chronologically ordered list of published posts
 		
 		/*
 		'099c2a87674fe302e9e74aef55059be4b62b5534' => 
@@ -1093,7 +1126,7 @@ class GitObjectIndex {
 		$repo->loadBlobs($files);
 		
 		# gitblog stage directory
-		$newstagedir = $stagedir = self::stageDir($repo).".new";
+		$newstagedir = $stagedir = "{$repo->gitdir}/info/gitblog/stage.new";
 		mkdir($newstagedir, self::STAGE_DIRMODE);
 		
 		# build map of name => array(commit, .. )
@@ -1113,20 +1146,28 @@ class GitObjectIndex {
 		foreach ($existing as $name => $c) {
 			assert(isset($files[$name]));
 			$file =& $files[$name];
-			
-			# stage
-			$stage[$file->id] = array($c->comitterDate, $c->id, $file->id, $name);
+			$published = $c->comitterDate;
 			
 			# stage-rcron
 			$stage_rcron .= self::encodeRec($c->comitterDate, $c->id, $file->id, $name);
 			
-			$name6 = substr($name, 0, 6);
+			# content
+			if (substr($name, 0, 8) === 'content/') {
+				$data = $file->data;
+				$mb = GitContent::parseData($data);
+				$meta =& $mb[0];
+				$body =& $mb[1];
+				$published = $meta['published'];
+				if ($published === 0) {
+					$published = $c->comitterDate;
+					$meta['published'] = $published;
+				}
+				
+				self::writeContentObjectToStage($newstagedir, $file, $name_to_commits[$name], $meta, $body);
+			}
 			
-			if ($name6 === 'posts/')
-				$stage_posts_rcron .= self::encodeRec($c->comitterDate, $c->id, $file->id, $name);
-			
-			if ($name6 === 'posts/' || $name6 === 'pages/')
-				self::writeContentObjectToStage($newstagedir, $file, $name_to_commits[$name]);
+			# stage
+			$stage[$file->id] = array($published, $c->id, $file->id, $name);
 		}
 		
 		# activate gbstage
@@ -1134,12 +1175,58 @@ class GitObjectIndex {
 			exec("rm -rf ".escapeshellarg($newstagedir));
 		
 		# write indexes
-		$stage = serialize($stage); # because below takes a reference
-		self::write($repo, 'stage.phpser', $stage);
-		self::write($repo, 'stage.rchlog', $stage_rcron);
-		self::write($repo, 'stage-posts.rchlog', $stage_posts_rcron);
+		$stagedat = serialize($stage);
+		self::write($repo, 'stage.phpser', $stagedat, 0664);
+		self::write($repo, 'stage.rchlog', $stage_rcron, 0664);
+		
+		self::buildPublishedPostsRCHLog($repo, $stage);
 		
 		return $commits;
+	}
+	
+	static function buildPublishedPostsRCHLog($repo, &$stage) {
+		# build published posts rchlog
+		# reverse-chronologically ordered list of published content/posts/**
+		$data = '';
+		$now = time()+300; # 5 minutes granularity
+		$sorted = array();
+		
+		$i = 0;
+		foreach ($stage as $o)
+			if ( (substr($o[3], 0, 14) === 'content/posts/') and ($o[0] <= $now) )
+				$sorted[strval($o[0]).strval($i++)] = $o;
+		
+		ksort($sorted, SORT_NUMERIC);
+		
+		foreach ($sorted as $o)
+			$data .= self::encodeRec($o[0], $o[1], $o[2], substr($o[3], 14));
+		
+		self::write($repo, 'stage-published-posts.rchlog', $data, 0664);
+	}
+	
+	static function activateStage($repo, $newstagedir) {
+		$stagedir = "{$repo->gitdir}/info/gitblog/stage";
+		$intermediatestagedir = "{$stagedir}.old";
+		
+		if (!file_exists($stagedir))
+			return rename($newstagedir, $stagedir);
+		
+		if (rename($stagedir, $intermediatestagedir)) {
+			if (rename($newstagedir, $stagedir)) {
+				exec("rm -rf ".escapeshellarg($intermediatestagedir));
+				return true;
+			}
+			else {
+				if (rename($intermediatestagedir, $stagedir))
+					trigger_error("failed to rename $newstagedir => $stagedir -- old stage still active");
+				else
+					trigger_error("failed to rename $newstagedir => $stagedir -- CRITICAL: no active stage!");
+			}
+		}
+		else {
+			trigger_error("failed to rename $stagedir => $intermediatestagedir -- old stage still active");
+		}
+		return false;
 	}
 	
 	static function tail($repo, $indexname, $limit=25) {
@@ -1176,6 +1263,20 @@ class GitObjectIndex {
 	
 		rsort($records);
 		return $records;
+	}
+	
+	# returns true if the integrity was compromised and has been repaired.
+	static function assureIntegrity($repo) {
+		$path = "{$repo->gitdir}/info/gitblog";
+		if (is_dir($path))
+			return false;
+		# no gb meta dir!
+		# do we even have a repo?
+		$repo_exists = is_dir($repo->gitdir);
+		if (!$repo_exists)
+			if (!$repo->init())
+				return false;
+		self::rebuild($repo);
 	}
 }
 

@@ -6,12 +6,9 @@ require 'gb/git.php';
 # debug:
 if (!isset($_GET['slug'])) $_GET['slug'] = '2008-08-29-reading-a-book';
 
-#$post = GitBlogPost::findBySlug($repo, $_GET['slug']);
-if (!isset($_GET['type']))
-  $_GET['type'] = 'html';
-$post = (object)unserialize(file_get_contents(GitObjectIndex::stageDir($repo)."/posts/".$_GET['slug'].".".$_GET['type']));
+$post = GitContent::postForSlug($repo, $_GET['slug'], isset($_GET['type']) ? $_GET['type'] : 'html');
 
-if (!$post) {
+if (!$post or $post->meta->published > time()) {
 	header('Status: 404 Not Found');
 	exit('post not found');
 }
@@ -34,7 +31,7 @@ $repo->batchLoadPending();
 		<div id="post-meta">
 			<h3>Details</h3>
 			<ul>
-				<li>Published: <?= date('c', $post->ccommit->comitter->date) ?></li>
+				<li>Published: <?= date('c', $post->meta->published) ?></li>
 				<li>Modified: <?= date('c', $post->commits[0]->comitter->date) ?></li>
 				<li>Author: <a href="mailto:<?= $post->ccommit->author->email ?>"><?= $post->ccommit->author->name ?></a></li>
 				<li>Revision (current object): <?= $post->id ?></li>

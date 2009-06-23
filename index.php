@@ -1,11 +1,9 @@
 <?
-header('content-type: text/plain; charset=utf-8');
-#header('content-type: text/html; charset=utf-8');
+#header('content-type: text/plain; charset=utf-8');
+header('content-type: text/html; charset=utf-8');
 require 'gb/git.php';
 
-
-$posts = GitBlogPost::findPublished($repo, 10);
-
+$posts = GitContent::publishedPosts($repo, 10);
 $repo->batchLoadPending();
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
@@ -21,31 +19,31 @@ $repo->batchLoadPending();
 		</style>
 	</head>
 	<body>
-		<h2>Latest posts</h2>
+		<h1>Some blog</h1>
 		<? foreach ($posts as $post): ?>
+			<h2><?= $post->meta->title ?></h2>
 			<div id="post-meta">
 				<h3>Details</h3>
 				<ul>
-					<li>Published: <?= date('c', $post->datePublished) ?></li>
-					<li>Modified: <?= date('c', $post->dateModified) ?></li>
-					<li>Tags: <?= implode(', ', $post->tags) ?></li>
-					<? if (isset($_GET['extended-details']) and $_GET['extended-details'] == 'yes'): ?>
-						<li>Author: <a href="mailto:<?= $post->authorEmail ?>"><?= $post->authorName ?></a></li>
-						<li>Object: <?= $post->id ?></li>
-						<li>Commit: <?= $post->object->commit->id ?></li>
-						<li>
-							<a href="?">Hide extended details</a>
-							<small>(Do not fetch commits)</small>
-						</li>
-					<? else: ?>
-						<li>
-							<a href="?extended-details=yes">Show extended details</a>
-							<small>(Fetch commits)</small>
-						</li>
-					<? endif ?>
+					<li>Published: <?= date('c', $post->meta->published) ?></li>
+					<li>Modified: <?= date('c', $post->commits[0]->comitter->date) ?></li>
+					<li>Author: <a href="mailto:<?= $post->ccommit->author->email ?>"><?= $post->ccommit->author->name ?></a></li>
+					<li>Revision (current object): <?= $post->id ?></li>
+					<li>Initial commit: <?= $post->ccommit->id ?></li>
+					<li>Last commit: <?= $post->commits[0]->id ?></li>
+					<li>
+						Log messages:
+						<ul style="list-style-type:decimal;padding-left:30px">
+						<? foreach ($post->commits as $c): ?>
+							<li>
+								<?= nl2br(htmlentities($c->message)) ?>
+								<small><em>by <?= $c->author->name ?> at <?= date('c', $c->author->date) ?></em></small>
+							</li>
+						<? endforeach ?>
+						</ul>
+					</li>
 				</ul>
 			</div>
-			<h2><a href="post.php?slug=<?= $post->slug ?>"><?= $post->title ?></a></h2>
 			<p>
 				<?= $post->body ?>
 			</p>

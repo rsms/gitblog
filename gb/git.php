@@ -19,7 +19,7 @@ function proc_open2($cmd, $cwd=null, $env=null) {
 
 
 function fileext($path) {
-	$p = strpos($path, '.', strrpos($path, '/'));
+	$p = strrpos($path, '.', strrpos($path, '/'));
 	return $p > 0 ? substr($path, $p+1) : '';
 }
 

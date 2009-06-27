@@ -23,11 +23,13 @@ $_ENV['PATH'] .= ':/opt/local/bin';
 # Universal functions
 
 /** Atomic write */
-function gb_atomic_write($filename, &$data) {
+function gb_atomic_write($filename, &$data, $chmod=null) {
 	$tempnam = tempnam(dirname($filename), basename($filename));
 	$f = fopen($tempnam, 'w');
 	fwrite($f, $data);
 	fclose($f);
+	if ($chmod !== null)
+		chmod($tempnam, $chmod);
 	if (!rename($tempnam, $filename)) {
 		unlink($tempnam);
 		return false;
@@ -141,8 +143,9 @@ class GitBlog {
 	}
 }
 
+$debug_time_started = microtime(true);
 
-$gb = new GitBlog('/Library/WebServer/Documents/gitblog/db/.git');
-GBRebuilder::rebuild($gb);
+#$gb = new GitBlog('/Library/WebServer/Documents/gitblog/db/.git');
+#GBRebuilder::rebuild($gb, true);
 
 ?>

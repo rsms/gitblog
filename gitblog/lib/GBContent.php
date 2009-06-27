@@ -81,6 +81,10 @@ class GBContent {
 		}
 	}
 	
+	function urlpath() {
+		return str_replace('%2F', '/', urlencode($this->slug));
+	}
+	
 	function cachename() {
 		return gb_filenoext($this->name);
 	}
@@ -96,7 +100,7 @@ class GBContent {
 		if (!is_dir($dirname))
 			mkdir($dirname, 0775, true);
 		$data = serialize($this);
-		return gb_atomic_write($path, $data);
+		return gb_atomic_write($path, $data, 0664);
 	}
 }
 ?>

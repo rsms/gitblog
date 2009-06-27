@@ -177,7 +177,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 			mkdir($dir, 0775, true);
 		
 		foreach ($pages as $pageno => $page) {
-			$path = $dir.'/'.sprintf('%010d', $pageno);
+			$path = $dir.'/'.sprintf('%011d', $pageno);
 			$need_rewrite = $this->forceFullRebuild or (!file_exists($path));
 			
 			# check if any objects on this page are dirty
@@ -191,11 +191,11 @@ class GBContentFinalizer extends GBContentRebuilder {
 			}
 			
 			if ($need_rewrite) {
-				$page = array('posts' => $page);
+				$page = (object)array('posts' => $page, 'nextpage' => -1, 'prevpage' => $pageno-1);
 				if ($pageno < $numpages-1)
-					$page['nextpage'] = $pageno+1;
+					$page->nextpage = $pageno+1;
 				$data = serialize($page);
-				gb_atomic_write($path, $data);
+				gb_atomic_write($path, $data, 0664);
 				#var_dump("wrote $path"); # xxx
 			}
 		}

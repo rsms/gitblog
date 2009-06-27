@@ -1,10 +1,11 @@
 <?
 #header('content-type: text/plain; charset=utf-8');
 header('content-type: text/html; charset=utf-8');
-require 'gb/git.php';
+require 'gitblog/gitblog.php';
 
-$posts = GitContent::publishedPosts($repo, 10);
-$repo->batchLoadPending();
+$pageno = isset($_GET['page']) ? intval($_GET['page']) : 0;
+$page = unserialize(file_get_contents(
+	'db/.git/info/gitblog/content-paged-posts/'.sprintf('%011d', $pageno)));
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
@@ -20,28 +21,17 @@ $repo->batchLoadPending();
 	</head>
 	<body>
 		<h1>Some blog</h1>
-		<? foreach ($posts as $post): ?>
-			<h2><a href="post.php?slug=<?= urlencode($post->slug) ?>"><?= $post->meta->title ?></a></h2>
+		<? foreach ($page->posts as $post): ?>
+			<h2><a href="post.php?slug=<?= $post->urlpath() ?>"><?= $post->title ?></a></h2>
 			<div id="post-meta">
 				<h3>Details</h3>
 				<ul>
-					<li>Published: <?= date('c', $post->meta->published) ?></li>
-					<li>Modified: <?= date('c', $post->commits[0]->comitter->date) ?></li>
-					<li>Author: <a href="mailto:<?= $post->ccommit->author->email ?>"><?= $post->ccommit->author->name ?></a></li>
+					<li>Author: <a href="mailto:<?= $post->author->email ?>"><?= $post->author->name ?></a></li>
+					<li>Published: <?= date('c', $post->published) ?></li>
+					<li>Modified: <?= date('c', $post->modified) ?></li>
+					<li>Tags: <?= implode(', ', $post->tags) ?></li>
+					<li>Categories: <?= implode(', ', $post->categories) ?></li>
 					<li>Revision (current object): <?= $post->id ?></li>
-					<li>Initial commit: <?= $post->ccommit->id ?></li>
-					<li>Last commit: <?= $post->commits[0]->id ?></li>
-					<li>
-						Log messages:
-						<ul style="list-style-type:decimal;padding-left:30px">
-						<? foreach ($post->commits as $c): ?>
-							<li>
-								<?= nl2br(htmlentities($c->message)) ?>
-								<small><em>by <?= $c->author->name ?> at <?= date('c', $c->author->date) ?></em></small>
-							</li>
-						<? endforeach ?>
-						</ul>
-					</li>
 				</ul>
 			</div>
 			<p>
@@ -50,8 +40,13 @@ $repo->batchLoadPending();
 			<div class="breaker"></div>
 		<? endforeach ?>
 		<hr/>
+		<? if ($page->prevpage != -1): ?>
+			<a href="?page=<?= $page->prevpage ?>">« Newer posts</a>
+		<? endif; ?>
+		<? if ($page->nextpage != -1): ?>
+			<a href="?page=<?= $page->nextpage ?>">Older posts »</a>
+		<? endif; ?>
 		<address>
-			<?= $repo->gitQueryCount ?> git queries
 			(<? $s = (microtime(true)-$debug_time_started); printf('%d ms, %d rps', intval(1000.0 * $s), 1.0/$s) ?>)
 		</address>
 	</body>

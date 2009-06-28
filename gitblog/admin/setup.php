@@ -57,44 +57,23 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# create admin account
 	if (!$errors) {
-		class GBUserAccount {
-			static public $db = null;
-			
-			static function _reload() {
-				if (file_exists(gb::$repo.'/.git/info/gitblog-users.php')) {
-					include gb::$repo.'/.git/info/gitblog-users.php';
-					self::$db = $db;
-				}
-				else {
-					self::$db = array();
-				}
-			}
-			
-			static function _sync() {
-				if (self::$db === null)
-					return;
-				file_put_contents(gb::$repo.'/.git/info/gitblog-users.php', 
-					'<? $db = '.var_export(self::$db, 1).'; ?>', LOCK_EX);
-				chmod(gb::$repo.'/.git/info/gitblog-users.php', 0660);
-			}
-			
-			static function passhash($email, $passphrase) {
-				return sha1($email . ' ' . $passphrase . ' ' . gb::$secret);
-			}
-			
-			static function create($email, $passphrase, $name=null) {
-				if (self::$db === null)
-					self::_reload();
-				self::$db = array(
-					'email' => $email,
-					'passhash' => sha1($email . ' ' . $passphrase . ' ' . gb::$secret),
-					'name' => $name
-				);
-				self::_sync();
-			}
+		if (!GBUserAccount::create(trim($_POST['email']), $_POST['passphrase'], 
+			trim($_POST['name']), true))
+		{
+			$errors[] = 'Failed to create administrator user account';
 		}
-		
-		GBUserAccount::create($_POST['email'], $_POST['passphrase']);
+	}
+	
+	# -------------------------------------------------------------------------
+	# commit changes (done by $gitblog->init())
+	if (!$errors) {
+		try {
+			if (!$gitblog->commit('gitblog created', GBUserAccount::getAdmin()))
+				$errors[] = 'failed to commit creation';
+		}
+		catch (Exception $e) {
+			$errors[] = 'failed to commit creation: '.nl2br(h(strval($e)));
+		}
 	}
 	
 	# -------------------------------------------------------------------------
@@ -206,6 +185,12 @@ header('Content-Type: application/xhtml+xml; charset=utf-8');
 					<h4>Create an administrator account</h4>
 					<p>Email:</p>
 					<input type="text" name="email" value="<?= h(@$_POST['email']) ?>" />
+					<p>Real name:</p>
+					<input type="text" name="name" value="<?= h(@$_POST['name']) ?>" />
+					<p class="note">
+						This will be used for commit messages, along with email.
+						Commit history can not be changed afterwards, so please provide your real name here.
+					</p>
 					<p>Pass phrase:</p>
 					<input type="password" name="passphrase" />
 					<input type="password" name="passphrase2" />

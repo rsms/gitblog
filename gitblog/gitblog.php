@@ -315,7 +315,9 @@ class GitBlog {
 	/** Execute a git command */
 	function exec($cmd, $input=null) {
 		# build cmd
-		$cmd = "GIT_DIR='".gb::$repo."/.git' git $cmd";
+		$cmd = 'git --git-dir='.escapeshellarg(gb::$repo.'/.git')
+			.' --work-tree='.escapeshellarg(gb::$repo)
+			.' '.$cmd;
 		#var_dump($cmd);
 		# start process
 		$ps = gb_popen($cmd, null, $_ENV);
@@ -416,15 +418,9 @@ class GitBlog {
 		# Create empty standard directories
 		mkdir(gb::$repo.'/content/posts', $mkdirmode, true);
 		mkdir(gb::$repo.'/content/pages', $mkdirmode);
-		
 		chmod(gb::$repo.'/content', $mkdirmode);
 		chmod(gb::$repo.'/content/posts', $mkdirmode);
 		chmod(gb::$repo.'/content/pages', $mkdirmode);
-		
-		# Enable default theme
-		$target = gb_relpath(gb::$repo."/theme", GITBLOG_DIR.'/themes/default');
-		symlink($target, gb::$repo."/theme");
-		$this->exec("add theme");
 		
 		# Copy post-commit hook
 		$s = file_get_contents(GITBLOG_DIR.'/skeleton/hooks/post-commit');
@@ -432,10 +428,43 @@ class GitBlog {
 			'http://localhost/gitblog/hooks/post-patch.php',
 			GITBLOG_SITE_URL.'gitblog/hooks/post-patch.php', $s);
 		file_put_contents(gb::$repo."/.git/hooks/post-commit", $s);
+		chmod(gb::$repo."/.git/hooks/post-commit", 0664);
 		
-		# Commit changes
-		$this->exec("commit -m 'gitblog created'");
+		# Enable default theme
+		$target = gb_relpath(gb::$repo."/theme", GITBLOG_DIR.'/themes/default');
+		symlink($target, gb::$repo."/theme");
+		$this->exec("add theme");
 		
+		# Copy example "about" page
+		copy(GITBLOG_DIR.'/skeleton/content/pages/about.html', gb::$repo."/content/pages/about.html");
+		chmod(gb::$repo."/content/pages/about.html", 0664);
+		$this->exec("add content/pages/about.html");
+		
+		# Copy example "hello world" post
+		$today = time();
+		$s = file_get_contents(GITBLOG_DIR.'/skeleton/content/posts/0000-00-00-hello-world.html');
+		$name = 'content/posts/'.gmdate('Y/m-d').'-hello-world.html';
+		$path = gb::$repo."/$name";
+		@mkdir(dirname($path), 0775, true);
+		chmod(dirname($path), 0775);
+		$s = str_replace('0000/00-00-hello-world.html', basename(dirname($name)).'/'.basename($name), $s);
+		file_put_contents($path, $s);
+		chmod($path, 0664);
+		$this->exec("add $name");
+		
+		return true;
+	}
+	
+	function commit($message, $author_account_or_email) {
+		if (is_string($author_account_or_email))
+			$author_account_or_email = GBUserAccount::get($author_account_or_email);
+		if (!$author_account_or_email) {
+			trigger_error('no author');
+			return false;
+		}
+		$author = GBUserAccount::formatGitAuthor($author_account_or_email);
+		$this->exec('commit -m '.escapeshellarg($message)
+			. ' --quiet --author='.escapeshellarg($author));
 		return true;
 	}
 	
@@ -466,6 +495,9 @@ class GitBlog {
 	}
 }
 
+
+# -----------------------------------------------------------------------------
+# Content (posts, pages, etc)
 
 function gb_html_postprocess_filter(&$body) {
 	$body = nl2br(trim($body));
@@ -607,7 +639,7 @@ class GBContent {
 	function collLinks($what, $separator=', ', $template='<a href="%u">%n</a>', $htmlescape=true) {
 		static $needles = array('%u', '%n');
 		$links = array();
-		$vn = "$what_prefix";
+		$vn = "{$what}_prefix";
 		$u = GITBLOG_SITE_URL . gb::$index_url . gb::$$vn;
 		
 		foreach ($this->$what as $tag) {
@@ -637,6 +669,95 @@ class GBPost extends GBContent {
 	static function getCached($published, $slug) {
 		$path = gb::$repo."/.git/info/gitblog/content/posts/".gmdate("Y/m/d/", $published).$slug;
 		return @unserialize(file_get_contents($path));
+	}
+}
+
+# -----------------------------------------------------------------------------
+# Users
+
+class GBUserAccount {
+	static public $db = null;
+	
+	static function _reload() {
+		if (file_exists(gb::$repo.'/.git/info/gitblog-users.php')) {
+			include gb::$repo.'/.git/info/gitblog-users.php';
+			self::$db = $db;
+		}
+		else {
+			self::$db = array();
+		}
+	}
+	
+	static function sync() {
+		if (self::$db === null)
+			return;
+		$r = file_put_contents(gb::$repo.'/.git/info/gitblog-users.php', 
+			'<? $db = '.var_export(self::$db, 1).'; ?>', LOCK_EX);
+		chmod(gb::$repo.'/.git/info/gitblog-users.php', 0660);
+		return $r;
+	}
+	
+	static function passhash($email, $passphrase) {
+		return sha1($email . ' ' . $passphrase);# . ' ' . gb::$secret);
+	}
+	
+	static function create($email, $passphrase, $name, $admin=false) {
+		if (self::$db === null)
+			self::_reload();
+		$email = strtolower($email);
+		self::$db[$email] = array(
+			'email' => $email,
+			'passhash' => self::passhash($email, $passphrase),
+			'name' => $name
+		);
+		if ($admin and !self::setAdmin($email))
+			return false;
+		return self::sync() ? true : false;
+	}
+	
+	static function setAdmin($email) {
+		if (self::$db === null)
+			self::_reload();
+		$email = strtolower($email);
+		if (!isset(self::$db[$email])) {
+			trigger_error('no such user '.var_export($email,1));
+			return false;
+		}
+		self::$db['_admin'] = $email;
+		return true;
+	}
+	
+	static function &getAdmin() {
+		static $n = null;
+		if (self::$db === null)
+			self::_reload();
+		if (!isset(self::$db['_admin']))
+			return $n;
+		$email = self::$db['_admin'];
+		if (isset(self::$db[$email]))
+		 	return self::$db[$email];
+		return $n;
+	}
+	
+	static function &get($email) {
+		static $n = null;
+		if (self::$db === null)
+			self::_reload();
+		$email = strtolower($email);
+		if (isset(self::$db[$email]))
+		 	return self::$db[$email];
+		return $n;
+	}
+	
+	static function formatGitAuthor(&$account) {
+		if (!$account) {
+			trigger_error('invalid account');
+			return '';
+		}
+		$s = '';
+		if ($account['name'])
+			$s = $account['name'] . ' ';
+		return $s . '<'.$account['email'].'>';
 	}
 }
 

@@ -1,7 +1,4 @@
 <?
-require 'gb-config.php';
-require 'gitblog/gitblog.php';
-
 $gb_urlpath = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
 $gb_is_404 = false;
 $gb_is_page = false;
@@ -11,22 +8,20 @@ $gb_is_search = false;
 $gb_is_tags = false;
 $gb_is_categories = false;
 
+require 'gb-config.php';
+require 'gitblog/gitblog.php';
+
+# verify integrity, implicitly rebuilding gitblog cache or need serious initing.
+if ($gitblog->verifyIntegrity() === 2) {
+	header('Location: '.$gb_config['base-url'].'gitblog/admin/');
+	exit(0);
+}
+
+# verify configuration, like validity of the secret key.
+$gitblog->verifyConfig();
+
 if ($gb_urlpath) {
-	if (strpos($gb_urlpath, 'gitblog/') === 0) {
-		if ($_SERVER['HTTP_X_GB_SHARED_SECRET'] != $gb_config['secret']) {
-			header('Status: 401 Unauthorized');
-			exit('401 Unauthorized');
-		}
-		$gb_urlpath = rtrim(substr($gb_urlpath, 8), '/');
-		if (strpos($gb_urlpath, 'hooks/') === 0) {
-			require GITBLOG_DIR.'/hooks/'.str_replace('..','',substr($gb_urlpath, 6)).'.php';
-		}
-		else {
-			exit('unknown gitblog action '.var_export($gb_urlpath,1));
-		}
-		exit(0);
-	}
-	elseif (strpos($gb_urlpath, $gb_config['tags-prefix']) === 0) {
+	if (strpos($gb_urlpath, $gb_config['tags-prefix']) === 0) {
 		# tag(s)
 		$tags = array_map('urldecode', explode(',', substr($gb_urlpath, strlen($gb_config['tags-prefix']))));
 		$posts = $gitblog->postsByTags($tags);
@@ -38,7 +33,7 @@ if ($gb_urlpath) {
 		$posts = $gitblog->postsByCategories($cats);
 		$gb_is_categories = true;
 	}
-	elseif (preg_match($gb_config['posts']['slug-prefix-re'], $gb_urlpath)) {
+	elseif (preg_match($gb_config['posts']['url-prefix-re'], $gb_urlpath)) {
 		# post
 		$post = $gitblog->postBySlug(urldecode($gb_urlpath));
 		if ($post === false)

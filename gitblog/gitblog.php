@@ -243,7 +243,7 @@ class GitBlog {
 	
 	function pathToPost($slug) {
 		global $gb_config;
-		$st = strptime($slug, $gb_config['posts']['slug-prefix']);
+		$st = strptime($slug, $gb_config['posts']['url-prefix']);
 		$date = gmmktime($st['tm_hour'], $st['tm_min'], $st['tm_sec'], 
 			$st['tm_mon']+1, $st['tm_mday'], 1900+$st['tm_year']);
 		$slug = $st['unparsed'];
@@ -268,25 +268,25 @@ class GitBlog {
 	
 	function urlToTags($tags) {
 		global $gb_config;
-		return $gb_config['url-prefix'] . $gb_config['tags-prefix']
+		return $gb_config['index-url'] . $gb_config['tags-prefix']
 			. implode(',', array_map('urlencode', $tags));
 	}
 	
 	function urlToTag($tag) {
 		global $gb_config;
-		return $gb_config['url-prefix'] . $gb_config['tags-prefix']
+		return $gb_config['index-url'] . $gb_config['tags-prefix']
 			. urlencode($tag);
 	}
 	
 	function urlToCategories($categories) {
 		global $gb_config;
-		return $gb_config['url-prefix'] . $gb_config['categories-prefix']
+		return $gb_config['index-url'] . $gb_config['categories-prefix']
 			. implode(',', array_map('urlencode', $categories));
 	}
 	
 	function urlToCategory($category) {
 		global $gb_config;
-		return $gb_config['url-prefix'] . $gb_config['categories-prefix'] 
+		return $gb_config['index-url'] . $gb_config['categories-prefix'] 
 			. urlencode($category);
 	}
 	
@@ -318,6 +318,33 @@ class GitBlog {
 		copy("$skeleton/hooks/post-commit", "{$this->gitdir}/hooks/post-commit");
 		
 		return true;
+	}
+	
+	/**
+	 * Verify integrity of repository and gitblog cache.
+	 * 
+	 * Return values:
+	 *   0  Nothing was done (everything is probably OK).
+	 *   -1 Error (the error has been logged through trigger_error).
+	 *   1  gitblog cache was updated.
+	 *   2  gitdir is missing and need to be created (git init).
+	 */
+	function verifyIntegrity() {
+		if (is_dir("{$this->gitdir}/info/gitblog"))
+			return 0;
+		if (!is_dir($this->gitdir))
+			return 2;
+		GBRebuilder::rebuild($this, true);
+		return 1;
+	}
+	
+	function verifyConfig() {
+		global $gb_config;
+		if (!$gb_config['secret'] or strlen($gb_config['secret']) < 64) {
+			header('Status: 503 Service Unavailable');
+			header('Content-Type: text/plain; charset=utf-8');
+			exit("\n\n\$gb_config['secret'] is not set or too short.\n\nPlease edit your gb-config.php file.\n");
+		}
 	}
 }
 
@@ -449,7 +476,7 @@ class GBContent {
 	
 	function url() {
 		global $gb_config;
-		return $gb_config['url-prefix'].$this->urlpath();
+		return $gb_config['index-url'].$this->urlpath();
 	}
 	
 	function tagLinks($separator=', ', $template='<a href="%u">%n</a>', $htmlescape=true) {
@@ -464,7 +491,7 @@ class GBContent {
 		global $gb_config;
 		static $needles = array('%u', '%n');
 		$links = array();
-		$u = $gb_config['url-prefix'] . $gb_config["$what-prefix"];
+		$u = $gb_config['index-url'] . $gb_config["$what-prefix"];
 		
 		foreach ($this->$what as $tag) {
 			$n = $htmlescape ? htmlentities($tag) : $tag;
@@ -483,7 +510,7 @@ class GBPage extends GBContent {
 class GBPost extends GBContent {
 	function urlpath() {
 		global $gb_config;
-		return gmstrftime($gb_config['posts']['slug-prefix'], $this->published)
+		return gmstrftime($gb_config['posts']['url-prefix'], $this->published)
 			. str_replace('%2F', '/', urlencode($this->slug));
 	}
 	

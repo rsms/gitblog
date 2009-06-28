@@ -1,6 +1,6 @@
 <?
 require '../../gb-config.php';
-require 'gitblog/gitblog.php';
+require '../gitblog.php';
 
 $gitblog->verifyConfig();
 

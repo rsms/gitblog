@@ -1,5 +1,8 @@
 <?
 $gb_config = array(
+	# Site title
+	'title' => 'My gitblog',
+	
 	# Shared secret used for hook triggering.
 	# You should change this to a string at least 64 bytes long.
 	#

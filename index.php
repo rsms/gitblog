@@ -13,7 +13,7 @@ require 'gitblog/gitblog.php';
 
 # verify integrity, implicitly rebuilding gitblog cache or need serious initing.
 if ($gitblog->verifyIntegrity() === 2) {
-	header('Location: '.$gb_config['base-url'].'gitblog/admin/');
+	header('Location: '.$gb_config['base-url'].'gitblog/admin/setup.php');
 	exit(0);
 }
 

@@ -10,6 +10,8 @@ if (!isset($gb_config)) {
 	}
 }
 
+define('GITBLOG_VERSION', '0.1.0');
+
 if (!defined('GITBLOG_DIR'))
 	define('GITBLOG_DIR', realpath(dirname(__FILE__)));
 
@@ -175,6 +177,17 @@ function gb_relpath($from, $to) {
 	}
 	
 	return implode('/', $r);
+}
+
+#------------------------------------------------------------------------------
+# Helper functions for themes/templates
+
+$gb_title = array($gb_config['title']);
+
+function gb_title($glue=' — ', $html=true) {
+	global $gb_title;
+	$s = implode($glue, array_reverse($gb_title));
+	return $html ? htmlentities($s) : $s;
 }
 
 #------------------------------------------------------------------------------

@@ -443,7 +443,7 @@ class GitBlog {
 		# Copy example "hello world" post
 		$today = time();
 		$s = file_get_contents(GITBLOG_DIR.'/skeleton/content/posts/0000-00-00-hello-world.html');
-		$name = 'content/posts/'.gmdate('Y/m-d').'-hello-world.html';
+		$name = 'content/posts/'.date('Y/m-d').'-hello-world.html';
 		$path = gb::$repo."/$name";
 		@mkdir(dirname($path), 0775, true);
 		chmod(dirname($path), 0775);
@@ -618,8 +618,17 @@ class GBContent {
 	function writeCache() {
 		$path = gb::$repo."/.git/info/gitblog/".$this->cachename();
 		$dirname = dirname($path);
-		if (!is_dir($dirname))
-			mkdir($dirname, 0775, true);
+		
+		if (!is_dir($dirname)) {
+			$p = gb::$repo."/.git/info";
+			$parts = array_merge(array('gitblog'),explode('/',trim(dirname($this->cachename()),'/')));
+			foreach ($parts as $part) {
+				$p .= '/'.$part;
+				@mkdir($p, 0775, true);
+				chmod($p, 0775);
+			}
+		}
+		
 		$data = serialize($this);
 		return gb_atomic_write($path, $data, 0664);
 	}

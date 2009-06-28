@@ -97,84 +97,8 @@ if (!$is_writable) {
 		Please make this writable and reload this page.";
 }
 
-header('Content-Type: application/xhtml+xml; charset=utf-8');
-
-?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-	<head>
-		<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8"/>
-		<title><?= gb_title() ?></title>
-		<style type="text/css">
-			* { margin:0; padding:0; }
-			body {
-				font-family:'helvetica neue',helvetica,arial,sans-serif;
-				background-color:#fff;
-				color:#333;
-			}
-			body, p, li, td, div { font-size:13px; }
-			p { margin:15px 0; }
-			hr { border:none; height:1px; background-color:#ddd; }
-			div.breaker { clear:both; }
-			
-			#head { background-color:#ff9; padding:10px 20px; }
-			#head h1 { font-size:14px; color:#640; }
-			
-			#content { background-color:#fff; margin:0 20px; }
-			#content h2 { margin:15px 0 10px 0; font-size:24px; }
-			
-			body > address {
-				border-top:1px solid #ddd;
-				color:#aaa;
-				padding:10px 20px;
-				margin-top:20px;
-				font-size:11px;
-			}
-			
-			
-			div.inputgroup {
-				display:block;
-				margin-bottom:10px;
-				float:left;
-				margin-right:10px;
-				padding-right:10px;
-				width:300px;
-				border-right:1px solid #ddd;
-			}
-			div.inputgroup > h4 { font-size:100%; margin-bottom:4px; }
-			div.inputgroup > p { margin:6px 0 2px 0; }
-			div.inputgroup > p.note { margin-top:2px; font-size:11px; color:#999; }
-			div.inputgroup > input { margin:2px 0; }
-			div.inputgroup > input[type=text], div.inputgroup > input[type=password] { width:290px; }
-			
-			#errormsg {
-				background-color:#fa9;
-				border-top:1px solid #c77;
-			}
-			#errormsg > p {
-				padding:15px 20px;
-				margin:0;
-				color:#400;
-				font-size:16px;
-				border-bottom:1px solid #c77;
-			}
-			#errormsg code {
-				background-color:#fdd;
-			}
-			
-		</style>
-	</head>
-	<body>
-		<div id="head">
-			<h1><?= h(gb::$site_title) ?></h1>
-		</div>
-		<? if ($errors): ?>
-			<div id="errormsg">
-				<p>
-					<?= implode('</p><p>', $errors) ?>
-				</p>
-			</div>
-		<? endif; ?>		
-		<div id="content">
+include '_header.php';
+?>
 			<h2>Setup your gitblog</h2>
 			<p>
 				It's time to setup your new gitblog.
@@ -218,9 +142,4 @@ header('Content-Type: application/xhtml+xml; charset=utf-8');
 				</p>
 			</form>
 			<div class="breaker"></div>
-		</div>
-		<address>
-			Gitblog/<?= GITBLOG_VERSION ?> (processing time <? $s = (microtime(true)-$debug_time_started); printf('%.3f ms', 1000.0 * $s) ?>)
-		</address>
-	</body>
-</html>
+<? include '_footer.php'; ?>

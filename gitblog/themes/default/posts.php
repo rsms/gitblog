@@ -17,7 +17,6 @@
 	</p>
 	<div class="breaker"></div>
 <? endforeach ?>
-<hr/>
 <? if ($postspage->nextpage != -1): ?>
 	<a href="?page=<?= $postspage->nextpage ?>">« Older posts</a>
 <? endif; ?>

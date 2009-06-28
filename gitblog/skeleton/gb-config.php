@@ -2,7 +2,9 @@
 # Site title
 gb::$site_title = 'My gitblog';
 
-# Shared secret used for hook triggering, etc. (min. 62 bytes long).
+# Shared secret used for hook triggering, etc.
+# Must contain only shell-safe characters (a-zA-Z0-9_-. and so on) and be at
+# least 62 bytes long.
 gb::$secret = '';
 
 # If you have applied server rewrite rules, routing requests to index.php, you

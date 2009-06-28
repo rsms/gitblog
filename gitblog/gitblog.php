@@ -35,7 +35,9 @@ if (!defined('GITBLOG_SITE_DIR')) {
 		# "/blogs/user/" or the complete url "http://somesite.com/blogs/user/".
 		#
 		# Must end with a slash ("/").
-		define('GITBLOG_SITE_URL', $u === '/' ? $u : $u.'/');
+		define('GITBLOG_SITE_URL', 
+			(isset($_SERVER['HTTPS']) ? 'https://' : 'http://')
+			.$_SERVER['SERVER_NAME'] . ($u === '/' ? $u : $u.'/'));
 	}
 	unset($s);
 	unset($u);
@@ -428,7 +430,7 @@ class GitBlog {
 			'http://localhost/gitblog/hooks/post-patch.php',
 			GITBLOG_SITE_URL.'gitblog/hooks/post-patch.php', $s);
 		file_put_contents(gb::$repo."/.git/hooks/post-commit", $s);
-		chmod(gb::$repo."/.git/hooks/post-commit", 0664);
+		chmod(gb::$repo."/.git/hooks/post-commit", 0775);
 		
 		# Enable default theme
 		$target = gb_relpath(gb::$repo."/theme", GITBLOG_DIR.'/themes/default');
@@ -465,6 +467,7 @@ class GitBlog {
 		$author = GBUserAccount::formatGitAuthor($author_account_or_email);
 		$this->exec('commit -m '.escapeshellarg($message)
 			. ' --quiet --author='.escapeshellarg($author));
+		@chmod(gb::$repo."/.git/COMMIT_EDITMSG", 0664);
 		return true;
 	}
 	

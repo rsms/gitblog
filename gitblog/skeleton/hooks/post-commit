@@ -1,6 +1,6 @@
 #!/bin/sh
 cd $(dirname "$0")
-SECRET=$(grep 'gb::$secret' ../../../gb-config.php | cut -d' ' -f 3 | sed "s/;//g")
+SECRET=$(grep 'gb::$secret' ../../../gb-config.php | cut -d' ' -f 3 | sed "s/[;']//g")
 git diff -p --full-index HEAD@{1} HEAD \
 | curl \
 	-H 'x-gb-shared-secret: '$SECRET \

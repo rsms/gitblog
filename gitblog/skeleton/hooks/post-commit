@@ -1,11 +1,12 @@
 #!/bin/sh
-#git log -C -B -1 -u --no-color --pretty=full --encoding=UTF-8 \
+cd $(dirname "$0")
+SECRET=$(grep 'gb::$secret' ../../../gb-config.php | cut -d' ' -f 3 | sed "s/;//g")
 git diff -p --full-index HEAD@{1} HEAD \
 | curl \
-  -H 'x-gb-shared-secret: xyz' \
-  --connect-timeout 5 \
-  --max-time 30 \
-  --silent --show-error \
-  --data-binary @- \
-  -k \
-  'http://localhost/gitblog/index.php/gitblog/hooks/post-patch'
+	-H 'x-gb-shared-secret: '$SECRET \
+	--connect-timeout 5 \
+	--max-time 30 \
+	--silent --show-error \
+	--data-binary @- \
+	-k \
+	'http://localhost/gitblog/hooks/post-patch.php'

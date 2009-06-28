@@ -1,16 +1,124 @@
 <?
 error_reporting(E_ALL);
 
-if (!isset($gb_config)) {
-	@include 'gb-config.php';
-	if (!isset($gb_config))
-		require realpath(dirname(__FILE__)).'/skeleton/gb-config.php';
+# constants
+define('GITBLOG_VERSION', '0.1.0');
+define('GITBLOG_DIR', dirname(__FILE__));
+if (!defined('GITBLOG_SITE_DIR')) {
+	$u = dirname($_SERVER['SCRIPT_NAME']);
+	$s = dirname($_SERVER['SCRIPT_FILENAME']);
+	if (strpos($s, '/gitblog/') !== false) {
+		if (strpos(realpath($s), realpath(dirname(__FILE__))) === 0) {
+			# confirmed: inside gitblog
+			$max = 20;
+			while($s !== '/' and $max--) {
+				if (substr($s, -7) === 'gitblog') {
+					$s = dirname($s);
+					$u = dirname($u);
+					break;
+				}
+				$s = dirname($s);
+				$u = dirname($u);
+			}
+		}
+	}
+	define('GITBLOG_SITE_DIR', $s);
+	if (!defined('GITBLOG_SITE_URL')) {
+		# URL to the base of the site.
+		#
+		# If your blog is hosted on it's own domain, for example 
+		# http://my.blog.com/, the value of this parameter could be either "/" or the
+		# complete url "http://my.blog.com/".
+		#
+		# If your blog is hosted in a subdirectory, for example
+		# http://somesite.com/blogs/user/ the value of this parameter could be either
+		# "/blogs/user/" or the complete url "http://somesite.com/blogs/user/".
+		#
+		# Must end with a slash ("/").
+		define('GITBLOG_SITE_URL', $u === '/' ? $u : $u.'/');
+	}
+	unset($s);
+	unset($u);
 }
 
-define('GITBLOG_VERSION', '0.1.0');
+/**
+ * Configuration.
+ *
+ * These values can be overridden in gb-config.php (or somewhere else for that matter).
+ */
+class gb {
+	/** URL prefix for tags */
+	static public $tags_prefix = 'tags/';
 
-if (!defined('GITBLOG_DIR'))
-	define('GITBLOG_DIR', realpath(dirname(__FILE__)));
+	/** URL prefix for categories */
+	static public $categories_prefix = 'categories/';
+
+	/** URL prefix (strftime pattern) */
+	static public $posts_url_prefix = '%Y/%m/%d/';
+	
+	/** URL prefix (pcre pattern) */
+	static public $posts_url_prefix_re = '/^\d{4}\/\d{2}\/\d{2}\//';
+
+	/**
+	 * Number of posts per page.
+	 * Changing this requires a rebuild before actually activated.
+	 */
+	static public $posts_pagesize = 10;
+	
+	/**
+	 * Absolute path to git repository.
+	 * 
+	 * Normally the default value is good, but in the case "site/" creates URL
+	 * clashes for you, you might want to change this.
+	 *
+	 * This should be the path to a non-bare repository, i.e. a directory in which
+	 * a working tree will be checked out and contain a regular .git-directory.
+	 *
+	 * The path must be writable by the web server and the contents will have 
+	 * umask 0220 (i.e. user and group writable) thus you can, after letting 
+	 * gitblog create the repo for you, chgrp or chown to allow for remote pushing
+	 * by other user(s) than the web server user.
+	 */
+	static public $repo;
+	
+	/** URL to gitblog index relative to GITBLOG_SITE_URL (request handler) */
+	static public $index_url = 'index.php/';
+	
+	# --------------------------------------------------------------------------
+	# The following are by default set in the gb-config.php file.
+	# See gb-config.php for detailed documentation.
+	
+	/** Site title */
+	static public $site_title = null;
+	
+	/** Shared secret */
+	static public $secret = '';
+	
+	# --------------------------------------------------------------------------
+	# The following are used at runtime.
+	
+	static public $title;
+	
+	static public $is_404 = false;
+	static public $is_page = false;
+	static public $is_post = false;
+	static public $is_posts = false;
+	static public $is_search = false;
+	static public $is_tags = false;
+	static public $is_categories = false;
+}
+
+gb::$repo = GITBLOG_SITE_DIR.'/site';
+
+if (file_exists(GITBLOG_SITE_DIR.'/gb-config.php'))
+	include GITBLOG_SITE_DIR.'/gb-config.php';
+
+# no config?
+if (gb::$site_title === null) {
+	# read default
+	require realpath(dirname(__FILE__)).'/skeleton/gb-config.php';
+	gb::$repo = realpath(dirname(__FILE__).'/..').'/site';
+}
 
 ini_set('include_path', ini_get('include_path') . ':' . GITBLOG_DIR . '/lib');
 
@@ -143,8 +251,8 @@ function gb_normalize_git_name($name) {
  * 
  * Example cases:
  * 
- * /var/gitblog/site/theme, /var/gitblog/gitblog/themes/default => "../../gitblog/themes/default"
- * /var/gitblog/gitblog/themes/default, /var/gitblog/site/theme => "../../../site/theme"
+ * /var/gitblog/site/theme, /var/gitblog/gitblog/themes/default => "../gitblog/themes/default"
+ * /var/gitblog/gitblog/themes/default, /var/gitblog/site/theme => "../../site/theme"
  * /var/gitblog/site/theme, /etc/gitblog/gitblog/themes/default => "/etc/gitblog/gitblog/themes/default"
  * /var/gitblog, gitblog/themes/default                         => "gitblog/themes/default"
  * /var/gitblog/site/theme, /var/gitblog/site/theme             => ""
@@ -164,6 +272,7 @@ function gb_relpath($from, $to) {
 		return $to;
 	
 	if ($likes) {
+		array_pop($fromv);
 		$back = count($fromv) - $likes;
 		for ($x=0; $x<$back; $x++)
 			$r[] = '..';
@@ -179,11 +288,10 @@ function gb_relpath($from, $to) {
 #------------------------------------------------------------------------------
 # Helper functions for themes/templates
 
-$gb_title = array($gb_config['title']);
+gb::$title = array(gb::$site_title);
 
 function gb_title($glue=' — ', $html=true) {
-	global $gb_title;
-	$s = implode($glue, array_reverse($gb_title));
+	$s = implode($glue, array_reverse(gb::$title));
 	return $html ? h($s) : $s;
 }
 
@@ -201,20 +309,13 @@ class GitUninitializedRepoError extends GitError {}
 # Main class
 
 class GitBlog {
-	public $repo = './site';
-	public $gitdir = './site/.git';
 	public $rebuilders = array();
 	public $gitQueryCount = 0;
-	
-	function __construct($repo) {
-		$this->repo = $repo;
-		$this->gitdir = $repo.'/.git';
-	}
 	
 	/** Execute a git command */
 	function exec($cmd, $input=null) {
 		# build cmd
-		$cmd = "GIT_DIR='{$this->gitdir}' git $cmd";
+		$cmd = "GIT_DIR='".gb::$repo."/.git' git $cmd";
 		#var_dump($cmd);
 		# start process
 		$ps = gb_popen($cmd, null, $_ENV);
@@ -244,20 +345,19 @@ class GitBlog {
 	}
 	
 	function pathToTheme($file='') {
-		return $this->repo.'/theme/'.$file;
+		return gb::$repo."/theme/$file";
 	}
 	
 	function pathToCachedContent($dirname, $slug) {
-		return "{$this->gitdir}/info/gitblog/content/$dirname/$slug";
+		return gb::$repo."/.git/info/gitblog/content/$dirname/$slug";
 	}
 	
 	function pathToPostsPage($pageno) {
-		return "{$this->gitdir}/info/gitblog/content-paged-posts/".sprintf('%011d', $pageno);
+		return gb::$repo."/.git/info/gitblog/content-paged-posts/".sprintf('%011d', $pageno);
 	}
 	
 	function pathToPost($slug) {
-		global $gb_config;
-		$st = strptime($slug, $gb_config['posts']['url-prefix']);
+		$st = strptime($slug, gb::$posts_url_prefix);
 		$date = gmmktime($st['tm_hour'], $st['tm_min'], $st['tm_sec'], 
 			$st['tm_mon']+1, $st['tm_mday'], 1900+$st['tm_year']);
 		$slug = $st['unparsed'];
@@ -281,55 +381,60 @@ class GitBlog {
 	}
 	
 	function urlToTags($tags) {
-		global $gb_config;
-		return $gb_config['index-url'] . $gb_config['tags-prefix']
+		return GITBLOG_SITE_URL . gb::$index_url . gb::$tags_prefix 
 			. implode(',', array_map('urlencode', $tags));
 	}
 	
 	function urlToTag($tag) {
-		global $gb_config;
-		return $gb_config['index-url'] . $gb_config['tags-prefix']
+		return GITBLOG_SITE_URL . gb::$index_url . gb::$tags_prefix 
 			. urlencode($tag);
 	}
 	
 	function urlToCategories($categories) {
-		global $gb_config;
-		return $gb_config['index-url'] . $gb_config['categories-prefix']
+		return GITBLOG_SITE_URL . gb::$index_url . gb::$categories_prefix 
 			. implode(',', array_map('urlencode', $categories));
 	}
 	
 	function urlToCategory($category) {
-		global $gb_config;
-		return $gb_config['index-url'] . $gb_config['categories-prefix'] 
+		return GITBLOG_SITE_URL . gb::$index_url . gb::$categories_prefix 
 			. urlencode($category);
 	}
 	
 	function init($shared=true) {
-		$mkdirmode = 0755;
-		if ($shared) {
-			$shared = 'true';
-			$mkdirmode = 0775;
-		}
-		else
-			$shared = 'false';
+		$mkdirmode = $shared ? 0775 : 0755;
+		$shared = $shared ? 'true' : 'false';
+		
+		# create directories and chmod
+		if (!is_dir(gb::$repo.'/.git') && !mkdir(gb::$repo.'/.git', $mkdirmode, true))
+			return false;
+		chmod(gb::$repo, $mkdirmode);
+		chmod(gb::$repo.'/.git', $mkdirmode);
 		
 		# git init
-		$cmd = "init --quiet --shared=$shared";
-		if (!is_dir($this->gitdir) && !mkdir($this->gitdir, $mkdirmode, true))
-			return false;
-		$this->exec($cmd);
+		$this->exec("init --quiet --shared=$shared");
 		
 		# Create empty standard directories
-		mkdir("{$this->repo}/content/posts", $mkdirmode, true);
-		mkdir("{$this->repo}/content/pages", $mkdirmode);
+		mkdir(gb::$repo.'/content/posts', $mkdirmode, true);
+		mkdir(gb::$repo.'/content/pages', $mkdirmode);
+		
+		chmod(gb::$repo.'/content', $mkdirmode);
+		chmod(gb::$repo.'/content/posts', $mkdirmode);
+		chmod(gb::$repo.'/content/pages', $mkdirmode);
 		
 		# Enable default theme
-		$target = gb_relpath("{$this->repo}/theme", GITBLOG_DIR.'/themes/default');
-		symlink($target, "{$this->repo}/theme");
+		$target = gb_relpath(gb::$repo."/theme", GITBLOG_DIR.'/themes/default');
+		symlink($target, gb::$repo."/theme");
+		$this->exec("add theme");
 		
-		# Copy hooks
-		$skeleton = GITBLOG_DIR.'/skeleton';
-		copy("$skeleton/hooks/post-commit", "{$this->gitdir}/hooks/post-commit");
+		# Copy post-commit hook
+		$s = file_get_contents(GITBLOG_DIR.'/skeleton/hooks/post-commit');
+		$s = str_replace(
+			'http://localhost/gitblog/hooks/post-patch.php',
+			GITBLOG_SITE_URL.'gitblog/hooks/post-patch.php', $s);
+		file_put_contents(gb::$repo."/.git/hooks/post-commit", $s);
+		
+		# Commit changes
+		$this->exec("commit -m 'gitblog created'");
 		
 		return true;
 	}
@@ -344,20 +449,19 @@ class GitBlog {
 	 *   2  gitdir is missing and need to be created (git init).
 	 */
 	function verifyIntegrity() {
-		if (is_dir("{$this->gitdir}/info/gitblog"))
+		if (is_dir(gb::$repo."/.git/info/gitblog"))
 			return 0;
-		if (!is_dir($this->gitdir))
+		if (!is_dir(gb::$repo."/.git"))
 			return 2;
 		GBRebuilder::rebuild($this, true);
 		return 1;
 	}
 	
 	function verifyConfig() {
-		global $gb_config;
-		if (!$gb_config['secret'] or strlen($gb_config['secret']) < 62) {
+		if (!gb::$secret or strlen(gb::$secret) < 62) {
 			header('Status: 503 Service Unavailable');
 			header('Content-Type: text/plain; charset=utf-8');
-			exit("\n\n\$gb_config['secret'] is not set or too short.\n\nPlease edit your gb-config.php file.\n");
+			exit("\n\ngb::\$secret is not set or too short.\n\nPlease edit your gb-config.php file.\n");
 		}
 	}
 }
@@ -474,13 +578,13 @@ class GBContent {
 		return gb_filenoext($this->name);
 	}
 	
-	static function getCached($cachebase, $name) {
-		$path = $cachebase.'/'.gb_filenoext($name);
+	static function getCached($name) {
+		$path = gb::$repo."/.git/info/gitblog/".gb_filenoext($name);
 		return @unserialize(file_get_contents($path));
 	}
 	
-	function writeCache($cachebase) {
-		$path = $cachebase.'/'.$this->cachename();
+	function writeCache() {
+		$path = gb::$repo."/.git/info/gitblog/".$this->cachename();
 		$dirname = dirname($path);
 		if (!is_dir($dirname))
 			mkdir($dirname, 0775, true);
@@ -489,8 +593,7 @@ class GBContent {
 	}
 	
 	function url() {
-		global $gb_config;
-		return $gb_config['index-url'].$this->urlpath();
+		return GITBLOG_SITE_URL . gb::$index_url . $this->urlpath();
 	}
 	
 	function tagLinks($separator=', ', $template='<a href="%u">%n</a>', $htmlescape=true) {
@@ -502,10 +605,10 @@ class GBContent {
 	}
 	
 	function collLinks($what, $separator=', ', $template='<a href="%u">%n</a>', $htmlescape=true) {
-		global $gb_config;
 		static $needles = array('%u', '%n');
 		$links = array();
-		$u = $gb_config['index-url'] . $gb_config["$what-prefix"];
+		$vn = "$what_prefix";
+		$u = GITBLOG_SITE_URL . gb::$index_url . gb::$$vn;
 		
 		foreach ($this->$what as $tag) {
 			$n = $htmlescape ? htmlentities($tag) : $tag;
@@ -523,8 +626,7 @@ class GBPage extends GBContent {
 
 class GBPost extends GBContent {
 	function urlpath() {
-		global $gb_config;
-		return gmstrftime($gb_config['posts']['url-prefix'], $this->published)
+		return gmstrftime(gb::$posts_url_prefix, $this->published)
 			. str_replace('%2F', '/', urlencode($this->slug));
 	}
 	
@@ -532,12 +634,12 @@ class GBPost extends GBContent {
 		return 'content/posts/'.gmdate("Y/m/d/", $this->published).$this->slug;
 	}
 	
-	static function getCached($cachebase, $published, $slug) {
-		$path = $cachebase.'/content/posts/'.gmdate("Y/m/d/", $published).$slug;
+	static function getCached($published, $slug) {
+		$path = gb::$repo."/.git/info/gitblog/content/posts/".gmdate("Y/m/d/", $published).$slug;
 		return @unserialize(file_get_contents($path));
 	}
 }
 
 $debug_time_started = microtime(true);
-$gitblog = new GitBlog($gb_config['repo']);
+$gitblog = new GitBlog();
 ?>

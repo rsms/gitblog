@@ -111,7 +111,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 		}
 		
 		# read, put into reload if needed, etc
-		$obj = GBPost::getCached($this->cachebase, $date, $slug);
+		$obj = GBPost::getCached($date, $slug);
 		$this->_onObject($obj, 'GBPost', $name, $id, $slug);
 		if ($obj->published === false and $date !== false)
 			$obj->published = $date;
@@ -131,7 +131,7 @@ class GBPagesRebuilder extends GBContentRebuilder {
 		$slug = gb_filenoext(substr($name, 14));
 		
 		# read, put into reload if needed, etc
-		$obj = GBPage::getCached($this->cachebase, $slug);
+		$obj = GBPage::getCached($slug);
 		$this->_onObject($obj, 'GBPage', $name, $id, $slug);
 	}
 }
@@ -158,7 +158,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		if (self::$dirtyObjects) {
 			$this->reloadObjects(self::$dirtyObjects);
 			foreach (self::$dirtyObjects as $obj)
-				$obj->writeCache($this->cachebase);
+				$obj->writeCache();
 		}
 		
 		#var_export(self::$objects); # xxx
@@ -168,13 +168,19 @@ class GBContentFinalizer extends GBContentRebuilder {
 	
 	# build posts pages
 	function _finalizePagedPosts() {
-		global $gb_config;
-		$pages = array_chunk(array_reverse(GBPostsRebuilder::$posts), $gb_config['posts']['pagesize']);
+		$pages = array_chunk(array_reverse(GBPostsRebuilder::$posts), gb::$posts_pagesize);
 		$numpages = count($pages);
-		$dir = "{$this->cachebase}/content-paged-posts";
+		$dir = gb::$repo."/.git/info/gitblog/content-paged-posts";
 		
-		if (!is_dir($dir))
+		if (!is_dir($dir)) {
 			mkdir($dir, 0775, true);
+			chmod($dir, 0775);
+			chmod(dirname($dir), 0775);
+		}
+		
+		# no content at all? -- create empty page
+		if (!$pages)
+			$pages = array(array());
 		
 		foreach ($pages as $pageno => $page) {
 			$path = $dir.'/'.sprintf('%011d', $pageno);

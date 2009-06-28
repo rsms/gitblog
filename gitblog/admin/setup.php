@@ -3,43 +3,114 @@ require_once '_base.php';
 
 # do not render this page unless there is no repo
 if ($integrity !== 2) {
-	header('Location: '.$gb_config['base-url'].'gitblog/admin/');
+	header("Location: ".GITBLOG_SITE_URL."gitblog/admin/");
 	exit(0);
 }
 
 # Got POST
 if (isset($_POST['submit'])) {
-	if (!trim($_POST['password'])) {
+	# -------------------------------------------------------------------------
+	# check input	
+	if (!trim($_POST['email']) or strpos($_POST['email'], '@') === false) {
+		$errors[] = '<b>Missing email.</b>
+			Please supply a valid email address to be used for the administrator account.';
+	}
+	if (!trim($_POST['passphrase'])) {
 		$errors[] = '<b>Empty pass phrase.</b>
 			The pass phrase is empty or contains only spaces.';
 	}
-	if ($_POST['password'] !== $_POST['password2']) {
+	if ($_POST['passphrase'] !== $_POST['passphrase2']) {
 		$errors[] = '<b>Pass phrases not matching.</b>
 			You need to type in the same pass phrase in the two input fields below.';
 	}
-	else {
-		# first, copy gb-config.php
+	
+	# -------------------------------------------------------------------------
+	# create gb-config.php
+	if (!$errors) {
+		$config_path = GITBLOG_SITE_DIR."/gb-config.php";
 		$s = file_get_contents(GITBLOG_DIR.'/skeleton/gb-config.php');
 		# title
-		$s = preg_replace('/([\t ]+\'title\'[\t ]*=>[\t ]*\')[^\']*\',/', '$1'.$_POST['title']."',", $s, 1);
+		$s = preg_replace('/(gb::\$site_title[\t ]*=[\t ]*)\'[^\']*\';/', 
+			'${1}'.var_export($_POST['title'],1).";", $s, 1);
 		# secret
-		header('content-type: text/plain; charset=utf-8');
 		$secret = '';
 		while (strlen($secret) < 62) {
 			mt_srand();
 			$secret .= base_convert(mt_rand(), 10, 36);
 		}
-		$s = preg_replace('/([\t ]+\'secret\'[\t ]*=>[\t ]*\')\',/', '${1}'.$secret."',", $s, 1);
-		var_dump($s);exit(0);
+		$s = preg_replace('/(gb::\$secret[\t ]*=[\t ]*)\'\';/',
+			'${1}'.var_export($secret,1).";", $s, 1);
+		#header('content-type: text/plain; charset=utf-8');var_dump($s);exit(0);
+		file_put_contents($config_path, $s);
+		chmod($config_path, 0660);
+		# reload config
+		require $config_path;
+	}
+	
+	# -------------------------------------------------------------------------
+	# create repository	
+	if (!$errors) {
+		if (!$gitblog->init())
+			$errors[] = 'Failed to create and initialize repository at '.var_export(gb::$repo,1);
+	}
+	
+	# -------------------------------------------------------------------------
+	# create admin account
+	if (!$errors) {
+		class GBUserAccount {
+			static public $db = null;
+			
+			static function _reload() {
+				if (file_exists(gb::$repo.'/.git/info/gitblog-users.php')) {
+					include gb::$repo.'/.git/info/gitblog-users.php';
+					self::$db = $db;
+				}
+				else {
+					self::$db = array();
+				}
+			}
+			
+			static function _sync() {
+				if (self::$db === null)
+					return;
+				file_put_contents(gb::$repo.'/.git/info/gitblog-users.php', 
+					'<? $db = '.var_export(self::$db, 1).'; ?>', LOCK_EX);
+				chmod(gb::$repo.'/.git/info/gitblog-users.php', 0660);
+			}
+			
+			static function passhash($email, $passphrase) {
+				return sha1($email . ' ' . $passphrase . ' ' . gb::$secret);
+			}
+			
+			static function create($email, $passphrase, $name=null) {
+				if (self::$db === null)
+					self::_reload();
+				self::$db = array(
+					'email' => $email,
+					'passhash' => sha1($email . ' ' . $passphrase . ' ' . gb::$secret),
+					'name' => $name
+				);
+				self::_sync();
+			}
+		}
+		
+		GBUserAccount::create($_POST['email'], $_POST['passphrase']);
+	}
+	
+	# -------------------------------------------------------------------------
+	# send the client along
+	if (!$errors) {
+		header('Location: '.GITBLOG_SITE_URL);
+		exit(0);
 	}
 }
 
 # ------------------------------------------------------------------------------------------------
 # prepare for rendering
 
-$gb_title[] = 'Setup';
-$is_writable_dir = dirname($gitblog->repo);
-$is_writable = is_writable(file_exists($gitblog->repo) ? $gitblog->repo : $is_writable_dir);
+gb::$title[] = 'Setup';
+$is_writable_dir = dirname(gb::$repo);
+$is_writable = is_writable(file_exists(gb::$repo) ? gb::$repo : $is_writable_dir);
 
 if (!$is_writable) {
 	$errors[] = "<b>Ooops.</b> The directory <code>".h($is_writable_dir)."</code> is not writable.
@@ -81,7 +152,7 @@ header('Content-Type: application/xhtml+xml; charset=utf-8');
 			}
 			
 			
-			label {
+			div.inputgroup {
 				display:block;
 				margin-bottom:10px;
 				float:left;
@@ -90,11 +161,11 @@ header('Content-Type: application/xhtml+xml; charset=utf-8');
 				width:300px;
 				border-right:1px solid #ddd;
 			}
-			label > h4 { font-size:100%; margin-bottom:4px; }
-			label > p { margin:2px 0 4px 0; }
-			label > input { margin:2px 0; }
-			label > input[type=password] { width:130px; }
-			label > input[type=text] { width:290px; }
+			div.inputgroup > h4 { font-size:100%; margin-bottom:4px; }
+			div.inputgroup > p { margin:6px 0 2px 0; }
+			div.inputgroup > p.note { margin-top:2px; font-size:11px; color:#999; }
+			div.inputgroup > input { margin:2px 0; }
+			div.inputgroup > input[type=text], div.inputgroup > input[type=password] { width:290px; }
 			
 			#errormsg {
 				background-color:#fa9;
@@ -115,7 +186,7 @@ header('Content-Type: application/xhtml+xml; charset=utf-8');
 	</head>
 	<body>
 		<div id="head">
-			<h1><?= htmlentities($gb_config['title']) ?></h1>
+			<h1><?= h(gb::$site_title) ?></h1>
 		</div>
 		<? if ($errors): ?>
 			<div id="errormsg">
@@ -130,17 +201,28 @@ header('Content-Type: application/xhtml+xml; charset=utf-8');
 				It's time to setup your new gitblog.
 			</p>
 			<form action="setup.php" method="post">
-				<label>
-					<h4>Site title:</h4>
-					<input type="text" name="title" value="<?= htmlentities($gb_config['title']) ?>" />
-					<p>Choose a title for your new site. This can be changed later at any time.</p>
-				</label>
-				<label>
-					<h4>Administrator pass phrase:</h4>
-					<input type="password" name="password" />
-					<input type="password" name="password2" />
-					<p>Choose a pass phrase used to authenticate as administrator.</p>
-				</label>
+				
+				<div class="inputgroup">
+					<h4>Create an administrator account</h4>
+					<p>Email:</p>
+					<input type="text" name="email" value="<?= h(@$_POST['email']) ?>" />
+					<p>Pass phrase:</p>
+					<input type="password" name="passphrase" />
+					<input type="password" name="passphrase2" />
+					<p class="note">
+						Choose a pass phrase used to authenticate as administrator. Type it twice.
+					</p>
+				</div>
+				
+				<div class="inputgroup">
+					<h4>Site settings</h4>
+					<p>Title:</p>
+					<input type="text" name="title" value="<?= h(gb::$site_title) ?>" />
+					<p class="note">
+						The title of your site can be changed later.
+					</p>
+				</div>
+				
 				<div class="breaker"></div>
 				<p>
 				<? if (!$is_writable): ?>

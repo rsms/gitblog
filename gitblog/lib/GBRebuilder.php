@@ -1,13 +1,11 @@
 <?
 class GBRebuilder {
 	public $gb;
-	public $cachebase;
 	public $forceFullRebuild;
 	
 	function __construct($gb, $forceFullRebuild=false) {
 		$this->gb = $gb;
 		$this->forceFullRebuild = $forceFullRebuild;
-		$this->cachebase = "{$this->gb->gitdir}/info/gitblog";
 	}
 	
 	function onObject(&$name, &$id) {
@@ -47,18 +45,23 @@ class GBRebuilder {
 		foreach (self::$rebuilders as $cls)
 			$rebuilders[] = new $cls($gb, $forceFullRebuild);
 		
-		# List stage
-		$ls = explode("\n", rtrim($gb->exec('ls-files --stage')));
+		# Query ls-tree
+		$ls = rtrim($gb->exec('ls-files --stage'));
 		
-		# Iterate objects
-		foreach ($ls as $line) {
-			# <mode> SP <object> SP <stage no> TAB <name>
-			$line = explode(' ', $line, 3);
-			$id =& $line[1];
-			$name = gb_normalize_git_name(substr($line[2], strpos($line[2], "\t")+1));
+		if ($ls) {
+			# Iterate objects
+			$ls = explode("\n", $ls);
+			foreach ($ls as $line) {
+				# <mode> SP <object> SP <stage no> TAB <name>
+				if (!$line)
+					continue;
+				$line = explode(' ', $line, 3);
+				$id =& $line[1];
+				$name = gb_normalize_git_name(substr($line[2], strpos($line[2], "\t")+1));
 			
-			foreach ($rebuilders as $rebuilder)
-				$rebuilder->onObject($name, $id);
+				foreach ($rebuilders as $rebuilder)
+					$rebuilder->onObject($name, $id);
+			}
 		}
 		
 		# Let rebuilders finalize

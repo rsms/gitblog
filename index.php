@@ -1,53 +1,38 @@
 <?
-#header('content-type: text/plain; charset=utf-8');
-header('content-type: text/html; charset=utf-8');
+require 'gb-config.php';
 require 'gitblog/gitblog.php';
 
-$pageno = isset($_GET['page']) ? intval($_GET['page']) : 0;
-$page = unserialize(file_get_contents(
-	'db/.git/info/gitblog/content-paged-posts/'.sprintf('%011d', $pageno)));
+$urlpath = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
+
+if ($urlpath) {
+	if (strpos($urlpath, $gb_config['tags-prefix']) === 0) {
+		# tag(s)
+		$tags = explode(',', substr($urlpath, strlen($gb_config['tags-prefix'])));
+		$posts = $gitblog->postsByTags($tags);
+		include $gitblog->pathToTheme('tags.php');
+	}
+	elseif (strpos($urlpath, $gb_config['categories-prefix']) === 0) {
+		# category(ies)
+		$cats = explode(',', substr($urlpath, strlen($gb_config['categories-prefix'])));
+		$posts = $gitblog->postsByCategories($cats);
+		include $gitblog->pathToTheme('categories.php');
+	}
+	elseif (preg_match($gb_config['posts']['slug-prefix-re'], $urlpath)) {
+		# post
+		$post = $gitblog->postBySlug($urlpath);
+		include $gitblog->pathToTheme('post.php');
+	}
+	else {
+		# page
+		$post = $gitblog->pageBySlug($urlpath);
+		include $gitblog->pathToTheme('page.php');
+	}
+}
+else {
+	# posts
+	$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
+	$path = $gitblog->pathToPostsPage($pageno);
+	$page = @unserialize(file_get_contents($path));
+	include $gitblog->pathToTheme('posts.php');
+}
 ?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-	<head>
-		<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-		<title>Some blog</title>
-		<style type="text/css" media="screen">
-			body { font-family:sans-serif; }
-			#post-meta {  font-size:80%; background:#ddd; padding:10px; }
-			#post-meta ul { list-style: none; padding:5px 10px;}
-			.breaker { clear:both; }
-		</style>
-	</head>
-	<body>
-		<h1>Some blog</h1>
-		<? foreach ($page->posts as $post): ?>
-			<h2><a href="post.php?slug=<?= $post->urlpath() ?>"><?= $post->title ?></a></h2>
-			<div id="post-meta">
-				<h3>Details</h3>
-				<ul>
-					<li>Author: <a href="mailto:<?= $post->author->email ?>"><?= $post->author->name ?></a></li>
-					<li>Published: <?= date('c', $post->published) ?></li>
-					<li>Modified: <?= date('c', $post->modified) ?></li>
-					<li>Tags: <?= implode(', ', $post->tags) ?></li>
-					<li>Categories: <?= implode(', ', $post->categories) ?></li>
-					<li>Revision (current object): <?= $post->id ?></li>
-				</ul>
-			</div>
-			<p>
-				<?= $post->body ?>
-			</p>
-			<div class="breaker"></div>
-		<? endforeach ?>
-		<hr/>
-		<? if ($page->prevpage != -1): ?>
-			<a href="?page=<?= $page->prevpage ?>">« Newer posts</a>
-		<? endif; ?>
-		<? if ($page->nextpage != -1): ?>
-			<a href="?page=<?= $page->nextpage ?>">Older posts »</a>
-		<? endif; ?>
-		<address>
-			(<? $s = (microtime(true)-$debug_time_started); printf('%d ms, %d rps', intval(1000.0 * $s), 1.0/$s) ?>)
-		</address>
-	</body>
-</html>

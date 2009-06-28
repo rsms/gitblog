@@ -1,4 +1,0 @@
-<?
-class GBPage extends GBContent {
-}
-?>

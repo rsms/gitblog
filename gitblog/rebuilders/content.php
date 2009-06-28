@@ -191,7 +191,12 @@ class GBContentFinalizer extends GBContentRebuilder {
 			}
 			
 			if ($need_rewrite) {
-				$page = (object)array('posts' => $page, 'nextpage' => -1, 'prevpage' => $pageno-1);
+				$page = (object)array(
+					'posts' => $page,
+					'nextpage' => -1,
+					'prevpage' => $pageno-1,
+					'numpages' => $numpages
+				);
 				if ($pageno < $numpages-1)
 					$page->nextpage = $pageno+1;
 				$data = serialize($page);

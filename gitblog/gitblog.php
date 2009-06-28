@@ -117,25 +117,64 @@ function gb_normalize_git_name($name) {
 }
 
 
-function gb_utf8_wildcard_escape($name) {
-	$s = '';
-	$len = strlen($name);
-	$starcount = 0;
+#function gb_utf8_wildcard_escape($name) {
+#	$s = '';
+#	$len = strlen($name);
+#	$starcount = 0;
+#	
+#	for ($i=0; $i<$len; $i++) {
+#		if (ord($name{$i}) > 127) {
+#			$starcount++;
+#			if ($i)
+#				$s = substr($s, 0, -$starcount).'*';
+#			else
+#				$s .= '*';
+#		}
+#		else {
+#			$s .= $name{$i};
+#			$starcount = 0;
+#		}
+#	}
+#	return $s;
+#}
+
+
+/**
+ * Calculate relative path.
+ * 
+ * Example cases:
+ * 
+ * /var/gitblog/site/theme, /var/gitblog/gitblog/themes/default => "../../gitblog/themes/default"
+ * /var/gitblog/gitblog/themes/default, /var/gitblog/site/theme => "../../../site/theme"
+ * /var/gitblog/site/theme, /etc/gitblog/gitblog/themes/default => "/etc/gitblog/gitblog/themes/default"
+ * /var/gitblog, gitblog/themes/default                         => "gitblog/themes/default"
+ * /var/gitblog/site/theme, /var/gitblog/site/theme             => ""
+ */
+function gb_relpath($from, $to) {
+	$fromv = explode('/', trim($from,'/'));
+	$tov = explode('/', trim($to,'/'));
+	$len = min(count($fromv), count($tov));
+	$r = array();
+	$likes = $back = 0;
 	
-	for ($i=0; $i<$len; $i++) {
-		if (ord($name{$i}) > 127) {
-			$starcount++;
-			if ($i)
-				$s = substr($s, 0, -$starcount).'*';
-			else
-				$s .= '*';
-		}
-		else {
-			$s .= $name{$i};
-			$starcount = 0;
-		}
+	for (; $likes<$len; $likes++)
+		if ($fromv[$likes] != $tov[$likes])
+			break;
+	
+	if (!$likes and $to{0} === '/')
+		return $to;
+	
+	if ($likes) {
+		$back = count($fromv) - $likes;
+		for ($x=0; $x<$back; $x++)
+			$r[] = '..';
+		$r = array_merge($r, array_slice($tov, $likes));
 	}
-	return $s;
+	else {
+		$r =& $tov;
+	}
+	
+	return implode('/', $r);
 }
 
 #------------------------------------------------------------------------------
@@ -249,6 +288,36 @@ class GitBlog {
 		global $gb_config;
 		return $gb_config['url-prefix'] . $gb_config['categories-prefix'] 
 			. urlencode($category);
+	}
+	
+	function init($shared=true) {
+		$mkdirmode = 0755;
+		if ($shared) {
+			$shared = 'true';
+			$mkdirmode = 0775;
+		}
+		else
+			$shared = 'false';
+		
+		# git init
+		$cmd = "init --quiet --shared=$shared";
+		if (!is_dir($this->gitdir) && !mkdir($this->gitdir, $mkdirmode, true))
+			return false;
+		$this->exec($cmd);
+		
+		# Create empty standard directories
+		mkdir("{$this->repo}/content/posts", $mkdirmode, true);
+		mkdir("{$this->repo}/content/pages", $mkdirmode);
+		
+		# Enable default theme
+		$target = gb_relpath("{$this->repo}/theme", GITBLOG_DIR.'/themes/default');
+		symlink($target, "{$this->repo}/theme");
+		
+		# Copy hooks
+		$skeleton = GITBLOG_DIR.'/skeleton';
+		copy("$skeleton/hooks/post-commit", "{$this->gitdir}/hooks/post-commit");
+		
+		return true;
 	}
 }
 

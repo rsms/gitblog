@@ -1,5 +1,5 @@
 site
-gb-config.php
+/gb-config.php
 .DS_Store
 ._*
 * copy.*

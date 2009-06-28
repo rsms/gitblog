@@ -1,6 +1,6 @@
 <?
 class GBMimeType {
-	static $map = array(
+	static public $map = array(
 	  '%' => 'application/x-trash',
 	  '3gp' => 'video/3gpp',
 	  '7z' => 'application/x-7z-compressed',
@@ -483,7 +483,7 @@ class GBMimeType {
 	
 	static function forFilename($filename) {
 		$p = strrpos($filename, '.', strrpos($filename, '/'));
-		if ($p !== false)
+		if ($p !== false) {
 			$ext = substr($filename, $p+1);
 			if (isset(self::$map[$ext]))
 				return self::$map[$ext];

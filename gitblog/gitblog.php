@@ -214,6 +214,12 @@ class GitBlog {
 }
 
 
+function gb_html_postprocess_filter(&$body) {
+	$body = nl2br(trim($body));
+	return true;
+}
+
+
 class GBContent {
 	public $name;
 	public $id;
@@ -227,6 +233,11 @@ class GBContent {
 	public $author = null;
 	public $published = false; # timestamp
 	public $modified = false; # timestamp
+	
+	static public $filters = array(
+		'application/xhtml+xml' => array('gb_html_postprocess_filter'),
+		'text/html' => array('gb_html_postprocess_filter'),
+	);
 	
 	function __construct($name, $id, $slug, $meta=array(), $body=null) {
 		$this->name = $name;
@@ -246,7 +257,7 @@ class GBContent {
 		
 		$this->body = null;
 		$this->meta = array();
-		$this->mimeType = GBMimeType::forFilename($self->name);
+		$this->mimeType = GBMimeType::forFilename($this->name);
 		
 		gb_parse_content_obj_headers(substr($data, 0, $bodystart), $this->meta);
 		
@@ -277,8 +288,8 @@ class GBContent {
 		
 		# set body
 		$this->body = substr($data, $bodystart+2);
-		#if ($this->body)
-		#	$this->applyFilters('body', $body);
+		if ($this->body)
+			$this->applyFilters();
 		
 		# translate info from commits
 		if ($commits) {
@@ -295,6 +306,14 @@ class GBContent {
 					'email' => $initial->authorEmail
 				);
 			}
+		}
+	}
+	
+	function applyFilters() {
+		if (isset(self::$filters[$this->mimeType])) {
+			foreach (self::$filters[$this->mimeType] as $filter)
+				if (!$filter($this->body))
+					break;
 		}
 	}
 	
@@ -371,8 +390,5 @@ class GBPost extends GBContent {
 }
 
 $debug_time_started = microtime(true);
-
 $gitblog = new GitBlog($gb_config['repo']);
-#GBRebuilder::rebuild($gb, true);
-
 ?>

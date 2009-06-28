@@ -3,10 +3,9 @@
 git diff -p --full-index HEAD@{1} HEAD \
 | curl \
   -H 'x-gb-shared-secret: xyz' \
-  -H 'x-gb-commit: '"$(git rev-list --max-count=1 --timestamp HEAD)" \
   --connect-timeout 5 \
   --max-time 30 \
   --silent --show-error \
   --data-binary @- \
   -k \
-  'http://localhost/gitblog/gb/post-commit.php'
+  'http://localhost/gitblog/index.php/gitblog/hooks/post-patch'

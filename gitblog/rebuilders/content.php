@@ -161,7 +161,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 				$obj->writeCache($this->cachebase);
 		}
 		
-		var_export(self::$objects); # xxx
+		#var_export(self::$objects); # xxx
 		
 		$this->_finalizePagedPosts();
 	}

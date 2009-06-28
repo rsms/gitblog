@@ -3,13 +3,6 @@ $gb_config = array(
 	# Site title
 	'title' => 'My gitblog',
 	
-	# Shared secret used for hook triggering.
-	# You should change this to a string at least 64 bytes long.
-	#
-	# This utility can be used to generate suitable random strings:
-	# http://api.wordpress.org/secret-key/1.1/
-	'secret' => '',
-	
 	# URL to the base of the site.
 	#
 	# If your blog is hosted on it's own domain, for example 
@@ -52,6 +45,9 @@ $gb_config = array(
 	# gitblog create the repo for you, chgrp or chown to allow for remote pushing
 	# by other user(s) than the web server user.
 	'repo' => dirname(realpath(__FILE__)).'/site',
+	
+	# Shared secret used for hook triggering. (Min. 62 bytes long string).
+	'secret' => ''
 );
 
 # URL to gitblog index (request handler).

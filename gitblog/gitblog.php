@@ -2,12 +2,9 @@
 error_reporting(E_ALL);
 
 if (!isset($gb_config)) {
-	require 'gb-config.php';
-	if (!isset($gb_config)) {
-		$msg = "\$gb_config is not set";
-		trigger_error($msg);
-		exit($msg);
-	}
+	@include 'gb-config.php';
+	if (!isset($gb_config))
+		require realpath(dirname(__FILE__)).'/skeleton/gb-config.php';
 }
 
 define('GITBLOG_VERSION', '0.1.0');
@@ -187,7 +184,11 @@ $gb_title = array($gb_config['title']);
 function gb_title($glue=' — ', $html=true) {
 	global $gb_title;
 	$s = implode($glue, array_reverse($gb_title));
-	return $html ? htmlentities($s) : $s;
+	return $html ? h($s) : $s;
+}
+
+function h($s) {
+	return htmlentities($s, ENT_COMPAT, 'UTF-8');
 }
 
 #------------------------------------------------------------------------------
@@ -353,7 +354,7 @@ class GitBlog {
 	
 	function verifyConfig() {
 		global $gb_config;
-		if (!$gb_config['secret'] or strlen($gb_config['secret']) < 64) {
+		if (!$gb_config['secret'] or strlen($gb_config['secret']) < 62) {
 			header('Status: 503 Service Unavailable');
 			header('Content-Type: text/plain; charset=utf-8');
 			exit("\n\n\$gb_config['secret'] is not set or too short.\n\nPlease edit your gb-config.php file.\n");

@@ -8,7 +8,7 @@ $gb_is_search = false;
 $gb_is_tags = false;
 $gb_is_categories = false;
 
-require 'gb-config.php';
+@include 'gb-config.php';
 require 'gitblog/gitblog.php';
 
 # verify integrity, implicitly rebuilding gitblog cache or need serious initing.

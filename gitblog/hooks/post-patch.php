@@ -1,3 +1,3 @@
 <?
-GBRebuilder::rebuild($gitblog, isset($_REQUEST['force-full-rebuild']));
+GBRebuilder::rebuild($gitblog, !isset($_REQUEST['force-full-rebuild']));
 ?>

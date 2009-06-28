@@ -1,0 +1,26 @@
+indexes
+	tag > objid -- able to list objects tagged with one or more tags.
+	category > objid -- able to list objects tagged with a category.
+	pubdate > objid -- list objects published a certain day, month or year.
+
+structs
+	paged posts (solid, N posts per page)
+	page index (hollow, hierarchical, pages)
+
+slugs
+	all external dates in UTC, all internal in local time.
+	fixed length prefix mapping of db path (stage > cache):
+		2007/05/19/oh-hai.html > 2007/05/19/oh-hai
+		2007-05-19.oh-hai.html > 2007/05/19/oh-hai
+		2007/05-19-oh-hai.html > 2007/05/19/oh-hai
+	stage:
+	  <YYYY> CHAR <MM> CHAR <DD> CHAR <slug> ["." <fext>]{0,1}
+		content/posts/2007/05.19/oh-hai.html
+	cache:
+		<YYYY> "/" <MM> "/" <DD> "/" <slug>
+		content/posts/2007/05/19/oh-hai
+	URL:
+		Variable. For example:
+			<YYYY> "-" <MM> "-" <DD> "/" <slug>
+			/2007-05-19/oh-hai -> maps to cache -> content/posts/2007/05/19/oh-hai
+

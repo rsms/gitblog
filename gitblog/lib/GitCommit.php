@@ -97,7 +97,7 @@ class GitCommit {
 			foreach ($files as $line) {
 				$line = explode("\t", $line);
 				$t = $line[0]{0};
-				$name = $line[1];
+				$name = gb_normalize_git_name($line[1]);
 				$previousName = null;
 				
 				# R|C have two names wherether the last is the new name

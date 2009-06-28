@@ -55,7 +55,7 @@ class GBRebuilder {
 			# <mode> SP <object> SP <stage no> TAB <name>
 			$line = explode(' ', $line, 3);
 			$id =& $line[1];
-			$name = substr($line[2], strpos($line[2], "\t")+1);
+			$name = gb_normalize_git_name(substr($line[2], strpos($line[2], "\t")+1));
 			
 			foreach ($rebuilders as $rebuilder)
 				$rebuilder->onObject($name, $id);

@@ -104,6 +104,40 @@ function gb_sreadline(&$p, &$str, $sep="\n") {
 	return $line;
 }
 
+
+/** Evaluate an escaped UTF-8 sequence */
+function gb_utf8_unescape($s) {
+	eval('$s = "'.$s.'";');
+	return $s;
+}
+
+
+function gb_normalize_git_name($name) {
+	return ($name and $name{0} === '"') ? gb_utf8_unescape(substr($name, 1, -1)) : $name;
+}
+
+
+function gb_utf8_wildcard_escape($name) {
+	$s = '';
+	$len = strlen($name);
+	$starcount = 0;
+	
+	for ($i=0; $i<$len; $i++) {
+		if (ord($name{$i}) > 127) {
+			$starcount++;
+			if ($i)
+				$s = substr($s, 0, -$starcount).'*';
+			else
+				$s .= '*';
+		}
+		else {
+			$s .= $name{$i};
+			$starcount = 0;
+		}
+	}
+	return $s;
+}
+
 #------------------------------------------------------------------------------
 # Exceptions
 
@@ -185,6 +219,11 @@ class GitBlog {
 	
 	function postBySlug($slug) {
 		$path = $this->pathToPost($slug);
+		return @unserialize(file_get_contents($path));
+	}
+	
+	function postsPageByPageno($pageno) {
+		$path = $this->pathToPostsPage($pageno);
 		return @unserialize(file_get_contents($path));
 	}
 	

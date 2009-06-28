@@ -168,8 +168,8 @@ class GBContentFinalizer extends GBContentRebuilder {
 	
 	# build posts pages
 	function _finalizePagedPosts() {
-		$pagesize = 5; # todo move to config
-		$pages = array_chunk(array_reverse(GBPostsRebuilder::$posts), $pagesize);
+		global $gb_config;
+		$pages = array_chunk(array_reverse(GBPostsRebuilder::$posts), $gb_config['posts']['pagesize']);
 		$numpages = count($pages);
 		$dir = "{$this->cachebase}/content-paged-posts";
 		

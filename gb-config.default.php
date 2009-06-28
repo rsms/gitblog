@@ -4,9 +4,11 @@ $gb_config = array(
 	'url-prefix' => '/gitblog/index.php/',
 	'tags-prefix' => 'tags/',
 	'categories-prefix' => 'categories/',
+	'secret' => 'xyz',
 	'posts' => array(
 		'slug-prefix' => '%Y/%m/%d/',
 		'slug-prefix-re' => '/^\d{4}\/\d{2}\/\d{2}\//',
+		'pagesize' => 10
 	)
 );
 ?>

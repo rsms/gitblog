@@ -10,7 +10,7 @@ Clone a copy of gitblog:
 	$ git clone git://github.com/rsms/gitblog.git my-blog
 	$ cd my-blog
 
-If your web server is not running as yourself, your group or root, you need to change owner. In this example `www-data` is the web server user. You will still be able to edit the blog.
+If your web server is not running as yourself, your group, or the root user, you need to change owner. In this example `www-data` is the web server user. (You will still be able to edit the blog.)
 
 	$ chmod -R g+w .
 	$ sudo chown -R www-data .

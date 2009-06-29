@@ -6,7 +6,7 @@ header('Content-Type: application/xhtml+xml; charset=utf-8');
 	<head>
 		<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8"/>
 		<title><?= gb_title() ?></title>
-    <link href="<?= GITBLOG_ADMIN_URL ?>screen.css" type="text/css" rel="stylesheet" media="screen" />
+		<link href="<?= GITBLOG_ADMIN_URL ?>screen.css" type="text/css" rel="stylesheet" media="screen" />
 	</head>
 	<body>
 		<div id="head">

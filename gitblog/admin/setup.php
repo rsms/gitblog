@@ -49,32 +49,32 @@ if (isset($_POST['submit'])) {
 	
 	# -------------------------------------------------------------------------
 	# Can git be found and if so, what version?
-  try {
-    $version = array_pop(explode(' ', trim($gitblog->exec("--version"))));
-    $version = array_map('intval', explode('.', $version));
-    if ($version[0] < 1 or $version[1] < 6) {
-      $errors[] = '<b>To old git version.</b> Gitblog requires git version 1.6 
-        or newer. Please upgrade your git. ('.h(`which git`).')';
-    }
-  }
-  catch (GitError $e) {
-    $errors[] = '<b>git not found in $PATH</b><br/><br/>
-      
-      If git is not installed, please install it. Otherwise you need to update <tt>PATH</tt>.
-      Putting something like this in <tt>gb-config.php</tt> would do it:<br/><br/>
-      
-      <code>$_ENV[\'PATH\'] .= \':/opt/local/bin\';</code><br/><br/>
-      
-      <tt>/opt/local/bin</tt> being the directory in which git is installed.
-      Alternatively edit PATH in your php.ini file.<br/><br/>
-      
-      <small>(Original error from shell: '.h($e->getMessage()).')</small>';
-  }
+	try {
+		$version = array_pop(explode(' ', trim($gitblog->exec("--version"))));
+		$version = array_map('intval', explode('.', $version));
+		if ($version[0] < 1 or $version[1] < 6) {
+			$errors[] = '<b>To old git version.</b> Gitblog requires git version 1.6 
+				or newer. Please upgrade your git. ('.h(`which git`).')';
+		}
+	}
+	catch (GitError $e) {
+		$errors[] = '<b>git not found in $PATH</b><br/><br/>
+			
+			If git is not installed, please install it. Otherwise you need to update <tt>PATH</tt>.
+			Putting something like this in <tt>gb-config.php</tt> would do it:<br/><br/>
+			
+			<code>$_ENV[\'PATH\'] .= \':/opt/local/bin\';</code><br/><br/>
+			
+			<tt>/opt/local/bin</tt> being the directory in which git is installed.
+			Alternatively edit PATH in your php.ini file.<br/><br/>
+			
+			<small>(Original error from shell: '.h($e->getMessage()).')</small>';
+	}
 	
 	# -------------------------------------------------------------------------
 	# create repository	
 	if (!$errors) {
-	  $add_sample_content = isset($_POST['add-sample-content']) and $_POST['add-sample-content'] === 'true';
+		$add_sample_content = isset($_POST['add-sample-content']) and $_POST['add-sample-content'] === 'true';
 		if (!$gitblog->init($add_sample_content))
 			$errors[] = 'Failed to create and initialize repository at '.var_export(gb::$repo,1);
 	}
@@ -112,7 +112,7 @@ if (isset($_POST['submit'])) {
 # ------------------------------------------------------------------------------------------------
 # Perform a few sanity checks
 #else {
-#  
+#	
 #}
 
 # ------------------------------------------------------------------------------------------------
@@ -162,10 +162,10 @@ include '_header.php';
 			The title of your site can be changed later.
 		</p>
 		<p>
-		  <label>
-		    <input type="checkbox" value="true" checked="checked" name="add-sample-content" />
-		    Add sample content
-		  </label>
+			<label>
+				<input type="checkbox" value="true" checked="checked" name="add-sample-content" />
+				Add sample content
+			</label>
 		</p>
 		<p class="note">
 			Add some sample content to get you started.

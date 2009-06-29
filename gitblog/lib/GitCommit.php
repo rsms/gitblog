@@ -102,13 +102,13 @@ class GitCommit {
 				
 				# R|C have two names wherether the last is the new name
 				if ($t === GitPatch::RENAME or $t === GitPatch::COPY) {
-				  $previousName = $name;
-				  $name = $line[2];
-				  if ($c->previousFiles === null)
-				    $c->previousFiles = array($previousName);
-				  else
-				    $c->previousFiles[] = $previousName;
-			  }
+					$previousName = $name;
+					$name = $line[2];
+					if ($c->previousFiles === null)
+						$c->previousFiles = array($previousName);
+					else
+						$c->previousFiles[] = $previousName;
+				}
 				
 				# add to files[tag] => [name, ..]
 				if (isset($c->files[$t]))
@@ -116,15 +116,15 @@ class GitCommit {
 				else
 					$c->files[$t] = array($name);
 				
-			  # if kwarg mapnamestoc == true
-			  if ($ntoc !== null) {
-			    if (!isset($ntoc[$name]))
-			      $ntoc[$name] = array($c);
-			    else
-			      $ntoc[$name][] = $c;
-		    }
-		    
-			  # update cached objects
+				# if kwarg mapnamestoc == true
+				if ($ntoc !== null) {
+					if (!isset($ntoc[$name]))
+						$ntoc[$name] = array($c);
+					else
+						$ntoc[$name][] = $c;
+				}
+				
+				# update cached objects
 				#if (isset($repo->objectCacheByName[$name])) {
 				#	$obj = $repo->objectCacheByName[$name];
 				#	if ($obj->_commit === null)
@@ -138,20 +138,20 @@ class GitCommit {
 					elseif ($t === GitPatch::DELETE and isset($existing[$name]))
 						unset($existing[$name]);
 					elseif ($t === GitPatch::RENAME) {
-					  if (isset($existing[$previousName])) {
-					    # move original CREATE
-					    $existing[$name] = $existing[$previousName];
-					    unset($existing[$previousName]);
-				    }
-				    else {
-  					  $existing[$name] = $c;
-  				  }
-  				  # move commits from previous file if kwarg mapnamestoc == true
-  				  if ($ntoc !== null and isset($ntoc[$previousName])) {
-  				    $ntoc[$name] = array_merge($ntoc[$previousName], $ntoc[$name]);
-  				    unset($ntoc[$previousName]);
-				    }
-				  }
+						if (isset($existing[$previousName])) {
+							# move original CREATE
+							$existing[$name] = $existing[$previousName];
+							unset($existing[$previousName]);
+						}
+						else {
+							$existing[$name] = $c;
+						}
+						# move commits from previous file if kwarg mapnamestoc == true
+						if ($ntoc !== null and isset($ntoc[$previousName])) {
+							$ntoc[$name] = array_merge($ntoc[$previousName], $ntoc[$name]);
+							unset($ntoc[$previousName]);
+						}
+					}
 				}
 			}
 			

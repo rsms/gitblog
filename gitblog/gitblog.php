@@ -115,11 +115,9 @@ gb::$repo = GITBLOG_SITE_DIR.'/site';
 if (file_exists(GITBLOG_SITE_DIR.'/gb-config.php'))
 	include GITBLOG_SITE_DIR.'/gb-config.php';
 
-# no config?
+# no config? -- read defaults
 if (gb::$site_title === null) {
-	# read default
-	require realpath(dirname(__FILE__)).'/skeleton/gb-config.php';
-	gb::$repo = realpath(dirname(__FILE__).'/..').'/site';
+	require GITBLOG_DIR.'/skeleton/gb-config.php';
 }
 
 ini_set('include_path', ini_get('include_path') . ':' . GITBLOG_DIR . '/lib');

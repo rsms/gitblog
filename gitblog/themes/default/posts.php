@@ -1,4 +1,4 @@
-<h1>Some blog</h1>
+<h1><?= gb_title() ?></h1>
 <? foreach ($postspage->posts as $post): ?>
 	<h2><a href="<?= $post->url() ?>"><?= $post->title ?></a></h2>
 	<div id="post-meta">

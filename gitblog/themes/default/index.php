@@ -31,7 +31,7 @@ if (gb::$is_404)
 		
 		?>
 		<address>
-			(<? $s = (microtime(true)-$debug_time_started); printf('%d ms, %d rps', intval(1000.0 * $s), 1.0/$s) ?>)
+			(<? $s = (microtime(true)-$debug_time_started); printf('%.3f ms, %d rps', 1000.0 * $s, 1.0/$s) ?>)
 		</address>
 	</body>
 </html>

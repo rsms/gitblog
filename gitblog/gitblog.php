@@ -402,9 +402,9 @@ class GitBlog {
 			. urlencode($category);
 	}
 	
-	function init($shared=true) {
-		$mkdirmode = $shared ? 0775 : 0755;
-		$shared = $shared ? 'true' : 'false';
+	function init($add_sample_content=true, $shared='true') {
+		$mkdirmode = $shared === 'all' ? 0777 : 0775;
+		$shared = $shared ? "--shared=$shared" : '';
 		
 		# create directories and chmod
 		if (!is_dir(gb::$repo.'/.git') && !mkdir(gb::$repo.'/.git', $mkdirmode, true))
@@ -413,7 +413,7 @@ class GitBlog {
 		chmod(gb::$repo.'/.git', $mkdirmode);
 		
 		# git init
-		$this->exec("init --quiet --shared=$shared");
+		$this->exec("init --quiet $shared");
 		
 		# Create empty standard directories
 		mkdir(gb::$repo.'/content/posts', $mkdirmode, true);
@@ -435,22 +435,25 @@ class GitBlog {
 		symlink($target, gb::$repo."/theme");
 		$this->exec("add theme");
 		
-		# Copy example "about" page
-		copy(GITBLOG_DIR.'/skeleton/content/pages/about.html', gb::$repo."/content/pages/about.html");
-		chmod(gb::$repo."/content/pages/about.html", 0664);
-		$this->exec("add content/pages/about.html");
+		# Add sample content
+		if ($add_sample_content) {
+  		# Copy example "about" page
+  		copy(GITBLOG_DIR.'/skeleton/content/pages/about.html', gb::$repo."/content/pages/about.html");
+  		chmod(gb::$repo."/content/pages/about.html", 0664);
+  		$this->exec("add content/pages/about.html");
 		
-		# Copy example "hello world" post
-		$today = time();
-		$s = file_get_contents(GITBLOG_DIR.'/skeleton/content/posts/0000-00-00-hello-world.html');
-		$name = 'content/posts/'.date('Y/m-d').'-hello-world.html';
-		$path = gb::$repo."/$name";
-		@mkdir(dirname($path), 0775, true);
-		chmod(dirname($path), 0775);
-		$s = str_replace('0000/00-00-hello-world.html', basename(dirname($name)).'/'.basename($name), $s);
-		file_put_contents($path, $s);
-		chmod($path, 0664);
-		$this->exec("add $name");
+  		# Copy example "hello world" post
+  		$today = time();
+  		$s = file_get_contents(GITBLOG_DIR.'/skeleton/content/posts/0000-00-00-hello-world.html');
+  		$name = 'content/posts/'.date('Y/m-d').'-hello-world.html';
+  		$path = gb::$repo."/$name";
+  		@mkdir(dirname($path), 0775, true);
+  		chmod(dirname($path), 0775);
+  		$s = str_replace('0000/00-00-hello-world.html', basename(dirname($name)).'/'.basename($name), $s);
+  		file_put_contents($path, $s);
+  		chmod($path, 0664);
+  		$this->exec("add $name");
+  	}
 		
 		return true;
 	}
@@ -479,6 +482,10 @@ class GitBlog {
 	 *   2  gitdir is missing and need to be created (git init).
 	 */
 	function verifyIntegrity() {
+	  if (@file_get_contents(gb::$repo.'/.git/info/gitblog-site-url') !== GITBLOG_SITE_URL) {
+      $s = GITBLOG_SITE_URL; # because gb_atomic_write need a reference
+      gb_atomic_write(gb::$repo.'/.git/info/gitblog-site-url', $s, 0664);
+    }
 		if (is_dir(gb::$repo."/.git/info/gitblog"))
 			return 0;
 		if (!is_dir(gb::$repo."/.git"))

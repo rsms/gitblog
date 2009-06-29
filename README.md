@@ -26,7 +26,7 @@ Let's try editing the hello world post:
 
 Make some changes, be creative!
 
-To demonstrate that the "working tree" is indeed a working area and not the live stage, reload your web brwoser and see that the "Hello world" post is still not modified.
+To demonstrate that the "working tree" is indeed a working area and not the live stage, reload your web browser and see that the "Hello world" post is still not modified.
 
 Now, let's commit the changes, pusing them live:
 

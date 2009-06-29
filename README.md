@@ -42,6 +42,11 @@ The gb-config.php file (present in your site root) contains site-specific config
 Have a look in the file `gitblog/gitblog.php` -- scroll down a few lines and you'll find a class called `gb` which houses documentation and a list of all available configuration parameters, as well as their default values.
 
 
+## Known bugs and issues
+
+- Moving the blog to a new URL requires editing of the `{gb::$repo}/.git/hooks/post-commit` hook.
+
+
 ## Authors
 
 - Rasmus Andersson &lt;rasmus notion se&gt;

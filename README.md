@@ -34,6 +34,8 @@ Now, let's commit the changes, pusing them live:
 
 Reload your web browser and... voila!
 
+(It's normal to see `error: Could not access 'HEAD@{1}'` on stderr the first time you commit a change.)
+
 
 ## Further play
 

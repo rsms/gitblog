@@ -423,12 +423,8 @@ class GitBlog {
 		chmod(gb::$repo.'/content/pages', $mkdirmode);
 		
 		# Copy post-commit hook
-		$s = file_get_contents(GITBLOG_DIR.'/skeleton/hooks/post-commit');
-		$s = str_replace(
-			'http://localhost/gitblog/hooks/post-patch.php',
-			GITBLOG_SITE_URL.'gitblog/hooks/post-patch.php', $s);
-		file_put_contents(gb::$repo."/.git/hooks/post-commit", $s);
-		chmod(gb::$repo."/.git/hooks/post-commit", 0775);
+		copy(GITBLOG_DIR.'/skeleton/hooks/post-commit', gb::$repo."/.git/hooks/post-commit");
+		chmod(gb::$repo."/.git/hooks/post-commit", 0774);
 		
 		# Enable default theme
 		$target = gb_relpath(gb::$repo."/theme", GITBLOG_DIR.'/themes/default');

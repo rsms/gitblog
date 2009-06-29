@@ -179,12 +179,13 @@ class GBContentFinalizer extends GBContentRebuilder {
 		}
 		
 		# no content at all? -- create empty page
-		if (!$pages)
+		$is_empty = !$pages;
+		if ($is_empty)
 			$pages = array(array());
 		
 		foreach ($pages as $pageno => $page) {
 			$path = $dir.'/'.sprintf('%011d', $pageno);
-			$need_rewrite = $this->forceFullRebuild or (!file_exists($path));
+			$need_rewrite = $is_empty or $this->forceFullRebuild or (!file_exists($path));
 			
 			# check if any objects on this page are dirty
 			if (!$need_rewrite and GBContentFinalizer::$dirtyObjects) {

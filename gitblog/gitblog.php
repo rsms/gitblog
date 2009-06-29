@@ -124,14 +124,14 @@ ini_set('include_path', ini_get('include_path') . ':' . GITBLOG_DIR . '/lib');
 
 /** @ignore */
 function __autoload($c) {
-  # we use include instead of include_once since it's alot faster
-  # and the probability of including an allready included file is
-  # very small.
-  if((include $c . '.php') === false) {
-    $t = debug_backtrace();
-    if(@$t[1]['function'] != 'class_exists')
-      trigger_error("failed to load class $c");
-  }
+	# we use include instead of include_once since it's alot faster
+	# and the probability of including an allready included file is
+	# very small.
+	if((include $c . '.php') === false) {
+		$t = debug_backtrace();
+		if(@$t[1]['function'] != 'class_exists')
+			trigger_error("failed to load class $c");
+	}
 }
 ini_set('unserialize_callback_func', '__autoload');
 
@@ -319,9 +319,26 @@ class GitBlog {
 			.' --work-tree='.escapeshellarg(gb::$repo)
 			.' '.$cmd;
 		#var_dump($cmd);
-		# start process
-		$ps = gb_popen($cmd, null, $_ENV);
+		$r = $this->shell($cmd, $input);
 		$this->gitQueryCount++;
+		# fail?
+		if ($r === null)
+			return null;
+		# check for errors
+		if ($r[0] != 0) {
+			if (strpos($r[2], 'Not a git repository') !== false)
+				throw new GitUninitializedRepoError($r[2]);
+			else
+				throw new GitError($r[2]);
+		}
+		return $r[1];
+	}
+	
+	/** Execute a command inside a shell */
+	function shell($cmd, $input=null, $env=null) {
+		#var_dump($cmd);
+		# start process
+		$ps = gb_popen($cmd, null, $env === null ? $_ENV : $env);
 		if (!$ps)
 			return null;
 		# stdin
@@ -334,16 +351,8 @@ class GitBlog {
 		# stderr
 		$errors = stream_get_contents($ps['pipes'][2]);
 		fclose($ps['pipes'][2]);
-		# wait
-		$status = proc_close($ps['handle']);
-		# check for errors
-		if ($status != 0) {
-			if (strpos($errors, 'Not a git repository') !== false)
-				throw new GitUninitializedRepoError($errors);
-			else
-				throw new GitError($errors);
-		}
-		return $output;
+		# wait and return
+		return array(proc_close($ps['handle']), $output, $errors);
 	}
 	
 	function pathToTheme($file='') {
@@ -426,30 +435,34 @@ class GitBlog {
 		copy(GITBLOG_DIR.'/skeleton/hooks/post-commit', gb::$repo."/.git/hooks/post-commit");
 		chmod(gb::$repo."/.git/hooks/post-commit", 0774);
 		
-		# Enable default theme
-		$target = gb_relpath(gb::$repo."/theme", GITBLOG_DIR.'/themes/default');
-		symlink($target, gb::$repo."/theme");
+		# Enable default theme (todo: maybe a php-native recursive copy function for this?)
+		$r = $this->shell('cp -Rp '.escapeshellarg(GITBLOG_DIR.'/themes/default')
+			.' '.escapeshellarg(gb::$repo."/theme"));
+		if ($r[0] != 0)
+			return false;
+		$r = $this->shell('chmod -R g+rw '.escapeshellarg(gb::$repo."/theme"));
+		# we don't care if the above failed
 		$this->exec("add theme");
 		
 		# Add sample content
 		if ($add_sample_content) {
-  		# Copy example "about" page
-  		copy(GITBLOG_DIR.'/skeleton/content/pages/about.html', gb::$repo."/content/pages/about.html");
-  		chmod(gb::$repo."/content/pages/about.html", 0664);
-  		$this->exec("add content/pages/about.html");
+			# Copy example "about" page
+			copy(GITBLOG_DIR.'/skeleton/content/pages/about.html', gb::$repo."/content/pages/about.html");
+			chmod(gb::$repo."/content/pages/about.html", 0664);
+			$this->exec("add content/pages/about.html");
 		
-  		# Copy example "hello world" post
-  		$today = time();
-  		$s = file_get_contents(GITBLOG_DIR.'/skeleton/content/posts/0000-00-00-hello-world.html');
-  		$name = 'content/posts/'.date('Y/m-d').'-hello-world.html';
-  		$path = gb::$repo."/$name";
-  		@mkdir(dirname($path), 0775, true);
-  		chmod(dirname($path), 0775);
-  		$s = str_replace('0000/00-00-hello-world.html', basename(dirname($name)).'/'.basename($name), $s);
-  		file_put_contents($path, $s);
-  		chmod($path, 0664);
-  		$this->exec("add $name");
-  	}
+			# Copy example "hello world" post
+			$today = time();
+			$s = file_get_contents(GITBLOG_DIR.'/skeleton/content/posts/0000-00-00-hello-world.html');
+			$name = 'content/posts/'.date('Y/m-d').'-hello-world.html';
+			$path = gb::$repo."/$name";
+			@mkdir(dirname($path), 0775, true);
+			chmod(dirname($path), 0775);
+			$s = str_replace('0000/00-00-hello-world.html', basename(dirname($name)).'/'.basename($name), $s);
+			file_put_contents($path, $s);
+			chmod($path, 0664);
+			$this->exec("add $name");
+		}
 		
 		return true;
 	}
@@ -478,12 +491,13 @@ class GitBlog {
 	 *   2  gitdir is missing and need to be created (git init).
 	 */
 	function verifyIntegrity() {
-	  if (@file_get_contents(gb::$repo.'/.git/info/gitblog-site-url') !== GITBLOG_SITE_URL) {
-      $s = GITBLOG_SITE_URL; # because gb_atomic_write need a reference
-      gb_atomic_write(gb::$repo.'/.git/info/gitblog-site-url', $s, 0664);
-    }
-		if (is_dir(gb::$repo."/.git/info/gitblog"))
+		if (is_dir(gb::$repo."/.git/info/gitblog")) {
+			if (@file_get_contents(gb::$repo.'/.git/info/gitblog-site-url') !== GITBLOG_SITE_URL) {
+				$s = GITBLOG_SITE_URL; # because gb_atomic_write need a reference
+				gb_atomic_write(gb::$repo.'/.git/info/gitblog-site-url', $s, 0664);
+			}
 			return 0;
+		}
 		if (!is_dir(gb::$repo."/.git"))
 			return 2;
 		GBRebuilder::rebuild($this, true);

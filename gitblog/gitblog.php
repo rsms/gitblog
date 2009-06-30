@@ -591,6 +591,18 @@ class GBContent {
 			}
 		}
 		
+		# specific publish time?
+		#$publish_time = null;
+		#if (isset($this->meta['publish'])) {
+		#	$st = date_parse($this->meta['publish']);
+		#	# todo wip
+		#	unset($this->meta['publish']);
+		#}
+		
+		# use meta for title if absent
+		if ($this->title === null)
+			$this->title = $this->slug;
+		
 		# freeze meta
 		$this->meta = (object)$this->meta;
 		

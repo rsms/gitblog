@@ -570,7 +570,7 @@ class GBContent {
 		gb_parse_content_obj_headers(substr($data, 0, $bodystart), $this->meta);
 		
 		# lift lists from meta to this
-		static $special_lists = array('tag'=>'tags', 'categry'=>'categories');
+		static $special_lists = array('tag'=>'tags', 'category'=>'categories');
 		foreach ($special_lists as $singular => $plural) {
 			if (isset($this->meta[$plural])) {
 				$this->$plural = array_unique(preg_split('/[, ]+/', $this->meta[$plural]));

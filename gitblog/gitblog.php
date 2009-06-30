@@ -285,6 +285,11 @@ function gb_relpath($from, $to) {
 	return implode('/', $r);
 }
 
+function gb_hms_from_time($ts) {
+	$p = date('his', $ts);
+	return (intval($p{0}.$p{1})*60*60) + (intval($p{2}.$p{3})*60) + intval($p{4}.$p{5});
+}
+
 #------------------------------------------------------------------------------
 # Helper functions for themes/templates
 
@@ -601,8 +606,14 @@ class GBContent {
 			
 			# first one is when the content was created
 			$initial = $commits[count($commits)-1];
-			if ($this->published === false)
+			if ($this->published === false) {
 				$this->published = $initial->authorDate;
+			}
+			else {
+				#	add hours, mins and secs from authorDate
+				$this->published += gb_hms_from_time($initial->authorDate);
+			}
+			
 			if (!$this->author) {
 				$this->author = (object)array(
 					'name' => $initial->authorName,
@@ -680,6 +691,10 @@ class GBContent {
 
 
 class GBPage extends GBContent {
+	static function getCached($slug) {
+		$path = gb::$repo."/.git/info/gitblog/content/pages/".$slug;
+		return @unserialize(file_get_contents($path));
+	}
 }
 
 

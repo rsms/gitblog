@@ -2,55 +2,6 @@
 # content rebuilders, for objects stored in the content directory.
 
 class GBContentRebuilder extends GBRebuilder {
-	/** Batch-reload objects */
-	function reloadObjects(&$objects) {
-		$names = array();
-		$ids = array();
-		
-		# Demux
-		foreach ($objects as $id => $obj) {
-			$names[] =& $obj->name;
-			$ids[] = $id;
-		}
-		
-		# Load commits
-		$commits = GitCommit::find($this->gb, array(
-			'names' => $names,
-			'mapnamestoc' => true));
-		$commitsbyname =& $commits[2];
-		
-		# Load blobs
-		$out = $this->gb->exec("cat-file --batch", implode("\n", $ids));
-		$p = 0;
-		$numobjects = count($objects);
-		
-		# Parse object blobs
-		for ($i=0; $i<$numobjects; $i++) {
-			# <id> SP <type> SP <size> LF
-			# <contents> LF
-			$hend = strpos($out, "\n", $p);
-			$h = explode(' ', substr($out, $p, $hend-$p));
-			#var_dump($h);
-			
-			$missing = ($h[1] === 'missing');
-			$size = 0;
-			$data = null;
-			$dstart = $hend + 1;
-			
-			if (!$missing) {
-				$obj = $objects[$h[0]];
-				$size = intval($h[2]);
-				$data = substr($out, $dstart, $size);
-				$obj->reload($data, isset($commitsbyname[$obj->name]) ? $commitsbyname[$obj->name] : array());
-			}
-			else {
-				trigger_error('missing blob '.$obj->id.' '.var_export($obj->name,1).' in repo stage');
-			}
-			
-			$p = $dstart + $size + 1;
-		}
-	}
-	
 	function _onObject(&$obj, $cls, &$name, &$id, &$slug) {
 		# check for missing or outdated cache
 		if ( $this->forceFullRebuild
@@ -121,6 +72,11 @@ class GBPostsRebuilder extends GBContentRebuilder {
 	}
 }
 
+/** Sort GBContent objects on published, descending */
+function gb_sortfunc_cobj_date_published_r(GBContent $a, GBContent $b) {
+	return $b->published - $a->published;
+}
+
 
 class GBPagesRebuilder extends GBContentRebuilder {
 	/** Handle object */
@@ -153,22 +109,71 @@ class GBContentFinalizer extends GBContentRebuilder {
 		self::$objects = array();
 	}
 	
+	/** Batch-reload objects */
+	function reloadObjects(&$objects) {
+		$names = array();
+		$ids = array();
+		
+		# Demux
+		foreach ($objects as $id => $obj) {
+			$names[] =& $obj->name;
+			$ids[] = $id;
+		}
+		
+		# Load commits
+		$commits = GitCommit::find($this->gb, array(
+			'names' => $names,
+			'mapnamestoc' => true));
+		$commitsbyname =& $commits[2];
+		
+		# Load blobs
+		$out = $this->gb->exec("cat-file --batch", implode("\n", $ids));
+		$p = 0;
+		$numobjects = count($objects);
+		
+		# Parse object blobs
+		for ($i=0; $i<$numobjects; $i++) {
+			# <id> SP <type> SP <size> LF
+			# <contents> LF
+			$hend = strpos($out, "\n", $p);
+			$h = explode(' ', substr($out, $p, $hend-$p));
+			
+			$missing = ($h[1] === 'missing');
+			$size = 0;
+			$data = null;
+			$dstart = $hend + 1;
+			
+			if (!$missing) {
+				$obj = $objects[$h[0]];
+				$size = intval($h[2]);
+				$data = substr($out, $dstart, $size);
+				$obj->reload($data, isset($commitsbyname[$obj->name]) ? $commitsbyname[$obj->name] : array());
+			}
+			else {
+				trigger_error('missing blob '.$obj->id.' '.var_export($obj->name,1).' in repo stage');
+			}
+			
+			$p = $dstart + $size + 1;
+		}
+	}
+	
 	function finalize() {
-		# (re)load queued objects
+		# (re)load dirty objects
 		if (self::$dirtyObjects) {
 			$this->reloadObjects(self::$dirtyObjects);
 			foreach (self::$dirtyObjects as $obj)
 				$obj->writeCache();
 		}
 		
-		#var_export(self::$objects); # xxx
+		# sort objects on published, desc. with a granularity of one second
+		usort(GBPostsRebuilder::$posts, 'gb_sortfunc_cobj_date_published_r');
 		
+		# build posts pages
 		$this->_finalizePagedPosts();
 	}
 	
-	# build posts pages
 	function _finalizePagedPosts() {
-		$pages = array_chunk(array_reverse(GBPostsRebuilder::$posts), gb::$posts_pagesize);
+		$pages = array_chunk(GBPostsRebuilder::$posts, gb::$posts_pagesize);
 		$numpages = count($pages);
 		$dir = gb::$repo."/.git/info/gitblog/content-paged-posts";
 		
@@ -208,7 +213,6 @@ class GBContentFinalizer extends GBContentRebuilder {
 					$page->nextpage = $pageno+1;
 				$data = serialize($page);
 				gb_atomic_write($path, $data, 0664);
-				#var_dump("wrote $path"); # xxx
 			}
 		}
 	}

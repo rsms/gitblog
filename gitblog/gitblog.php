@@ -547,7 +547,7 @@ class GBContent {
 		'text/html' => array('gb_html_postprocess_filter'),
 	);
 	
-	function __construct($name, $id, $slug, $meta=array(), $body=null) {
+	function __construct($name=null, $id=null, $slug=null, $meta=array(), $body=null) {
 		$this->name = $name;
 		$this->id = $id;
 		$this->slug = $slug;

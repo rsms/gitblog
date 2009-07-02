@@ -612,20 +612,9 @@ class GBContent {
 			}
 		}
 		
-		# specific publish time?
-		#$publish_time = null;
-		#if (isset($this->meta['publish'])) {
-		#	$st = date_parse($this->meta['publish']);
-		#	# todo wip
-		#	unset($this->meta['publish']);
-		#}
-		
 		# use meta for title if absent
 		if ($this->title === null)
 			$this->title = $this->slug;
-		
-		# freeze meta
-		$this->meta = (object)$this->meta;
 		
 		# set body
 		$this->body = substr($data, $bodystart+2);
@@ -654,6 +643,12 @@ class GBContent {
 				);
 			}
 		}
+		
+		# specific publish (date and) time?
+		$meta_publish = isset($this->meta['publish']) ? $this->meta['publish'] : 
+			(isset($this->meta['published']) ? $this->meta['published'] : false);
+		if ($meta_publish !== false)
+			$this->published = gb_utcstrtotime($meta_publish, $this->published);
 	}
 	
 	function applyFilters() {

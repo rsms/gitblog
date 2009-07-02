@@ -32,7 +32,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 	 *  fnext: "html"
 	 */
 	function parsePostName($name, &$date, &$slug, &$fnext) {
-		$date = strtotime(str_replace(array('.','_','/'), '-', substr($name, 14, 10)));
+		$date = strtotime(str_replace(array('.','_','/'), '-', substr($name, 14, 10)), ' UTC');
 		$lastdot = strrpos($name, '.', strrpos($name, '/'));
 		if ($lastdot > 25) {
 			$slug = substr($name, 25, $lastdot-25);
@@ -121,9 +121,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		}
 		
 		# Load commits
-		$commits = GitCommit::find($this->gb, array(
-			'names' => $names,
-			'mapnamestoc' => true));
+		$commits = GitCommit::find($this->gb, array('names' => $names, 'mapnamestoc' => true));
 		$commitsbyname = $commits[2];
 		
 		# Load blobs

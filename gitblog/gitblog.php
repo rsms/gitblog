@@ -563,7 +563,8 @@ class GBContent {
 	public $published = false; # timestamp
 	public $modified = false; # timestamp
 	
-	const NOT_PUBLISHED = 2147483647; # 2038-01-19 03:14:07 UTC ("distant future" on 32bit systems)
+	# 2038-01-19 03:14:07 UTC ("distant future" on 32bit systems)
+	const NOT_PUBLISHED = 2147483647;
 	
 	static public $filters = array(
 		'application/xhtml+xml' => array('gb_html_postprocess_filter'),

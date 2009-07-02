@@ -1,6 +1,12 @@
 Stored at {repo}/content/{pathname of content object}.comments and contains
 chunks of JSON data.
 
+An associative array is stored in this file and contains a list of associative
+comments (arrays themselves) keyed by auto-increment integer. When a new comment
+is added it receives number ((number of previous) + 1) -- this way a comment 
+in the middle can be removed without newer comments being reassigned to other
+numbers/ids.
+
 Example:
 	Post: 		{repo}/content/posts/2008/11/24-smisk.html
 	Comments: {repo}/content/posts/2008/11/24-smisk.comments
@@ -13,9 +19,9 @@ And added like this: (pseudo code)
 	flock(fp, excl)
 	$comments = json_decode(fread(fp))
 	if (!$comments)
-		$comments = array($comment)
+		$comments = array(1 => $comment)
 	else
-		$comments[] = $comment
+		$comments[array_pop(array_keys($comments))+1] = $comment
 	fseek(fp, 0)
 	fwrite(fp, json_encode($comments))
 	funlock(fp)
@@ -26,8 +32,8 @@ And added like this: (pseudo code)
 
 This is how .comment-files look:
 
-[
-	{
+{
+	"1" : {
 	  "date": "2008-11-24T21:27:06+0200",
 		"ip_address": "89.233.196.218",
 		"email": "maxberggren@gmail.com",
@@ -39,5 +45,6 @@ This is how .comment-files look:
 			/* comment, .. */
 		]
 	},
-	/* comment, .. */
-]
+	"2" : {
+		...
+}

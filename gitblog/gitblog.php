@@ -563,6 +563,8 @@ class GBContent {
 	public $published = false; # timestamp
 	public $modified = false; # timestamp
 	
+	const NOT_PUBLISHED = 2147483647; # 2038-01-19 03:14:07 UTC ("distant future" on 32bit systems)
+	
 	static public $filters = array(
 		'application/xhtml+xml' => array('gb_html_postprocess_filter'),
 		'text/html' => array('gb_html_postprocess_filter'),
@@ -647,8 +649,13 @@ class GBContent {
 		# specific publish (date and) time?
 		$meta_publish = isset($this->meta['publish']) ? $this->meta['publish'] : 
 			(isset($this->meta['published']) ? $this->meta['published'] : false);
-		if ($meta_publish !== false)
+		$meta_publish = strtoupper($meta_publish);
+		if ($meta_publish === 'FALSE' or $meta_publish === 'NO')
+			$this->published = false;
+		elseif ($meta_publish !== false and $meta_publish !== 'TRUE' or $meta_publish !== 'YES')
 			$this->published = gb_utcstrtotime($meta_publish, $this->published);
+		if ($this->published === false)
+			$this->published = self::NOT_PUBLISHED;
 	}
 	
 	function applyFilters() {

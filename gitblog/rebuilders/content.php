@@ -2,7 +2,7 @@
 # content rebuilders, for objects stored in the content directory.
 
 class GBContentRebuilder extends GBRebuilder {
-	function _onObject(&$obj, $cls, &$name, &$id, &$slug) {
+	function _onObject(&$obj, $cls, $name, $id, $slug) {
 		# check for missing or outdated cache
 		if ( $this->forceFullRebuild
 			or ($obj === false) 
@@ -15,7 +15,7 @@ class GBContentRebuilder extends GBRebuilder {
 		}
 		
 		# append to maps
-		GBContentFinalizer::$objects[] =& $obj;
+		GBContentFinalizer::$objects[] = $obj;
 		
 		#echo "$name > ".$obj->cachename()."\n";
 	}
@@ -31,7 +31,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 	 *  slug: "reading-a-book"
 	 *  fnext: "html"
 	 */
-	function parsePostName(&$name, &$date, &$slug, &$fnext) {
+	function parsePostName($name, &$date, &$slug, &$fnext) {
 		$date = strtotime(str_replace(array('.','_','/'), '-', substr($name, 14, 10)));
 		$lastdot = strrpos($name, '.', strrpos($name, '/'));
 		if ($lastdot > 25) {
@@ -45,7 +45,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 	}
 		
 	/** Handle object */
-	function onObject(&$name, &$id) {
+	function onObject($name, $id) {
 		if (substr($name, 0, 14) !== 'content/posts/')
 			return false;
 		
@@ -66,7 +66,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 		$this->_onObject($obj, 'GBPost', $name, $id, $slug);
 		if ($obj->published === false and $date !== false)
 			$obj->published = $date;
-		self::$posts[] =& $obj;
+		self::$posts[] = $obj;
 		
 		return true;
 	}
@@ -80,7 +80,7 @@ function gb_sortfunc_cobj_date_published_r(GBContent $a, GBContent $b) {
 
 class GBPagesRebuilder extends GBContentRebuilder {
 	/** Handle object */
-	function onObject(&$name, &$id) {
+	function onObject($name, $id) {
 		if (substr($name, 0, 14) !== 'content/pages/')
 			return false;
 		
@@ -110,13 +110,13 @@ class GBContentFinalizer extends GBContentRebuilder {
 	}
 	
 	/** Batch-reload objects */
-	function reloadObjects(&$objects) {
+	function reloadObjects($objects) {
 		$names = array();
 		$ids = array();
 		
 		# Demux
 		foreach ($objects as $id => $obj) {
-			$names[] =& $obj->name;
+			$names[] = $obj->name;
 			$ids[] = $id;
 		}
 		
@@ -124,7 +124,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		$commits = GitCommit::find($this->gb, array(
 			'names' => $names,
 			'mapnamestoc' => true));
-		$commitsbyname =& $commits[2];
+		$commitsbyname = $commits[2];
 		
 		# Load blobs
 		$out = $this->gb->exec("cat-file --batch", implode("\n", $ids));
@@ -211,8 +211,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 				);
 				if ($pageno < $numpages-1)
 					$page->nextpage = $pageno+1;
-				$data = serialize($page);
-				gb_atomic_write($path, $data, 0664);
+				gb_atomic_write($path, serialize($page), 0664);
 			}
 		}
 	}

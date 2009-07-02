@@ -8,7 +8,7 @@ class GBRebuilder {
 		$this->forceFullRebuild = $forceFullRebuild;
 	}
 	
-	function onObject(&$name, &$id) {
+	function onObject($name, $id) {
 		return false;
 	}
 	
@@ -56,7 +56,7 @@ class GBRebuilder {
 				if (!$line)
 					continue;
 				$line = explode(' ', $line, 3);
-				$id =& $line[1];
+				$id = $line[1];
 				$name = gb_normalize_git_name(substr($line[2], strpos($line[2], "\t")+1));
 			
 				foreach ($rebuilders as $rebuilder)

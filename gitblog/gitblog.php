@@ -142,7 +142,7 @@ $_ENV['PATH'] .= ':/opt/local/bin';
 # Universal functions
 
 /** Atomic write */
-function gb_atomic_write($filename, &$data, $chmod=null) {
+function gb_atomic_write($filename, $data, $chmod=null) {
 	$tempnam = tempnam(dirname($filename), basename($filename));
 	$f = fopen($tempnam, 'w');
 	fwrite($f, $data);
@@ -199,7 +199,7 @@ function gb_filenoext($path) {
 
 
 /** Like readline, but acts on a byte array. Keeps state with $p */
-function gb_sreadline(&$p, &$str, $sep="\n") {
+function gb_sreadline(&$p, $str, $sep="\n") {
 	if ($p === null)
 		$p = 0;
 	$i = strpos($str, $sep, $p);
@@ -247,6 +247,30 @@ function gb_normalize_git_name($name) {
 
 
 /**
+ * Parse a date string to UNIX timestamp.
+ * If no timezone information is present, UTC is assumed.
+ * Returns false on error.
+ */
+function gb_utcstrtotime($input, $fallbacktime=false) {
+	$t = date_parse($input);
+	if ($t['error_count']) {
+		trigger_error(__FUNCTION__.'('.var_export($input,1).'): '.implode(', ', $t['errors']));
+		return false;
+	}
+	if ($fallbacktime === false)
+		$fallbacktime = time();
+	$ts = gmmktime($t['hour'], $t['minute'], $t['second'], 
+		$t['month'] === false ? date('n', $fallbacktime) : $t['month'],
+		$t['day'] === false ? date('j', $fallbacktime) : $t['day'],
+		$t['year'] === false ? date('Y', $fallbacktime) : $t['year'], 
+		isset($t['is_dst']) ? ($t['is_dst'] ? 1 : 0) : -1);
+	if (isset($t['zone']))
+		$ts += $t['zone']*60;
+	return $ts;
+}
+
+
+/**
  * Calculate relative path.
  * 
  * Example cases:
@@ -279,7 +303,7 @@ function gb_relpath($from, $to) {
 		$r = array_merge($r, array_slice($tov, $likes));
 	}
 	else {
-		$r =& $tov;
+		$r = $tov;
 	}
 	
 	return implode('/', $r);
@@ -497,10 +521,8 @@ class GitBlog {
 	 */
 	function verifyIntegrity() {
 		if (is_dir(gb::$repo."/.git/info/gitblog")) {
-			if (@file_get_contents(gb::$repo.'/.git/info/gitblog-site-url') !== GITBLOG_SITE_URL) {
-				$s = GITBLOG_SITE_URL; # because gb_atomic_write need a reference
-				gb_atomic_write(gb::$repo.'/.git/info/gitblog-site-url', $s, 0664);
-			}
+			if (@file_get_contents(gb::$repo.'/.git/info/gitblog-site-url') !== GITBLOG_SITE_URL)
+				gb_atomic_write(gb::$repo.'/.git/info/gitblog-site-url', GITBLOG_SITE_URL, 0664);
 			return 0;
 		}
 		if (!is_dir(gb::$repo."/.git"))
@@ -522,9 +544,8 @@ class GitBlog {
 # -----------------------------------------------------------------------------
 # Content (posts, pages, etc)
 
-function gb_html_postprocess_filter(&$body) {
-	$body = nl2br(trim($body));
-	return true;
+function gb_html_postprocess_filter($body) {
+	return nl2br(trim($body));
 }
 
 
@@ -555,7 +576,7 @@ class GBContent {
 		$this->body = $body;
 	}
 	
-	function reload(&$data, $commits) {
+	function reload($data, $commits) {
 		$bodystart = strpos($data, "\n\n");
 		
 		if ($bodystart === false) {
@@ -638,8 +659,10 @@ class GBContent {
 	function applyFilters() {
 		if (isset(self::$filters[$this->mimeType])) {
 			foreach (self::$filters[$this->mimeType] as $filter)
-				if (!$filter($this->body))
+				$s = $filter($this->body);
+				if ($s === false)
 					break;
+				$this->body = $s;
 		}
 	}
 	
@@ -670,8 +693,7 @@ class GBContent {
 			}
 		}
 		
-		$data = serialize($this);
-		return gb_atomic_write($path, $data, 0664);
+		return gb_atomic_write($path, serialize($this), 0664);
 	}
 	
 	function url() {
@@ -803,7 +825,7 @@ class GBUserAccount {
 		return $n;
 	}
 	
-	static function formatGitAuthor(&$account) {
+	static function formatGitAuthor($account) {
 		if (!$account) {
 			trigger_error('invalid account');
 			return '';

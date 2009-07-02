@@ -24,7 +24,7 @@ class GitPatch {
 		$this->meta = array();
 	}
 
-	static function parse(&$udiff) {
+	static function parse($udiff) {
 		$patches = array();
 		$currpatch = null;
 		$passed_delta = false;

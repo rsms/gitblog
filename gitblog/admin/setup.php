@@ -50,7 +50,7 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# Can git be found and if so, what version?
 	try {
-		$version = array_pop(explode(' ', trim($gitblog->exec("--version"))));
+		$version = array_pop(explode(' ', trim(GitBlog::exec("--version"))));
 		$version = array_map('intval', explode('.', $version));
 		if ($version[0] < 1 or $version[1] < 6) {
 			$errors[] = '<b>To old git version.</b> Gitblog requires git version 1.6 
@@ -75,7 +75,7 @@ if (isset($_POST['submit'])) {
 	# create repository	
 	if (!$errors) {
 		$add_sample_content = isset($_POST['add-sample-content']) and $_POST['add-sample-content'] === 'true';
-		if (!$gitblog->init($add_sample_content))
+		if (!GitBlog::init($add_sample_content))
 			$errors[] = 'Failed to create and initialize repository at '.var_export(gb::$repo,1);
 	}
 	
@@ -90,10 +90,10 @@ if (isset($_POST['submit'])) {
 	}
 	
 	# -------------------------------------------------------------------------
-	# commit changes (done by $gitblog->init())
+	# commit changes (done by GitBlog::init())
 	if (!$errors) {
 		try {
-			if (!$gitblog->commit('gitblog created', GBUserAccount::getAdmin()))
+			if (!GitBlog::commit('gitblog created', GBUserAccount::getAdmin()))
 				$errors[] = 'failed to commit creation';
 		}
 		catch (Exception $e) {

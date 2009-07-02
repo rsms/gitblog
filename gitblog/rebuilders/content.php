@@ -16,8 +16,6 @@ class GBContentRebuilder extends GBRebuilder {
 		
 		# append to maps
 		GBContentFinalizer::$objects[] = $obj;
-		
-		#echo "$name > ".$obj->cachename()."\n";
 	}
 }
 
@@ -32,7 +30,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 	 *  fnext: "html"
 	 */
 	function parsePostName($name, &$date, &$slug, &$fnext) {
-		$date = strtotime(str_replace(array('.','_','/'), '-', substr($name, 14, 10)), ' UTC');
+		$date = strtotime(str_replace(array('.','_','/'), '-', substr($name, 14, 10)).' UTC');
 		$lastdot = strrpos($name, '.', strrpos($name, '/'));
 		if ($lastdot > 25) {
 			$slug = substr($name, 25, $lastdot-25);
@@ -101,11 +99,11 @@ class GBPagesRebuilder extends GBContentRebuilder {
  * content objects is simpler this way.
  */
 class GBContentFinalizer extends GBContentRebuilder {
-	static public $objects;
+	static public $objects; # [obj, ..]
 	static public $dirtyObjects = array(); # [id => obj, ..]
 	
-	function __construct($gb, $forceFullRebuild=false) {
-		parent::__construct($gb, $forceFullRebuild);
+	function __construct($forceFullRebuild=false) {
+		parent::__construct($forceFullRebuild);
 		self::$objects = array();
 	}
 	
@@ -121,11 +119,11 @@ class GBContentFinalizer extends GBContentRebuilder {
 		}
 		
 		# Load commits
-		$commits = GitCommit::find($this->gb, array('names' => $names, 'mapnamestoc' => true));
+		$commits = GitCommit::find(array('names' => $names, 'mapnamestoc' => true));
 		$commitsbyname = $commits[2];
 		
 		# Load blobs
-		$out = $this->gb->exec("cat-file --batch", implode("\n", $ids));
+		$out = GitBlog::exec("cat-file --batch", implode("\n", $ids));
 		$p = 0;
 		$numobjects = count($objects);
 		
@@ -168,10 +166,38 @@ class GBContentFinalizer extends GBContentRebuilder {
 		
 		# build posts pages
 		$this->_finalizePagedPosts();
+		
+		# garbage collect stage cache
+		$this->_gcStageCache();
+	}
+	
+	function _gcStageCache() {
+		# List cachenames
+		$cachenames = array();
+		foreach (self::$objects as $obj)
+			$cachenames[$obj->cachename()] = 1;
+		
+		# remove unused objects from stage cache (todo: this can be very expensive with much content)
+		$prefix_len = strlen(gb::$repo.'/.git/info/gitblog/');
+		$existing_paths = glob(gb::$repo.
+			'/.git/info/gitblog/content/{posts/*/*,pages/{*,*/*,*/*/*,*/*/*/*,*/*/*/*/*,*/*/*/*/*/*}}',
+			GLOB_BRACE|GLOB_NOSORT|GLOB_MARK);
+		foreach ($existing_paths as $path) {
+			if (substr($path, -1) === '/')
+				continue;
+			$cachename = substr($path, $prefix_len);
+			if (!isset($cachenames[$cachename]))
+				unlink($path);
+		}
 	}
 	
 	function _finalizePagedPosts() {
-		$pages = array_chunk(GBPostsRebuilder::$posts, gb::$posts_pagesize);
+		$published_posts = array();
+		$time_now = time();
+		foreach (GBPostsRebuilder::$posts as $post)
+			if ($post->published <= $time_now)
+				$published_posts[] = $post;
+		$pages = array_chunk($published_posts, gb::$posts_pagesize);
 		$numpages = count($pages);
 		$dir = gb::$repo."/.git/info/gitblog/content-paged-posts";
 		

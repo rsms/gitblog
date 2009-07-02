@@ -338,18 +338,18 @@ class GitUninitializedRepoError extends GitError {}
 # Main class
 
 class GitBlog {
-	public $rebuilders = array();
-	public $gitQueryCount = 0;
+	static public $rebuilders = array();
+	static public $gitQueryCount = 0;
 	
 	/** Execute a git command */
-	function exec($cmd, $input=null) {
+	static function exec($cmd, $input=null) {
 		# build cmd
 		$cmd = 'git --git-dir='.escapeshellarg(gb::$repo.'/.git')
 			.' --work-tree='.escapeshellarg(gb::$repo)
 			.' '.$cmd;
 		#var_dump($cmd);
-		$r = $this->shell($cmd, $input);
-		$this->gitQueryCount++;
+		$r = self::shell($cmd, $input);
+		self::$gitQueryCount++;
 		# fail?
 		if ($r === null)
 			return null;
@@ -364,7 +364,7 @@ class GitBlog {
 	}
 	
 	/** Execute a command inside a shell */
-	function shell($cmd, $input=null, $env=null) {
+	static function shell($cmd, $input=null, $env=null) {
 		#var_dump($cmd);
 		# start process
 		$ps = gb_popen($cmd, null, $env === null ? $_ENV : $env);
@@ -384,63 +384,63 @@ class GitBlog {
 		return array(proc_close($ps['handle']), $output, $errors);
 	}
 	
-	function pathToTheme($file='') {
+	static function pathToTheme($file='') {
 		return gb::$repo."/theme/$file";
 	}
 	
-	function pathToCachedContent($dirname, $slug) {
+	static function pathToCachedContent($dirname, $slug) {
 		return gb::$repo."/.git/info/gitblog/content/$dirname/$slug";
 	}
 	
-	function pathToPostsPage($pageno) {
+	static function pathToPostsPage($pageno) {
 		return gb::$repo."/.git/info/gitblog/content-paged-posts/".sprintf('%011d', $pageno);
 	}
 	
-	function pathToPost($slug) {
+	static function pathToPost($slug) {
 		$st = strptime($slug, gb::$posts_url_prefix);
 		$date = gmmktime($st['tm_hour'], $st['tm_min'], $st['tm_sec'], 
 			$st['tm_mon']+1, $st['tm_mday'], 1900+$st['tm_year']);
 		$slug = $st['unparsed'];
-		$cachename = date('Y/m/d/', $date).$slug;
-		return $this->pathToCachedContent('posts', $cachename);
+		$cachename = date('Y/m-d-', $date).$slug;
+		return self::pathToCachedContent('posts', $cachename);
 	}
 	
-	function pageBySlug($slug) {
-		$path = $this->pathToCachedContent('pages', $slug);
+	static function pageBySlug($slug) {
+		$path = self::pathToCachedContent('pages', $slug);
 		return @unserialize(file_get_contents($path));
 	}
 	
-	function postBySlug($slug) {
-		$path = $this->pathToPost($slug);
+	static function postBySlug($slug) {
+		$path = self::pathToPost($slug);
 		return @unserialize(file_get_contents($path));
 	}
 	
-	function postsPageByPageno($pageno) {
-		$path = $this->pathToPostsPage($pageno);
+	static function postsPageByPageno($pageno) {
+		$path = self::pathToPostsPage($pageno);
 		return @unserialize(file_get_contents($path));
 	}
 	
-	function urlToTags($tags) {
+	static function urlToTags($tags) {
 		return GITBLOG_SITE_URL . gb::$index_url . gb::$tags_prefix 
 			. implode(',', array_map('urlencode', $tags));
 	}
 	
-	function urlToTag($tag) {
+	static function urlToTag($tag) {
 		return GITBLOG_SITE_URL . gb::$index_url . gb::$tags_prefix 
 			. urlencode($tag);
 	}
 	
-	function urlToCategories($categories) {
+	static function urlToCategories($categories) {
 		return GITBLOG_SITE_URL . gb::$index_url . gb::$categories_prefix 
 			. implode(',', array_map('urlencode', $categories));
 	}
 	
-	function urlToCategory($category) {
+	static function urlToCategory($category) {
 		return GITBLOG_SITE_URL . gb::$index_url . gb::$categories_prefix 
 			. urlencode($category);
 	}
 	
-	function init($add_sample_content=true, $shared='true') {
+	static function init($add_sample_content=true, $shared='true') {
 		$mkdirmode = $shared === 'all' ? 0777 : 0775;
 		$shared = $shared ? "--shared=$shared" : '';
 		
@@ -451,7 +451,7 @@ class GitBlog {
 		chmod(gb::$repo.'/.git', $mkdirmode);
 		
 		# git init
-		$this->exec("init --quiet $shared");
+		self::exec("init --quiet $shared");
 		
 		# Create empty standard directories
 		mkdir(gb::$repo.'/content/posts', $mkdirmode, true);
@@ -465,20 +465,20 @@ class GitBlog {
 		chmod(gb::$repo."/.git/hooks/post-commit", 0774);
 		
 		# Enable default theme (todo: maybe a php-native recursive copy function for this?)
-		$r = $this->shell('cp -Rp '.escapeshellarg(GITBLOG_DIR.'/themes/default')
+		$r = self::shell('cp -Rp '.escapeshellarg(GITBLOG_DIR.'/themes/default')
 			.' '.escapeshellarg(gb::$repo."/theme"));
 		if ($r[0] != 0)
 			return false;
-		$r = $this->shell('chmod -R g+rw '.escapeshellarg(gb::$repo."/theme"));
+		$r = self::shell('chmod -R g+rw '.escapeshellarg(gb::$repo."/theme"));
 		# we don't care if the above failed
-		$this->exec("add theme");
+		self::exec("add theme");
 		
 		# Add sample content
 		if ($add_sample_content) {
 			# Copy example "about" page
 			copy(GITBLOG_DIR.'/skeleton/content/pages/about.html', gb::$repo."/content/pages/about.html");
 			chmod(gb::$repo."/content/pages/about.html", 0664);
-			$this->exec("add content/pages/about.html");
+			self::exec("add content/pages/about.html");
 		
 			# Copy example "hello world" post
 			$today = time();
@@ -490,13 +490,13 @@ class GitBlog {
 			$s = str_replace('0000/00-00-hello-world.html', basename(dirname($name)).'/'.basename($name), $s);
 			file_put_contents($path, $s);
 			chmod($path, 0664);
-			$this->exec("add $name");
+			self::exec("add $name");
 		}
 		
 		return true;
 	}
 	
-	function commit($message, $author_account_or_email) {
+	static function commit($message, $author_account_or_email) {
 		if (is_string($author_account_or_email))
 			$author_account_or_email = GBUserAccount::get($author_account_or_email);
 		if (!$author_account_or_email) {
@@ -504,10 +504,15 @@ class GitBlog {
 			return false;
 		}
 		$author = GBUserAccount::formatGitAuthor($author_account_or_email);
-		$this->exec('commit -m '.escapeshellarg($message)
+		self::exec('commit -m '.escapeshellarg($message)
 			. ' --quiet --author='.escapeshellarg($author));
 		@chmod(gb::$repo."/.git/COMMIT_EDITMSG", 0664);
 		return true;
+	}
+	
+	static function syncSiteURLcache() {
+		if (@file_get_contents(gb::$repo.'/.git/info/gitblog-site-url') !== GITBLOG_SITE_URL)
+			gb_atomic_write(gb::$repo.'/.git/info/gitblog-site-url', GITBLOG_SITE_URL, 0664);
 	}
 	
 	/**
@@ -519,19 +524,17 @@ class GitBlog {
 	 *   1  gitblog cache was updated.
 	 *   2  gitdir is missing and need to be created (git init).
 	 */
-	function verifyIntegrity() {
-		if (is_dir(gb::$repo."/.git/info/gitblog")) {
-			if (@file_get_contents(gb::$repo.'/.git/info/gitblog-site-url') !== GITBLOG_SITE_URL)
-				gb_atomic_write(gb::$repo.'/.git/info/gitblog-site-url', GITBLOG_SITE_URL, 0664);
+	static function verifyIntegrity() {
+		self::syncSiteURLcache();
+		if (is_dir(gb::$repo."/.git/info/gitblog"))
 			return 0;
-		}
 		if (!is_dir(gb::$repo."/.git"))
 			return 2;
-		GBRebuilder::rebuild($this, true);
+		GBRebuilder::rebuild(true);
 		return 1;
 	}
 	
-	function verifyConfig() {
+	static function verifyConfig() {
 		if (!gb::$secret or strlen(gb::$secret) < 62) {
 			header('Status: 503 Service Unavailable');
 			header('Content-Type: text/plain; charset=utf-8');
@@ -635,8 +638,8 @@ class GBContent {
 				$this->published = $initial->authorDate;
 			}
 			else {
-				#	add hours, mins and secs from authorDate
-				$this->published += gb_hms_from_time($initial->authorDate);
+				#	combine day from published with time from authorDate
+				$this->published = strtotime(date('Y-m-d', $this->published).'T'.date('H:i:sO', $initial->authorDate));
 			}
 			
 			if (!$this->author) {
@@ -648,13 +651,13 @@ class GBContent {
 		}
 		
 		# specific publish (date and) time?
-		$meta_publish = isset($this->meta['publish']) ? $this->meta['publish'] : 
+		$mp = isset($this->meta['publish']) ? $this->meta['publish'] : 
 			(isset($this->meta['published']) ? $this->meta['published'] : false);
-		$meta_publish = strtoupper($meta_publish);
-		if ($meta_publish === 'FALSE' or $meta_publish === 'NO')
+		$mp = $mp ? strtoupper($mp) : $mp;
+		if ($mp === 'FALSE' or $mp === 'NO')
 			$this->published = false;
-		elseif ($meta_publish !== false and $meta_publish !== 'TRUE' or $meta_publish !== 'YES')
-			$this->published = gb_utcstrtotime($meta_publish, $this->published);
+		elseif ($mp and $mp !== false and $mp !== 'TRUE' and $mp !== 'YES')
+			$this->published = gb_utcstrtotime($mp, $this->published);
 		if ($this->published === false)
 			$this->published = self::NOT_PUBLISHED;
 	}
@@ -742,11 +745,12 @@ class GBPost extends GBContent {
 	}
 	
 	function cachename() {
-		return 'content/posts/'.gmdate("Y/m/d/", $this->published).$this->slug;
+		# Note: the path prefix is a dependency for GBContentFinalizer::finalize
+		return 'content/posts/'.gmdate("Y/m-d-", $this->published).$this->slug;
 	}
 	
 	static function getCached($published, $slug) {
-		$path = gb::$repo."/.git/info/gitblog/content/posts/".gmdate("Y/m/d/", $published).$slug;
+		$path = gb::$repo."/.git/info/gitblog/content/posts/".gmdate("Y/m-d-", $published).$slug;
 		return @unserialize(file_get_contents($path));
 	}
 }
@@ -841,5 +845,4 @@ class GBUserAccount {
 }
 
 $debug_time_started = microtime(true);
-$gitblog = new GitBlog();
 ?>

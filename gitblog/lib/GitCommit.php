@@ -20,7 +20,7 @@ class GitCommit {
 	
 	static public $logFormat = '%H%n%T%n%ae%n%an%n%ai%n%ce%n%cn%n%ci%n%s%x00';
 	
-	static function find($gitblog, $kwargs=null) {
+	static function find($kwargs=null) {
 		static $defaultkwargs = array(
 			'names' => null,
 			'treeish' => 'HEAD',
@@ -60,7 +60,7 @@ class GitCommit {
 			$cmd .= implode(' ', array_map('escapeshellarg', $kwargs['names']));
 		
 		#var_dump($cmd);
-		$out = $gitblog->exec($cmd);
+		$out = GitBlog::exec($cmd);
 		#var_dump($out);
 		
 		$a = 0;

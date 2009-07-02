@@ -1,10 +1,8 @@
 <?
 class GBRebuilder {
-	public $gb;
 	public $forceFullRebuild;
 	
-	function __construct($gb, $forceFullRebuild=false) {
-		$this->gb = $gb;
+	function __construct($forceFullRebuild=false) {
 		$this->forceFullRebuild = $forceFullRebuild;
 	}
 	
@@ -35,7 +33,7 @@ class GBRebuilder {
 	/**
 	 * Rebuild caches, indexes, etc.
 	 */
-	static function rebuild(GitBlog $gb, $forceFullRebuild=false) {
+	static function rebuild($forceFullRebuild=false) {
 		# Load rebuilders if needed
 		if (empty(self::$rebuilders))
 			self::loadRebuilders();
@@ -43,10 +41,10 @@ class GBRebuilder {
 		# Create rebuilder instances
 		$rebuilders = array();
 		foreach (self::$rebuilders as $cls)
-			$rebuilders[] = new $cls($gb, $forceFullRebuild);
+			$rebuilders[] = new $cls($forceFullRebuild);
 		
 		# Query ls-tree
-		$ls = rtrim($gb->exec('ls-files --stage'));
+		$ls = rtrim(GitBlog::exec('ls-files --stage'));
 		
 		if ($ls) {
 			# Iterate objects

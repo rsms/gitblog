@@ -1,0 +1,43 @@
+Stored at {repo}/content/{pathname of content object}.comments and contains
+chunks of JSON data.
+
+Example:
+	Post: 		{repo}/content/posts/2008/11/24-smisk.html
+	Comments: {repo}/content/posts/2008/11/24-smisk.comments
+
+Comments are read like this:
+	$comments = json_decode(file_get_contents(path));
+
+And added like this: (pseudo code)
+	fp = open(path)
+	flock(fp, excl)
+	$comments = json_decode(fread(fp))
+	if (!$comments)
+		$comments = array($comment)
+	else
+		$comments[] = $comment
+	fseek(fp, 0)
+	fwrite(fp, json_encode($comments))
+	funlock(fp)
+	fclose(fp)
+	GitBlog::add(path)
+	GitBlog::commit('new comment on {post->}', 
+	                comment->name.' <'.comment->email.'>')
+
+This is how .comment-files look:
+
+[
+	{
+	  "date": "2008-11-24T21:27:06+0200",
+		"ip_address": "89.233.196.218",
+		"email": "maxberggren@gmail.com",
+		"uri": "http://maxberggren.com",
+		"name": "Max Berggren",
+		"content": "Whatever \"content\" in\nhere",
+		"approved": true,
+		"comments": [
+			/* comment, .. */
+		]
+	},
+	/* comment, .. */
+]

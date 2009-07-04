@@ -590,7 +590,6 @@ class GBContent {
 				chmod($p, 0775);
 			}
 		}
-		
 		return gb_atomic_write($path, serialize($this), 0664);
 	}
 	
@@ -638,7 +637,7 @@ class GBExposedContent extends GBContent {
 	public $body;
 	public $tags = array();
 	public $categories = array();
-	public $commentCount = 0;
+	public $comments;
 	
 	# 2038-01-19 03:14:07 UTC ("distant future" on 32bit systems)
 	const NOT_PUBLISHED = 2147483647;
@@ -768,14 +767,14 @@ class GBExposedContent extends GBContent {
 	
 	function __sleep() {
 		return array_merge(parent::__sleep(), array(
-			'slug','meta','title','body','tags','categories','commentCount'));
+			'slug','meta','title','body','tags','categories','comments'));
 	}
 }
 
 
 class GBPage extends GBExposedContent {
 	static function mkCachename($slug) {
-		return 'content/posts/pages/'.$slug;
+		return 'content/pages/'.$slug;
 	}
 	
 	static function getCached($slug) {
@@ -835,12 +834,6 @@ class GBComments extends GBContent {
 	function __sleep() {
 		return array_merge(parent::__sleep(), array('comments', 'cachenamePrefix'));
 	}
-}
-
-class GBPageComments extends GBComments {
-}
-
-class GBPostComments extends GBComments {
 }
 
 /**

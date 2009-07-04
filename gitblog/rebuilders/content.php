@@ -2,7 +2,7 @@
 # content rebuilders, for objects stored in the content directory.
 
 class GBContentRebuilder extends GBRebuilder {
-	function _onObject(&$obj, $cls, $name, $id, $slug=null) {
+	function deferReloadIfNeeded(&$obj, $cls, $name, $id, $arg3=null) {
 		# check for missing or outdated cache
 		if ( $this->forceFullRebuild
 			or ($obj === false) 
@@ -10,12 +10,25 @@ class GBContentRebuilder extends GBRebuilder {
 			or ($obj->id != $id) )
 		{
 			# defer loading of uncached blobs until call to finalize()
-			$obj = ($slug !== null) ? new $cls($name, $id, $slug) : new $cls($name, $id);
-			GBContentFinalizer::$dirtyObjects[$id] = $obj;
+			$obj = ($arg3 !== null) ? new $cls($name, $id, $arg3) : new $cls($name, $id);
+			return true;
 		}
-		
-		# append to maps
+		return false;
+	}
+	
+	function _onObject($obj, $cls, $name, $id, $arg3=null) {
+		if ($this->deferReloadIfNeeded($obj, $cls, $name, $id, $arg3))
+			GBContentFinalizer::$dirtyObjects[$id] = $obj;
 		GBContentFinalizer::$objects[] = $obj;
+		return $obj;
+	}
+	
+	function _onComment($name, $id, $cachenamePrefix) {
+		$obj = GBComments::getCached($cachenamePrefix);
+		if ($this->deferReloadIfNeeded($obj, 'GBComments', $name, $id, $cachenamePrefix))
+			GBContentFinalizer::$dirtyComments[$id] = $obj;
+		GBContentFinalizer::$comments[substr($name, 0, -9)] = $obj;
+		return $obj;
 	}
 }
 
@@ -60,21 +73,17 @@ class GBPostsRebuilder extends GBContentRebuilder {
 		if (!$slug)
 			$slug = 'post';
 		
-		# different classes for comments and expoesd files
-		$is_comments = $fnext === 'comments';
-		$cls = $is_comments ? 'GBPostComments' : 'GBPost';
+		# comment or post?
+		if ($fnext === 'comments') {
+			$obj = $this->_onComment($name, $id, GBPost::mkCachename($date, $slug));
+		}
+		else {
+			$obj = $this->_onObject(GBPost::getCached($date, $slug), 'GBPost', $name, $id, $slug);
+			self::$posts[] = $obj;
+		}
 		
-		# read, put into reload if needed, etc
-		$cachename = GBPost::mkCachename($date, $slug);
-		$obj = $is_comments ? GBComments::getCached($cachename) : GBPost::getCached($date, $slug);
-		# Last arg: 3rd argument for GBPostComments::__construct is cachenamePrefix
-		$this->_onObject($obj, $cls, $name, $id, $is_comments ? $cachename : $slug);
 		if ($obj->published === false and $date !== false)
 			$obj->published = $date;
-		
-		# append exposed file to self::$posts
-		if (!$is_comments)
-			self::$posts[] = $obj;
 		
 		return true;
 	}
@@ -96,16 +105,11 @@ class GBPagesRebuilder extends GBContentRebuilder {
 		$fnext = $slug[1];
 		$slug = $slug[0];
 		
-		# comment file?
-		if ($fnext === 'comments') {
-			# todo
-			echo 'TODO handle comments for pages in '.__FILE__.':'.__LINE__."\n";
-			return false;
-		}
-		
-		# read, put into reload if needed, etc
-		$obj = GBPage::getCached($slug);
-		$this->_onObject($obj, 'GBPage', $name, $id, $slug);
+		# comment or page?
+		if ($fnext === 'comments')
+			$obj = $this->_onComment($name, $id, GBPage::mkCachename($slug));
+		else
+			$obj = $this->_onObject(GBPage::getCached($slug), 'GBPage', $name, $id, $slug);
 		
 		return true;
 	}
@@ -120,12 +124,17 @@ class GBPagesRebuilder extends GBContentRebuilder {
  * content objects is simpler this way.
  */
 class GBContentFinalizer extends GBContentRebuilder {
-	static public $objects; # [obj, ..]
-	static public $dirtyObjects = array(); # [id => obj, ..]
+	static public $objects;       # [GBContent, ..]
+	static public $dirtyObjects;  # [id   => GBContent, ..]
+	static public $comments;      # [name => GBComments, ..]
+	static public $dirtyComments; # [id   => GBComments, ..]
 	
 	function __construct($forceFullRebuild=false) {
 		parent::__construct($forceFullRebuild);
 		self::$objects = array();
+		self::$dirtyObjects = array();
+		self::$comments = array();
+		self::$dirtyComments = array();
 	}
 	
 	/** Batch-reload objects */
@@ -174,45 +183,52 @@ class GBContentFinalizer extends GBContentRebuilder {
 		}
 	}
 	
-	function finalize() {
-		# (re)load dirty objects
-		if (self::$dirtyObjects) {
-			$this->reloadObjects(self::$dirtyObjects);
-			foreach (self::$dirtyObjects as $obj)
+	function reloadAndWriteCache($objects) {
+		if ($objects) {
+			$this->reloadObjects($objects);
+			foreach ($objects as $obj) {
+				echo 'gb> '.$obj->cachename().PHP_EOL;
 				$obj->writeCache();
+			}
 		}
+	}
+	
+	function finalize() {
+		# check comments dependencies, marking rdeps dirty if needed
+		$this->_checkCommentDeps();
+		
+		# (re)load dirty comments
+		$this->reloadAndWriteCache(self::$dirtyComments);
+		
+		# (re)load dirty objects
+		$this->reloadAndWriteCache(self::$dirtyObjects);
 		
 		# sort objects on published, desc. with a granularity of one second
 		usort(GBPostsRebuilder::$posts, 'gb_sortfunc_cobj_date_published_r');
 		
 		# build posts pages
-		$this->_finalizePagedPosts();
+		$this->_buildPagedPosts();
 		
 		# garbage collect stage cache
 		$this->_gcStageCache();
 	}
 	
-	function _gcStageCache() {
-		# List cachenames
-		$cachenames = array();
-		foreach (self::$objects as $obj)
-			$cachenames[$obj->cachename()] = 1;
-		
-		# remove unused objects from stage cache (todo: this can be very expensive with much content)
-		$prefix_len = strlen(gb::$repo.'/.git/info/gitblog/');
-		$existing_paths = glob(gb::$repo.
-			'/.git/info/gitblog/content/{posts/*/*,pages/{*,*/*,*/*/*,*/*/*/*,*/*/*/*/*,*/*/*/*/*/*}}',
-			GLOB_BRACE|GLOB_NOSORT|GLOB_MARK);
-		foreach ($existing_paths as $path) {
-			if (substr($path, -1) === '/')
-				continue;
-			$cachename = substr($path, $prefix_len);
-			if (!isset($cachenames[$cachename]))
-				unlink($path);
+	function _checkCommentDeps() {
+		# assure GBExposedContent objects with dirty comments are added to dirtyObjects
+		foreach (self::$dirtyComments as $id => $cobj) {
+			$parentName = substr($cobj->name, 0, -9); # .comments
+			$parentNameLen = strlen($parentName);
+			foreach (self::$objects as $parentObj) {
+				if (substr($parentObj->name, 0, $parentNameLen) === $parentName) {
+					if (!in_array($parentObj, self::$dirtyObjects, true))
+						self::$dirtyObjects[$parentObj->id] = $parentObj;
+					$parentObj->comments = $cobj;
+				}
+			}
 		}
 	}
 	
-	function _finalizePagedPosts() {
+	function _buildPagedPosts() {
 		$published_posts = array();
 		$time_now = time();
 		foreach (GBPostsRebuilder::$posts as $post)
@@ -258,6 +274,28 @@ class GBContentFinalizer extends GBContentRebuilder {
 					$page->nextpage = $pageno+1;
 				gb_atomic_write($path, serialize($page), 0664);
 			}
+		}
+	}
+	
+	function _gcStageCache() {
+		# Build cachenames
+		$cachenames = array();
+		foreach (self::$objects as $obj)
+			$cachenames[$obj->cachename()] = 1;
+		foreach (self::$comments as $obj)
+			$cachenames[$obj->cachename()] = 1;
+		
+		# remove unused objects from stage cache (todo: this can be very expensive with much content)
+		$prefix_len = strlen(gb::$repo.'/.git/info/gitblog/');
+		$existing_paths = glob(gb::$repo.
+			'/.git/info/gitblog/content/{posts/*/*,pages/{*,*/*,*/*/*,*/*/*/*,*/*/*/*/*,*/*/*/*/*/*}}',
+			GLOB_BRACE|GLOB_NOSORT|GLOB_MARK);
+		foreach ($existing_paths as $path) {
+			if (substr($path, -1) === '/')
+				continue;
+			$cachename = substr($path, $prefix_len);
+			if (!isset($cachenames[$cachename]))
+				unlink($path);
 		}
 	}
 }

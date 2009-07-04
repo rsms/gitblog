@@ -193,8 +193,16 @@ function gb_parse_content_obj_headers($lines, &$out) {
 
 /** path w/o extension */
 function gb_filenoext($path) {
-	$p = strpos($path, '.', strrpos($path, '/'));
+	$p = strrpos($path, '.', strrpos($path, '/'));
 	return $p > 0 ? substr($path, 0, $p) : $path;
+}
+
+
+/** split path into array("path w/o extension", "extension") */
+function gb_fnsplit($path) {
+	$p = strrpos($path, '.', strrpos($path, '/'));
+	return array($p > 0 ? substr($path, 0, $p) : $path,
+		$p !== false ? substr($path, $p+1) : '');
 }
 
 
@@ -496,16 +504,9 @@ class GitBlog {
 		return true;
 	}
 	
-	static function commit($message, $author_account_or_email) {
-		if (is_string($author_account_or_email))
-			$author_account_or_email = GBUserAccount::get($author_account_or_email);
-		if (!$author_account_or_email) {
-			trigger_error('no author');
-			return false;
-		}
-		$author = GBUserAccount::formatGitAuthor($author_account_or_email);
-		self::exec('commit -m '.escapeshellarg($message)
-			. ' --quiet --author='.escapeshellarg($author));
+	static function commit($message, $author=null) {
+		$author = $author ? '--author='.escapeshellarg($author) : '';
+		self::exec('commit -m '.escapeshellarg($message).' --quiet '.$author);
 		@chmod(gb::$repo."/.git/COMMIT_EDITMSG", 0664);
 		return true;
 	}
@@ -525,13 +526,15 @@ class GitBlog {
 	 *   2  gitdir is missing and need to be created (git init).
 	 */
 	static function verifyIntegrity() {
+		$r = 0;
+		if (!is_dir(gb::$repo."/.git/info/gitblog")) {
+			if (!is_dir(gb::$repo."/.git"))
+				return 2;
+			GBRebuilder::rebuild(true);
+			$r = 1;
+		}
 		self::syncSiteURLcache();
-		if (is_dir(gb::$repo."/.git/info/gitblog"))
-			return 0;
-		if (!is_dir(gb::$repo."/.git"))
-			return 2;
-		GBRebuilder::rebuild(true);
-		return 1;
+		return $r;
 	}
 	
 	static function verifyConfig() {
@@ -553,18 +556,89 @@ function gb_html_postprocess_filter($body) {
 
 
 class GBContent {
-	public $name;
+	public $name; # relative to root tree
 	public $id;
+	public $mimeType = null;
+	public $author = null;
+	public $modified = false; # timestamp
+	public $published = false; # timestamp
+	
+	function __construct($name=null, $id=null) {
+		$this->name = $name;
+		$this->id = $id;
+	}
+	
+	function cachename() {
+		return gb_filenoext($this->name);
+	}
+	
+	static function getCached($name) {
+		$path = gb::$repo."/.git/info/gitblog/".gb_filenoext($name);
+		return @unserialize(file_get_contents($path));
+	}
+	
+	function writeCache() {
+		$path = gb::$repo."/.git/info/gitblog/".$this->cachename();
+		$dirname = dirname($path);
+		
+		if (!is_dir($dirname)) {
+			$p = gb::$repo."/.git/info";
+			$parts = array_merge(array('gitblog'),explode('/',trim(dirname($this->cachename()),'/')));
+			foreach ($parts as $part) {
+				$p .= '/'.$part;
+				@mkdir($p, 0775, true);
+				chmod($p, 0775);
+			}
+		}
+		
+		return gb_atomic_write($path, serialize($this), 0664);
+	}
+	
+	function reload($data, $commits) {
+		$this->mimeType = GBMimeType::forFilename($this->name);
+		$this->applyInfoFromCommits($commits);
+	}
+	
+	protected function applyInfoFromCommits($commits) {
+		if (!$commits)
+			return;
+		
+		# latest one is last modified
+		$this->modified = $commits[0]->authorDate;
+		
+		# first one is when the content was created
+		$initial = $commits[count($commits)-1];
+		if ($this->published === false) {
+			$this->published = $initial->authorDate;
+		}
+		else {
+			#	combine day from published with time from authorDate
+			$this->published = strtotime(
+				date('Y-m-d', $this->published).'T'.date('H:i:sO', $initial->authorDate));
+		}
+		
+		if (!$this->author) {
+			$this->author = (object)array(
+				'name' => $initial->authorName,
+				'email' => $initial->authorEmail
+			);
+		}
+	}
+	
+	function __sleep() {
+		return array('name','id','mimeType','author','modified','published');
+	}
+}
+
+
+class GBExposedContent extends GBContent {
 	public $slug;
 	public $meta;
 	public $title;
 	public $body;
-	public $mimeType = null;
 	public $tags = array();
 	public $categories = array();
-	public $author = null;
-	public $published = false; # timestamp
-	public $modified = false; # timestamp
+	public $commentCount = 0;
 	
 	# 2038-01-19 03:14:07 UTC ("distant future" on 32bit systems)
 	const NOT_PUBLISHED = 2147483647;
@@ -575,26 +649,34 @@ class GBContent {
 	);
 	
 	function __construct($name=null, $id=null, $slug=null, $meta=array(), $body=null) {
-		$this->name = $name;
-		$this->id = $id;
+		parent::__construct($name, $id);
 		$this->slug = $slug;
 		$this->meta = $meta;
 		$this->body = $body;
 	}
 	
+	function applyFilters() {
+		if (isset(self::$filters[$this->mimeType])) {
+			foreach (self::$filters[$this->mimeType] as $filter)
+				$s = $filter($this->body);
+				if ($s === false)
+					break;
+				$this->body = $s;
+		}
+	}
+	
 	function reload($data, $commits) {
 		$bodystart = strpos($data, "\n\n");
 		
-		if ($bodystart === false) {
-			trigger_error("malformed content object '{$this->name}' missing header");
-			return;
-		}
+		if ($bodystart === false)
+			$bodystart = 0;
+			#trigger_error("malformed content object '{$this->name}' missing header");
 		
 		$this->body = null;
 		$this->meta = array();
-		$this->mimeType = GBMimeType::forFilename($this->name);
 		
-		gb_parse_content_obj_headers(substr($data, 0, $bodystart), $this->meta);
+		if ($bodystart > 0)
+			gb_parse_content_obj_headers(substr($data, 0, $bodystart), $this->meta);
 		
 		# lift lists from meta to this
 		static $special_lists = array('tag'=>'tags', 'category'=>'categories');
@@ -627,28 +709,8 @@ class GBContent {
 		if ($this->body)
 			$this->applyFilters();
 		
-		# translate info from commits
-		if ($commits) {
-			# latest one is last modified
-			$this->modified = $commits[0]->authorDate;
-			
-			# first one is when the content was created
-			$initial = $commits[count($commits)-1];
-			if ($this->published === false) {
-				$this->published = $initial->authorDate;
-			}
-			else {
-				#	combine day from published with time from authorDate
-				$this->published = strtotime(date('Y-m-d', $this->published).'T'.date('H:i:sO', $initial->authorDate));
-			}
-			
-			if (!$this->author) {
-				$this->author = (object)array(
-					'name' => $initial->authorName,
-					'email' => $initial->authorEmail
-				);
-			}
-		}
+		# apply and translate info from commits
+		$this->applyInfoFromCommits($commits);
 		
 		# specific publish (date and) time?
 		$mp = isset($this->meta['publish']) ? $this->meta['publish'] : 
@@ -662,44 +724,8 @@ class GBContent {
 			$this->published = self::NOT_PUBLISHED;
 	}
 	
-	function applyFilters() {
-		if (isset(self::$filters[$this->mimeType])) {
-			foreach (self::$filters[$this->mimeType] as $filter)
-				$s = $filter($this->body);
-				if ($s === false)
-					break;
-				$this->body = $s;
-		}
-	}
-	
 	function urlpath() {
 		return str_replace('%2F', '/', urlencode($this->slug));
-	}
-	
-	function cachename() {
-		return gb_filenoext($this->name);
-	}
-	
-	static function getCached($name) {
-		$path = gb::$repo."/.git/info/gitblog/".gb_filenoext($name);
-		return @unserialize(file_get_contents($path));
-	}
-	
-	function writeCache() {
-		$path = gb::$repo."/.git/info/gitblog/".$this->cachename();
-		$dirname = dirname($path);
-		
-		if (!is_dir($dirname)) {
-			$p = gb::$repo."/.git/info";
-			$parts = array_merge(array('gitblog'),explode('/',trim(dirname($this->cachename()),'/')));
-			foreach ($parts as $part) {
-				$p .= '/'.$part;
-				@mkdir($p, 0775, true);
-				chmod($p, 0775);
-			}
-		}
-		
-		return gb_atomic_write($path, serialize($this), 0664);
 	}
 	
 	function url() {
@@ -717,7 +743,7 @@ class GBContent {
 	function collLinks($what, $separator=', ', $template='<a href="%u">%n</a>', $htmlescape=true) {
 		static $needles = array('%u', '%n');
 		$links = array();
-		$vn = "{$what}_prefix";
+		$vn = $what.'_prefix';
 		$u = GITBLOG_SITE_URL . gb::$index_url . gb::$$vn;
 		
 		foreach ($this->$what as $tag) {
@@ -727,31 +753,132 @@ class GBContent {
 		
 		return $separator !== null ? implode($separator, $links) : $links;
 	}
-}
-
-
-class GBPage extends GBContent {
-	static function getCached($slug) {
-		$path = gb::$repo."/.git/info/gitblog/content/pages/".$slug;
-		return @unserialize(file_get_contents($path));
+	
+	# An instance of GBComments
+	protected $_comments = null;
+	
+	function __get($name) {
+		if ($name === 'comments') {
+			if ($this->_comments === null)
+				$this->_comments = GBComments::getCached(self::mkCachename());
+			return $this->_comments;
+		}
+		return null;
+	}
+	
+	function __sleep() {
+		return array_merge(parent::__sleep(), array(
+			'slug','meta','title','body','tags','categories','commentCount'));
 	}
 }
 
 
-class GBPost extends GBContent {
+class GBPage extends GBExposedContent {
+	static function mkCachename($slug) {
+		return 'content/posts/pages/'.$slug;
+	}
+	
+	static function getCached($slug) {
+		$path = gb::$repo.'/.git/info/gitblog/'.self::mkCachename($slug);
+		return @unserialize(file_get_contents($path));
+	}
+	
+	protected function getCachedComments() {
+		return GBPageComments::getCached(self::mkCachename());
+	}
+}
+
+
+class GBPost extends GBExposedContent {
 	function urlpath() {
 		return gmstrftime(gb::$posts_url_prefix, $this->published)
 			. str_replace('%2F', '/', urlencode($this->slug));
 	}
 	
-	function cachename() {
+	static function mkCachename($published, $slug) {
 		# Note: the path prefix is a dependency for GBContentFinalizer::finalize
-		return 'content/posts/'.gmdate("Y/m-d-", $this->published).$this->slug;
+		return 'content/posts/'.gmdate('Y/m-d-', $published).$slug;
+	}
+	
+	function cachename() {
+		return self::mkCachename($this->published, $this->slug);
 	}
 	
 	static function getCached($published, $slug) {
-		$path = gb::$repo."/.git/info/gitblog/content/posts/".gmdate("Y/m-d-", $published).$slug;
+		$path = gb::$repo.'/.git/info/gitblog/'.self::mkCachename($published, $slug);
 		return @unserialize(file_get_contents($path));
+	}
+}
+
+
+class GBComments extends GBContent {
+	/** [GBComment, ..] */
+	public $comments = array();
+	public $cachenamePrefix;
+	
+	function __construct($name=null, $id=null, $cachenamePrefix=null) {
+		parent::__construct($name, $id);
+		$this->cachenamePrefix = $cachenamePrefix;
+	}
+	
+	function cachename() {
+		if (!$this->cachenamePrefix)
+			throw new UnexpectedValueException('cachenamePrefix is empty or null');
+		return $this->cachenamePrefix.'.comments';
+	}
+	
+	static function getCached($cachenamePrefix) {
+		$path = gb::$repo.'/.git/info/gitblog/'.$cachenamePrefix.'.comments';
+		return @unserialize(file_get_contents($path));
+	}
+	
+	function __sleep() {
+		return array_merge(parent::__sleep(), array('comments', 'cachenamePrefix'));
+	}
+}
+
+class GBPageComments extends GBComments {
+}
+
+class GBPostComments extends GBComments {
+}
+
+/**
+ * Comments.
+ * 
+ * Accessible from GBComments
+ * Managed through GBCommentDB
+ */
+class GBComment {
+	public $date;
+	public $ip_address;
+	public $email;
+	public $uri;
+	public $name;
+	public $message;
+	public $approved;
+	public $comments;
+	
+	function __construct($state=array()) {
+		if ($state) {
+			foreach ($state as $k => $v) {
+				if ($k === 'comments' and $v !== null)
+					foreach ($v as $k2 => $v2)
+						$v[$k2] = new self($v2);
+				$this->$k = $v;
+			}
+		}
+	}
+	
+	function gitAuthor() {
+		return ($this->name ? $this->name.' ' : '').($this->email ? '<'.$this->email.'>' : '');
+	}
+	
+	function append(GBComment $comment) {
+		if ($this->comments === null)
+			$this->comments = array(1 => $comment);
+		else
+			$this->comments[array_pop(array_keys($this->comments))+1] = $comment;
 	}
 }
 
@@ -759,6 +886,16 @@ class GBPost extends GBContent {
 # Users
 
 class GBUserAccount {
+	public $name;
+	public $email;
+	public $passhash;
+	
+	function __construct($name, $email, $passhash) {
+		$this->name = $name;
+		$this->email = $email;
+		$this->passhash = $passhash;
+	}
+	
 	static public $db = null;
 	
 	static function _reload() {
@@ -788,11 +925,7 @@ class GBUserAccount {
 		if (self::$db === null)
 			self::_reload();
 		$email = strtolower($email);
-		self::$db[$email] = array(
-			'email' => $email,
-			'passhash' => self::passhash($email, $passphrase),
-			'name' => $name
-		);
+		self::$db[$email] = new GBUserAccount($name, $email, self::passhash($email, $passphrase));
 		if ($admin and !self::setAdmin($email))
 			return false;
 		return self::sync() ? true : false;
@@ -838,9 +971,13 @@ class GBUserAccount {
 			return '';
 		}
 		$s = '';
-		if ($account['name'])
-			$s = $account['name'] . ' ';
-		return $s . '<'.$account['email'].'>';
+		if ($account->name)
+			$s = $account->name . ' ';
+		return $s . '<'.$account->email.'>';
+	}
+	
+	function gitAuthor() {
+		return self::formatGitAuthor($this);
 	}
 }
 

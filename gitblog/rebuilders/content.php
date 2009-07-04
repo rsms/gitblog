@@ -2,7 +2,7 @@
 # content rebuilders, for objects stored in the content directory.
 
 class GBContentRebuilder extends GBRebuilder {
-	function _onObject(&$obj, $cls, $name, $id, $slug) {
+	function _onObject(&$obj, $cls, $name, $id, $slug=null) {
 		# check for missing or outdated cache
 		if ( $this->forceFullRebuild
 			or ($obj === false) 
@@ -10,7 +10,7 @@ class GBContentRebuilder extends GBRebuilder {
 			or ($obj->id != $id) )
 		{
 			# defer loading of uncached blobs until call to finalize()
-			$obj = new $cls($name, $id, $slug);
+			$obj = ($slug !== null) ? new $cls($name, $id, $slug) : new $cls($name, $id);
 			GBContentFinalizer::$dirtyObjects[$id] = $obj;
 		}
 		
@@ -49,22 +49,32 @@ class GBPostsRebuilder extends GBContentRebuilder {
 		
 		$this->parsePostName($name, $date, $slug, $fnext);
 		
+		# date missing means malformed pathname
+		if ($date === false) {
+			throw new UnexpectedValueException(
+				'malformed post "'.$name.'" missing date prefix -- skipping');
+			return false;
+		}
+		
 		# handle missing slug. content/posts/2009-01-22 => post
 		if (!$slug)
 			$slug = 'post';
 		
-		# date missing means malformed pathname
-		if ($date === false) {
-			trigger_error("malformed post '$name' missing date prefix -- skipping");
-			return false;
-		}
+		# different classes for comments and expoesd files
+		$is_comments = $fnext === 'comments';
+		$cls = $is_comments ? 'GBPostComments' : 'GBPost';
 		
 		# read, put into reload if needed, etc
-		$obj = GBPost::getCached($date, $slug);
-		$this->_onObject($obj, 'GBPost', $name, $id, $slug);
+		$cachename = GBPost::mkCachename($date, $slug);
+		$obj = $is_comments ? GBComments::getCached($cachename) : GBPost::getCached($date, $slug);
+		# Last arg: 3rd argument for GBPostComments::__construct is cachenamePrefix
+		$this->_onObject($obj, $cls, $name, $id, $is_comments ? $cachename : $slug);
 		if ($obj->published === false and $date !== false)
 			$obj->published = $date;
-		self::$posts[] = $obj;
+		
+		# append exposed file to self::$posts
+		if (!$is_comments)
+			self::$posts[] = $obj;
 		
 		return true;
 	}
@@ -82,11 +92,22 @@ class GBPagesRebuilder extends GBContentRebuilder {
 		if (substr($name, 0, 14) !== 'content/pages/')
 			return false;
 		
-		$slug = gb_filenoext(substr($name, 14));
+		$slug = gb_fnsplit(substr($name, 14));
+		$fnext = $slug[1];
+		$slug = $slug[0];
+		
+		# comment file?
+		if ($fnext === 'comments') {
+			# todo
+			echo 'TODO handle comments for pages in '.__FILE__.':'.__LINE__."\n";
+			return false;
+		}
 		
 		# read, put into reload if needed, etc
 		$obj = GBPage::getCached($slug);
 		$this->_onObject($obj, 'GBPage', $name, $id, $slug);
+		
+		return true;
 	}
 }
 

@@ -93,7 +93,7 @@ if (isset($_POST['submit'])) {
 	# commit changes (done by GitBlog::init())
 	if (!$errors) {
 		try {
-			if (!GitBlog::commit('gitblog created', GBUserAccount::getAdmin()))
+			if (!GitBlog::commit('gitblog created', GBUserAccount::getAdmin()->gitAuthor()))
 				$errors[] = 'failed to commit creation';
 		}
 		catch (Exception $e) {

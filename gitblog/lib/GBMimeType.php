@@ -483,11 +483,8 @@ class GBMimeType {
 	
 	static function forFilename($filename) {
 		$p = strrpos($filename, '.', strrpos($filename, '/'));
-		if ($p !== false) {
-			$ext = substr($filename, $p+1);
-			if (isset(self::$map[$ext]))
-				return self::$map[$ext];
-		}
+		if ($p !== false)
+			return self::forExtension(substr($filename, $p+1));
 		return null;
 	}
 }

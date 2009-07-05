@@ -1,13 +1,5 @@
 # ToDo
 
-- Comments
-	
-		{site_dir}/comments/{name}.json
-		or
-		{site_dir}/content/{name}.comments
-		or
-		{site_dir}/comments/{name}/{comment}+
-
 - Package structure
 	
 		mkdir myblog && cd myblog
@@ -27,4 +19,4 @@
 
 - Wordpress importer
 	
-	`deps`: Comments
+	`deps`: Comments}

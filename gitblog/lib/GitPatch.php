@@ -52,7 +52,7 @@ class GitPatch {
 			}
 		
 			# prev/curr name
-			elseif ($start3 === '---' or $start3 === '+++') {
+			elseif ($start3 === '---' || $start3 === '+++') {
 				$s = rtrim(substr($line, 4));
 				if ($s === '/dev/null')
 					$s = null;

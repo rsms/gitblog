@@ -12,6 +12,17 @@ class JSONDB extends FileDB {
 	/** For keeping track of modifications done or not */
 	protected $originalData = null;
 	
+	function __construct($file='/dev/null', $createmode=0660, $autocommit=true) {
+		parent::__construct($file, $createmode);
+		$this->autocommit = $autocommit;
+	}
+	
+	function loadString($s) {
+		$this->autocommit = false;
+		$this->data = $s;
+		$this->parseData();
+	}
+	
 	function throwJsonEncoderError($errno=false) {
 		if (function_exists('json_last_error')) {
 			if ($errno === false)
@@ -31,13 +42,17 @@ class JSONDB extends FileDB {
 		}
 	}
 	
-	protected function txReadData() {
-		parent::txReadData();
+	function parseData() {
 		$this->originalData = $this->data;
 		if ($this->data === '')
 			$this->data = array();
 		elseif ( ($this->data = json_decode($this->data, true)) === null )
 			$this->throwJsonEncoderError();
+	}
+	
+	protected function txReadData() {
+		parent::txReadData();
+		$this->parseData();
 	}
 	
 	protected function txWriteData() {
@@ -49,7 +64,7 @@ class JSONDB extends FileDB {
 	}
 	
 	function set($key, $value=null) {
-		$temptx = $this->txFp === false and $this->autocommit;
+		$temptx = $this->txFp === false && $this->autocommit;
 		if ($temptx)
 			$this->begin();
 		if ($this->data === null)
@@ -65,7 +80,7 @@ class JSONDB extends FileDB {
 	}
 	
 	function get($key=null) {
-		$temptx = $this->txFp === false and $this->autocommit;
+		$temptx = $this->txFp === false && $this->autocommit;
 		if ($temptx)
 			$this->begin();
 		if ($this->data === null)

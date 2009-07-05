@@ -9,12 +9,11 @@
 			<li>Modified: <?= date('c', $post->modified) ?></li>
 			<li>Tags: <?= implode(', ', $post->tags) ?></li>
 			<li>Categories: <?= implode(', ', $post->categories) ?></li>
+			<li>Comments: <?= $post->comments ?></li>
 			<li>Revision (current object): <?= $post->id ?></li>
 		</ul>
 	</div>
-	<p>
-		<?= $post->body ?>
-	</p>
+	<?= $post->body ?>
 	<div class="breaker"></div>
 <? endforeach ?>
 <? if ($postspage->nextpage != -1): ?>

@@ -82,7 +82,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 			self::$posts[] = $obj;
 		}
 		
-		if ($obj->published === false and $date !== false)
+		if ($obj->published === false && $date !== false)
 			$obj->published = $date;
 		
 		return true;
@@ -206,11 +206,19 @@ class GBContentFinalizer extends GBContentRebuilder {
 		# sort objects on published, desc. with a granularity of one second
 		usort(GBPostsRebuilder::$posts, 'gb_sortfunc_cobj_date_published_r');
 		
+		# build indexes
+		$this->_buildIndexes();
+		
 		# build posts pages
 		$this->_buildPagedPosts();
 		
 		# garbage collect stage cache
 		$this->_gcStageCache();
+	}
+	
+	function _buildIndexes() {
+		# build comments index
+		
 	}
 	
 	function _checkCommentDeps() {
@@ -233,10 +241,11 @@ class GBContentFinalizer extends GBContentRebuilder {
 		$time_now = time();
 		foreach (GBPostsRebuilder::$posts as $post)
 			if ($post->published <= $time_now)
-				$published_posts[] = $post;
+				$published_posts[] = $post->condensedVersion();
 		$pages = array_chunk($published_posts, gb::$posts_pagesize);
 		$numpages = count($pages);
-		$dir = gb::$repo."/.git/info/gitblog/content-paged-posts";
+		$dir = gb::$repo.'/.git/info/gitblog/content-paged-posts';
+		$dirPrefixLen = strlen(gb::$repo.'/.git/info/gitblog/');
 		
 		if (!is_dir($dir)) {
 			mkdir($dir, 0775, true);
@@ -251,10 +260,10 @@ class GBContentFinalizer extends GBContentRebuilder {
 		
 		foreach ($pages as $pageno => $page) {
 			$path = $dir.'/'.sprintf('%011d', $pageno);
-			$need_rewrite = $is_empty or $this->forceFullRebuild or (!file_exists($path));
+			$need_rewrite = $is_empty || $this->forceFullRebuild || (!file_exists($path));
 			
 			# check if any objects on this page are dirty
-			if (!$need_rewrite and GBContentFinalizer::$dirtyObjects) {
+			if (!$need_rewrite && GBContentFinalizer::$dirtyObjects) {
 				foreach ($page as $post) {
 					if (in_array($post, GBContentFinalizer::$dirtyObjects)) {
 						$need_rewrite = true;
@@ -273,6 +282,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 				if ($pageno < $numpages-1)
 					$page->nextpage = $pageno+1;
 				gb_atomic_write($path, serialize($page), 0664);
+				echo 'gb> '.substr($path, $dirPrefixLen).PHP_EOL;
 			}
 		}
 	}

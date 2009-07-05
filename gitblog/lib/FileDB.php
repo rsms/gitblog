@@ -8,6 +8,7 @@
 class FileDB {
 	public $file;
 	public $createmode;
+	public $data = null;
 	
 	function __construct($file, $createmode=0660) {
 		$this->file = $file;
@@ -16,20 +17,19 @@ class FileDB {
 	
 	protected $txExclusive = true;
 	protected $txFp = false;
-	protected $data = null;
 	
 	function begin($exclusive=true) {
 		if ($this->txFp !== false)
 			throw new LogicException('a transaction is already active');
 		$this->txExclusive = $exclusive;
 		$this->txFp = @fopen($this->file, 'r+');
-		if ( ($this->txFp === false) and (($this->txFp = fopen($this->file, 'x+')) !== false) ) {
+		if ( ($this->txFp === false) && (($this->txFp = fopen($this->file, 'x+')) !== false) ) {
 			if ($this->createmode !== false)
 				chmod($this->file, $this->createmode);
 		}
 		if ($this->txFp === false)
 			throw new RuntimeException('fopen('.var_export($this->file,1).', "x+") failed');
-		if ($this->txExclusive and !flock($this->txFp, LOCK_EX)) {
+		if ($this->txExclusive && !flock($this->txFp, LOCK_EX)) {
 			fclose($this->txFp);
 			throw new RuntimeException('flock(<txFp>, LOCK_EX) failed');
 		}
@@ -75,7 +75,7 @@ class FileDB {
 	}
 	
 	protected function txEnd(Exception $previousex=null) {
-		if ($this->txExclusive and !flock($this->txFp, LOCK_UN))
+		if ($this->txExclusive && !flock($this->txFp, LOCK_UN))
 			throw new RuntimeException('flock(<txFp>, LOCK_UN) failed', 0, $previousex);
 		if (!fclose($this->txFp))
 			throw new RuntimeException('fclose(<txFp>) failed', 0, $previousex);

@@ -22,7 +22,7 @@ if (gb::$is_404)
 		if (gb::$is_404) {
 			echo '<h1>404 Not Found</h1>';
 		}
-		elseif (gb::$is_post or gb::$is_page) {
+		elseif (gb::$is_post || gb::$is_page) {
 			require 'post.php';
 		}
 		elseif (gb::$is_posts) {

@@ -101,7 +101,7 @@ class GitCommit {
 				$previousName = null;
 				
 				# R|C have two names wherether the last is the new name
-				if ($t === GitPatch::RENAME or $t === GitPatch::COPY) {
+				if ($t === GitPatch::RENAME || $t === GitPatch::COPY) {
 					$previousName = $name;
 					$name = $line[2];
 					if ($c->previousFiles === null)
@@ -133,9 +133,9 @@ class GitCommit {
 				
 				# update existing
 				if (!$rcron) {
-					if ($t === GitPatch::CREATE or $t === GitPatch::COPY)
+					if ($t === GitPatch::CREATE || $t === GitPatch::COPY)
 						$existing[$name] = $c;
-					elseif ($t === GitPatch::DELETE and isset($existing[$name]))
+					elseif ($t === GitPatch::DELETE && isset($existing[$name]))
 						unset($existing[$name]);
 					elseif ($t === GitPatch::RENAME) {
 						if (isset($existing[$previousName])) {
@@ -147,7 +147,7 @@ class GitCommit {
 							$existing[$name] = $c;
 						}
 						# move commits from previous file if kwarg mapnamestoc == true
-						if ($ntoc !== null and isset($ntoc[$previousName])) {
+						if ($ntoc !== null && isset($ntoc[$previousName])) {
 							$ntoc[$name] = array_merge($ntoc[$previousName], $ntoc[$name]);
 							unset($ntoc[$previousName]);
 						}

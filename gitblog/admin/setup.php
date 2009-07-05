@@ -11,7 +11,7 @@ if ($integrity !== 2) {
 if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# check input	
-	if (!trim($_POST['email']) or strpos($_POST['email'], '@') === false) {
+	if (!trim($_POST['email']) || strpos($_POST['email'], '@') === false) {
 		$errors[] = '<b>Missing email.</b>
 			Please supply a valid email address to be used for the administrator account.';
 	}
@@ -52,7 +52,7 @@ if (isset($_POST['submit'])) {
 	try {
 		$version = array_pop(explode(' ', trim(GitBlog::exec("--version"))));
 		$version = array_map('intval', explode('.', $version));
-		if ($version[0] < 1 or $version[1] < 6) {
+		if ($version[0] < 1 || $version[1] < 6) {
 			$errors[] = '<b>To old git version.</b> Gitblog requires git version 1.6 
 				or newer. Please upgrade your git. ('.h(`which git`).')';
 		}
@@ -74,7 +74,7 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# create repository	
 	if (!$errors) {
-		$add_sample_content = isset($_POST['add-sample-content']) and $_POST['add-sample-content'] === 'true';
+		$add_sample_content = isset($_POST['add-sample-content']) && $_POST['add-sample-content'] === 'true';
 		if (!GitBlog::init($add_sample_content))
 			$errors[] = 'Failed to create and initialize repository at '.var_export(gb::$repo,1);
 	}

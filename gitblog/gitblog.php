@@ -1,5 +1,6 @@
 <?
 error_reporting(E_ALL);
+$debug_time_started = microtime(true);
 
 # constants
 define('GITBLOG_VERSION', '0.1.0');
@@ -11,7 +12,7 @@ if (!defined('GITBLOG_SITE_DIR')) {
 		if (strpos(realpath($s), realpath(dirname(__FILE__))) === 0) {
 			# confirmed: inside gitblog
 			$max = 20;
-			while($s !== '/' and $max--) {
+			while($s !== '/' && $max--) {
 				if (substr($s, -7) === 'gitblog') {
 					$s = dirname($s);
 					$u = dirname($u);
@@ -108,6 +109,40 @@ class gb {
 	static public $is_search = false;
 	static public $is_tags = false;
 	static public $is_categories = false;
+	
+	# --------------------------------------------------------------------------
+	# Filters
+	static public $filters = array();
+	
+	/**
+	 * Add a filter
+	 * 
+	 * Lower number for $priority means earlier execution of $func.
+	 * 
+	 * If $func returns boolean FALSE the filter chain is broken, not applying
+	 * any more filter after the one returning FALSE. Returning anything else
+	 * have no effect.
+	 */
+	static function add_filter($tag, $func, $priority=100) {
+		if (!isset(self::$filters[$tag]))
+			self::$filters[$tag] = array($priority => array($func));
+		elseif (!isset(self::$filters[$tag][$priority]))
+			self::$filters[$tag][$priority] = array($func);
+		else
+			self::$filters[$tag][$priority][] = $func;
+	}
+	
+	/** Apply filters for $tag on $value */
+	static function apply_filters($tag, $value) {
+		$a = @self::$filters[$tag];
+		if ($a === null)
+			return $value;
+		ksort($a, SORT_NUMERIC);
+		foreach ($a as $funcs)
+			foreach ($funcs as $func)
+				$value = call_user_func($func, $value);
+		return $value;
+	}
 }
 
 gb::$repo = GITBLOG_SITE_DIR.'/site';
@@ -228,7 +263,7 @@ function gb_utf8_unescape($s) {
 
 
 function gb_normalize_git_name($name) {
-	return ($name and $name{0} === '"') ? gb_utf8_unescape(substr($name, 1, -1)) : $name;
+	return ($name && $name{0} === '"') ? gb_utf8_unescape(substr($name, 1, -1)) : $name;
 }
 
 
@@ -300,7 +335,7 @@ function gb_relpath($from, $to) {
 		if ($fromv[$likes] != $tov[$likes])
 			break;
 	
-	if (!$likes and $to{0} === '/')
+	if ((!$likes) && $to{0} === '/')
 		return $to;
 	
 	if ($likes) {
@@ -538,7 +573,7 @@ class GitBlog {
 	}
 	
 	static function verifyConfig() {
-		if (!gb::$secret or strlen(gb::$secret) < 62) {
+		if (!gb::$secret || strlen(gb::$secret) < 62) {
 			header('Status: 503 Service Unavailable');
 			header('Content-Type: text/plain; charset=utf-8');
 			exit("\n\ngb::\$secret is not set or too short.\n\nPlease edit your gb-config.php file.\n");
@@ -549,10 +584,6 @@ class GitBlog {
 
 # -----------------------------------------------------------------------------
 # Content (posts, pages, etc)
-
-function gb_html_postprocess_filter($body) {
-	return nl2br(trim($body));
-}
 
 
 class GBContent {
@@ -595,7 +626,6 @@ class GBContent {
 	
 	function reload($data, $commits) {
 		$this->mimeType = GBMimeType::forFilename($this->name);
-		$this->applyInfoFromCommits($commits);
 	}
 	
 	protected function applyInfoFromCommits($commits) {
@@ -657,16 +687,17 @@ class GBExposedContent extends GBContent {
 	function applyFilters() {
 		if (isset(self::$filters[$this->mimeType])) {
 			foreach (self::$filters[$this->mimeType] as $filter)
-				$s = $filter($this->body);
-				if ($s === false)
+				if ($filter($this) === false)
 					break;
-				$this->body = $s;
 		}
+		else
+			echo "no filters for content of type $this->mimeType\n";
 	}
 	
 	function reload($data, $commits) {
-		$bodystart = strpos($data, "\n\n");
+		parent::reload($data, $commits);
 		
+		$bodystart = strpos($data, "\n\n");
 		if ($bodystart === false)
 			$bodystart = 0;
 			#trigger_error("malformed content object '{$this->name}' missing header");
@@ -705,8 +736,6 @@ class GBExposedContent extends GBContent {
 		
 		# set body
 		$this->body = substr($data, $bodystart+2);
-		if ($this->body)
-			$this->applyFilters();
 		
 		# apply and translate info from commits
 		$this->applyInfoFromCommits($commits);
@@ -715,12 +744,22 @@ class GBExposedContent extends GBContent {
 		$mp = isset($this->meta['publish']) ? $this->meta['publish'] : 
 			(isset($this->meta['published']) ? $this->meta['published'] : false);
 		$mp = $mp ? strtoupper($mp) : $mp;
-		if ($mp === 'FALSE' or $mp === 'NO')
+		if ($mp === 'FALSE' || $mp === 'NO')
 			$this->published = false;
-		elseif ($mp and $mp !== false and $mp !== 'TRUE' and $mp !== 'YES')
+		elseif ($mp && $mp !== false && $mp !== 'TRUE' && $mp !== 'YES')
 			$this->published = gb_utcstrtotime($mp, $this->published);
 		if ($this->published === false)
 			$this->published = self::NOT_PUBLISHED;
+		
+		# apply filters
+		$fnext = array_pop(gb_fnsplit($this->name));
+		gb::apply_filters('post-reload-GBExposedContent', $this);
+		gb::apply_filters('post-reload-GBExposedContent.'.$fnext, $this);
+		$cls = get_class($this);
+		if ($cls !== 'GBExposedContent') {
+			gb::apply_filters('post-reload-'.$cls, $this);
+			gb::apply_filters('post-reload-'.$cls.'.'.$fnext, $this);
+		}
 	}
 	
 	function urlpath() {
@@ -771,6 +810,37 @@ class GBExposedContent extends GBContent {
 	}
 }
 
+/** trim(c->body) */
+function gb_filter_post_reload_content(GBExposedContent $c) {
+	if ($c->body)
+		$c->body = trim($c->body);
+	return $c;
+}
+
+gb::add_filter('post-reload-GBExposedContent', 'gb_filter_post_reload_content');
+
+/** Converts LF to <br/>LF and extracts excerpt for GBPost objects */
+function gb_filter_post_reload_content_html(GBExposedContent $c) {
+	if ($c->body) {
+		# create excerpt for GBPosts if not already set
+		if ($c instanceof GBPost && !$c->excerpt) {
+			$p = strpos($c->body, '<!--more-->');
+			if ($p !== false) {
+				$c->excerpt = substr($c->body, 0, $p);
+				$c->body = $c->excerpt
+					.'<div id="'.$c->domID().'-more" class="post-more-anchor"></div>'
+					.substr($c->body, $p+strlen('<!--more-->'));
+			}
+		}
+		$c->body = gb::apply_filters('body.html', $c->body);
+	}
+	if ($c->excerpt)
+		$c->excerpt = gb::apply_filters('excerpt.html', $c->excerpt);
+	return $c;
+}
+
+gb::add_filter('post-reload-GBExposedContent.html', 'gb_filter_post_reload_content_html');
+
 
 class GBPage extends GBExposedContent {
 	static function mkCachename($slug) {
@@ -789,9 +859,36 @@ class GBPage extends GBExposedContent {
 
 
 class GBPost extends GBExposedContent {
+	public $excerpt;
+	
+	/**
+	 * Return a, possibly cloned, version of this post which contains a minimal
+	 * set of information. Primarily used for paged posts pages.
+	*/
+	function condensedVersion() {
+		$c = clone $this;
+		# excerpt member turns into a boolean "is ->body an excerpt?"
+		if ($c->excerpt) {
+			$c->body = $c->excerpt;
+			$c->excerpt = true;
+		}
+		else {
+			$c->excerpt = false;
+		}
+		# comments member turns into an integer "number of comments"
+		$c->comments = $c->comments ? $c->comments->count() : 0;
+		
+		return $c;
+	}
+	
 	function urlpath() {
 		return gmstrftime(gb::$posts_url_prefix, $this->published)
 			. str_replace('%2F', '/', urlencode($this->slug));
+	}
+	
+	function domID() {
+		return 'post-'.preg_replace('/[^A-Za-z0-9_-]+/', '-', 
+			gmdate('Y-m-d-', $this->published).$this->slug);
 	}
 	
 	static function mkCachename($published, $slug) {
@@ -807,6 +904,10 @@ class GBPost extends GBExposedContent {
 		$path = gb::$repo.'/.git/info/gitblog/'.self::mkCachename($published, $slug);
 		return @unserialize(file_get_contents($path));
 	}
+	
+	function __sleep() {
+		return array_merge(parent::__sleep(), array('excerpt'));
+	}
 }
 
 
@@ -818,6 +919,33 @@ class GBComments extends GBContent {
 	function __construct($name=null, $id=null, $cachenamePrefix=null) {
 		parent::__construct($name, $id);
 		$this->cachenamePrefix = $cachenamePrefix;
+	}
+	
+	function reload($data, $commits) {
+		parent::reload($data, $commits);
+		
+		# apply info from commits, like publish date and author
+		$this->applyInfoFromCommits($commits);
+		
+		# load actual comments
+		$db = new GBCommentDB();
+		$db->loadString($data);
+		$this->comments = $db->get();
+	}
+	
+	/** Recursively count how many comments are in the $comments member */
+	function count($onlyApproved=true, $c=null) {
+		if ($c === null)
+			$c = $this;
+		if (!$c->comments)
+			return 0;
+		$count = 0;
+		foreach ($c->comments as $comment) {
+			if ($onlyApproved && !$comment->approved)
+				continue;
+			$count += $this->count($onlyApproved, $comment) + 1;
+		}
+		return $count;
 	}
 	
 	function cachename() {
@@ -837,7 +965,7 @@ class GBComments extends GBContent {
 }
 
 /**
- * Comments.
+ * Comments object.
  * 
  * Accessible from GBComments
  * Managed through GBCommentDB
@@ -855,7 +983,7 @@ class GBComment {
 	function __construct($state=array()) {
 		if ($state) {
 			foreach ($state as $k => $v) {
-				if ($k === 'comments' and $v !== null)
+				if ($k === 'comments' && $v !== null)
 					foreach ($v as $k2 => $v2)
 						$v[$k2] = new self($v2);
 				$this->$k = $v;
@@ -878,6 +1006,7 @@ class GBComment {
 # -----------------------------------------------------------------------------
 # Users
 
+# todo: use JSONDB for GBUserAccount
 class GBUserAccount {
 	public $name;
 	public $email;
@@ -919,7 +1048,7 @@ class GBUserAccount {
 			self::_reload();
 		$email = strtolower($email);
 		self::$db[$email] = new GBUserAccount($name, $email, self::passhash($email, $passphrase));
-		if ($admin and !self::setAdmin($email))
+		if ($admin && !self::setAdmin($email))
 			return false;
 		return self::sync() ? true : false;
 	}
@@ -974,5 +1103,165 @@ class GBUserAccount {
 	}
 }
 
-$debug_time_started = microtime(true);
+# -----------------------------------------------------------------------------
+# General filters
+
+# Convert short-hands to nice unicode characters.
+# Shamelessly borrowed from my worst nightmare Wordpress.
+function gb_texturize_html($text) {
+	$next = true;
+	$has_pre_parent = false;
+	$output = '';
+	$curl = '';
+	$textarr = preg_split('/(<.*>|\[.*\])/Us', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+	$stop = count($textarr);
+	
+	static $static_characters = array(
+		'---', ' -- ', '--', "xn\xe2\x80\x93", '...', '``', '\'s', '\'\'', ' (tm)',
+		# cockney:
+		"'tain't","'twere","'twas","'tis","'twill","'til","'bout",
+		"'nuff","'round","'cause");
+	static $static_replacements = array("\xe2\x80\x94"," \xe2\x80\x94 ",
+		"\xe2\x80\x93","xn--","\xe2\x80\xa6","\xe2\x80\x9c","\xe2\x80\x99s",
+		"\xe2\x80\x9d"," \xe2\x84\xa2",
+		# cockney
+		"\xe2\x80\x99tain\xe2\x80\x99t","\xe2\x80\x99twere",
+		"\xe2\x80\x99twas","\xe2\x80\x99tis","\xe2\x80\x99twill","\xe2\x80\x99til",
+		"\xe2\x80\x99bout","\xe2\x80\x99nuff","\xe2\x80\x99round","\xe2\x80\x99cause");
+	
+	static $dynamic_characters = array('/\'(\d\d(?:&#8217;|\')?s)/', '/(\s|\A|")\'/', '/(\d+)"/', '/(\d+)\'/',
+	 	'/(\S)\'([^\'\s])/', '/(\s|\A)"(?!\s)/', '/"(\s|\S|\Z)/', '/\'([\s.]|\Z)/', '/(\d+)x(\d+)/');
+	static $dynamic_replacements = array("\xe2\x80\x99\$1","\$1\xe2\x80\x98","\$1\xe2\x80\xb3","\$1\xe2\x80\xb2",
+		"\$1\xe2\x80\x99$2","\$1\xe2\x80\x9c\$2","\xe2\x80\x9d\$1","\xe2\x80\x99\$1","\$1\xc3\x97\$2");
+	
+	for ( $i = 0; $i < $stop; $i++ ) {
+		$curl = $textarr[$i];
+		
+		if (isset($curl{0}) && '<' != $curl{0} && '[' != $curl{0} && $next && !$has_pre_parent)
+		{ # If it's not a tag
+			# static strings
+			$curl = str_replace($static_characters, $static_replacements, $curl);
+			# regular expressions
+			$curl = preg_replace($dynamic_characters, $dynamic_replacements, $curl);
+		} elseif (strpos($curl, '<code') !== false || strpos($curl, '<kbd') !== false
+			|| strpos($curl, '<style') !== false || strpos($curl, '<script') !== false)
+		{
+			$next = false;
+		} elseif (strpos($curl, '<pre') !== false) {
+			$has_pre_parent = true;
+		} elseif (strpos($curl, '</pre>') !== false) {
+			$has_pre_parent = false;
+		} else {
+			$next = true;
+		}
+		
+		$curl = preg_replace('/&([^#])(?![a-zA-Z1-4]{1,8};)/', '&#038;$1', $curl);
+		$output .= $curl;
+	}
+	
+	return $output;
+}
+
+function gb_convert_html_chars($content) {
+	# Translation of invalid Unicode references range to valid range,
+	# often added by Windows programs after a copy-paste.
+	static $wp_htmltranswinuni = array(
+	'&#128;' => '&#8364;', # the Euro sign
+	'&#129;' => '',
+	'&#130;' => '&#8218;', # these are Windows CP1252 specific characters
+	'&#131;' => '&#402;',  # they would look weird on non-Windows browsers
+	'&#132;' => '&#8222;',
+	'&#133;' => '&#8230;',
+	'&#134;' => '&#8224;',
+	'&#135;' => '&#8225;',
+	'&#136;' => '&#710;',
+	'&#137;' => '&#8240;',
+	'&#138;' => '&#352;',
+	'&#139;' => '&#8249;',
+	'&#140;' => '&#338;',
+	'&#141;' => '',
+	'&#142;' => '&#382;',
+	'&#143;' => '',
+	'&#144;' => '',
+	'&#145;' => '&#8216;',
+	'&#146;' => '&#8217;',
+	'&#147;' => '&#8220;',
+	'&#148;' => '&#8221;',
+	'&#149;' => '&#8226;',
+	'&#150;' => '&#8211;',
+	'&#151;' => '&#8212;',
+	'&#152;' => '&#732;',
+	'&#153;' => '&#8482;',
+	'&#154;' => '&#353;',
+	'&#155;' => '&#8250;',
+	'&#156;' => '&#339;',
+	'&#157;' => '',
+	'&#158;' => '',
+	'&#159;' => '&#376;'
+	);
+	
+	# Converts lone & characters into &#38; (a.k.a. &amp;)
+	$content = preg_replace('/&([^#])(?![a-z1-4]{1,8};)/i', '&#038;$1', $content);
+	
+	# Fix Microsoft Word pastes
+	$content = strtr($content, $wp_htmltranswinuni);
+	
+	return $content;
+}
+
+# HTML -> XHTML
+function gb_html_to_xhtml($content) {
+	return str_replace(array('<br>','<hr>'), array('<br />','<hr />'), $content);
+}
+
+# LF => <br />, etc
+function gb_normalize_html_structure($pee, $br = 1) {
+	$pee = $pee . "\n"; // just to make things a little easier, pad the end
+	$pee = preg_replace('|<br />\s*<br />|', "\n\n", $pee);
+	// Space things out a little
+	$allblocks = '(?:table|thead|tfoot|caption|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|select|form|map|area|blockquote|address|math|style|input|p|h[1-6]|hr)';
+	$pee = preg_replace('!(<' . $allblocks . '[^>]*>)!', "\n$1", $pee);
+	$pee = preg_replace('!(</' . $allblocks . '>)!', "$1\n\n", $pee);
+	$pee = str_replace(array("\r\n", "\r"), "\n", $pee); // cross-platform newlines
+	if ( strpos($pee, '<object') !== false ) {
+		$pee = preg_replace('|\s*<param([^>]*)>\s*|', "<param$1>", $pee); // no pee inside object/embed
+		$pee = preg_replace('|\s*</embed>\s*|', '</embed>', $pee);
+	}
+	$pee = preg_replace("/\n\n+/", "\n\n", $pee); // take care of duplicates
+	$pee = preg_replace('/\n?(.+?)(?:\n\s*\n|\z)/s', "<p>$1</p>\n", $pee); // make paragraphs, including one at the end
+	$pee = preg_replace('|<p>\s*?</p>|', '', $pee); // under certain strange conditions it could create a P of entirely whitespace
+	$pee = preg_replace('!<p>([^<]+)\s*?(</(?:div|address|form)[^>]*>)!', "<p>$1</p>$2", $pee);
+	$pee = preg_replace( '|<p>|', "$1<p>", $pee );
+	$pee = preg_replace('!<p>\s*(</?' . $allblocks . '[^>]*>)\s*</p>!', "$1", $pee); // don't pee all over a tag
+	$pee = preg_replace("|<p>(<li.+?)</p>|", "$1", $pee); // problem with nested lists
+	$pee = preg_replace('|<p><blockquote([^>]*)>|i', "<blockquote$1><p>", $pee);
+	$pee = str_replace('</blockquote></p>', '</p></blockquote>', $pee);
+	$pee = preg_replace('!<p>\s*(</?' . $allblocks . '[^>]*>)!', "$1", $pee);
+	$pee = preg_replace('!(</?' . $allblocks . '[^>]*>)\s*</p>!', "$1", $pee);
+	if ($br) {
+		$pee = preg_replace_callback('/<(script|style).*?<\/\\1>/s', create_function('$matches', 'return str_replace("\n", "<WPPreserveNewline />", $matches[0]);'), $pee);
+		$pee = preg_replace('|(?<!<br />)\s*\n|', "<br />\n", $pee); // optionally make line breaks
+		$pee = str_replace('<WPPreserveNewline />', "\n", $pee);
+	}
+	$pee = preg_replace('!(</?' . $allblocks . '[^>]*>)\s*<br />!', "$1", $pee);
+	$pee = preg_replace('!<br />(\s*</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)[^>]*>)!', '$1', $pee);
+	if (strpos($pee, '<pre') !== false)
+		$pee = preg_replace_callback('!(<pre.*?>)(.*?)</pre>!is', 'clean_pre', $pee );
+	$pee = preg_replace( "|\n</p>$|", '</p>', $pee );
+	#$pee = preg_replace('/<p>\s*?(' . get_shortcode_regex() . ')\s*<\/p>/s', '$1', $pee); // don't auto-p wrap shortcodes that stand alone
+
+	return $pee;
+}
+
+# Applied to GBExposedContent->body
+gb::add_filter('body.html', 'gb_texturize_html');
+gb::add_filter('body.html', 'gb_convert_html_chars');
+gb::add_filter('body.html', 'gb_html_to_xhtml');
+gb::add_filter('body.html', 'gb_normalize_html_structure');
+
+# Applied to GBExposedContent->excerpt
+gb::add_filter('excerpt.html', 'gb_texturize_html');
+gb::add_filter('excerpt.html', 'gb_convert_html_chars');
+gb::add_filter('excerpt.html', 'gb_html_to_xhtml');
+gb::add_filter('excerpt.html', 'gb_normalize_html_structure');
 ?>

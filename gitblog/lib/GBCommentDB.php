@@ -2,8 +2,8 @@
 class GBCommentDB extends JSONDB {
 	public $lastComment = false;
 	
-	protected function txReadData() {
-		parent::txReadData();
+	function parseData() {
+		parent::parseData();
 		foreach ($this->data as $k => $v)
 			$this->data[$k] = new GBComment($v);
 	}
@@ -32,7 +32,7 @@ class GBCommentDB extends JSONDB {
 	
 	function get($index=null) {
 		if (is_string($index)) {
-			$temptx = $this->txFp === false and $this->autocommit;
+			$temptx = $this->txFp === false && $this->autocommit;
 			if ($temptx)
 				$this->begin();
 			if ($this->data === null)
@@ -74,7 +74,7 @@ class GBCommentDB extends JSONDB {
 	}
 	
 	function append(GBComment $comment) {
-		$temptx = $this->txFp === false and $this->autocommit;
+		$temptx = $this->txFp === false && $this->autocommit;
 		# begin if in temporary tx
 		if ($temptx)
 			$this->begin();

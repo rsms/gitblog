@@ -10,6 +10,24 @@
 			<li>Revision (current object): <?= $post->id ?></li>
 		</ul>
 	</div>
-<p>
-	<?= $post->body ?>
-</p>
+<?= $post->body ?>
+<hr />
+<h3>Comments</h3>
+<ul>
+<?
+function draw_comments($c) {
+	foreach ($c->comments as $comment) {
+		#if (!$comment->approved) continue;
+		echo '<li><em>'. h($comment->name) .' says</em>';
+		echo '<p>'. nl2br(h($comment->message)) .'</p>';
+		if ($comment->comments) {
+			echo '<ul>';
+			draw_comments($comment);
+			echo '</ul>';
+		}
+		echo '</li>';
+	}
+}
+?>
+<? draw_comments($post->comments); ?>
+</ul>

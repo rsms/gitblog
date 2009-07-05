@@ -1,8 +1,14 @@
 <?
-#header('Content-Type: text/plain; charset=utf-8');
+if (gb::$is_feed) {
+	require 'feed.php';
+	exit(0);
+}
+
 header('Content-Type: application/xhtml+xml; charset=utf-8');
 if (gb::$is_404)
 	header('Status: 404 Not Found');
+elseif ((gb::$is_post || gb::$is_page) && $post->commentsOpen)
+	session_start(); # for nonces
 
 ?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">

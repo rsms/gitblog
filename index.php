@@ -25,6 +25,12 @@ if ($gb_urlpath) {
 		$posts = GitBlog::postsByCategories($cats);
 		gb::$is_categories = true;
 	}
+	elseif (strpos($gb_urlpath, gb::$feed_prefix) === 0) {
+		# feed
+		$postspage = GitBlog::postsPageByPageno(0);
+		gb::$is_feed = true;
+		# todo: check if theme has a custom feed, else use a standard feed renderer
+	}
 	elseif (preg_match(gb::$posts_url_prefix_re, $gb_urlpath)) {
 		# post
 		$post = GitBlog::postBySlug(urldecode($gb_urlpath));

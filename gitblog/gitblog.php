@@ -56,6 +56,9 @@ class gb {
 	/** URL prefix for categories */
 	static public $categories_prefix = 'categories/';
 
+	/** URL prefix for the feed */
+	static public $feed_prefix = 'feed';
+
 	/** URL prefix (strftime pattern) */
 	static public $posts_url_prefix = '%Y/%m/%d/';
 	
@@ -109,6 +112,7 @@ class gb {
 	static public $is_search = false;
 	static public $is_tags = false;
 	static public $is_categories = false;
+	static public $is_feed = false;
 	
 	# --------------------------------------------------------------------------
 	# Filters

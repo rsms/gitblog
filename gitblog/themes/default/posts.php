@@ -10,7 +10,7 @@
 			<li>Tags: <?= implode(', ', $post->tags) ?></li>
 			<li>Categories: <?= implode(', ', $post->categories) ?></li>
 			<li>Comments: <?= $post->comments ?></li>
-			<li>Revision (current object): <?= $post->id ?></li>
+			<li>Version: <?= $post->id ?></li>
 		</ul>
 	</div>
 	<?= $post->body ?>

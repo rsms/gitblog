@@ -32,6 +32,8 @@ if ($gb_urlpath) {
 			gb::$is_404 = true;
 		elseif ($post->published > time())
 			gb::$is_404 = true;
+		else
+			gb::$title[] = $post->title;
 		gb::$is_post = true;
 	}
 	else {
@@ -39,6 +41,8 @@ if ($gb_urlpath) {
 		$post = GitBlog::pageBySlug(urldecode($gb_urlpath));
 		if ($post === false)
 			gb::$is_404 = true;
+		else
+			gb::$title[] = $post->title;
 		gb::$is_page = true;
 	}
 }

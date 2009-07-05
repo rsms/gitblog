@@ -7,27 +7,28 @@
 			<li>Modified: <?= date('c', $post->modified) ?></li>
 			<li>Tags: <?= $post->tagLinks() ?></li>
 			<li>Categories: <?= $post->categoryLinks() ?></li>
-			<li>Revision (current object): <?= $post->id ?></li>
+			<li>Version: <?= $post->id ?></li>
 		</ul>
 	</div>
 <?= $post->body ?>
 <hr />
-<h3>Comments</h3>
-<ul>
-<?
-function draw_comments($c) {
-	foreach ($c->comments as $comment) {
-		#if (!$comment->approved) continue;
-		echo '<li><em>'. h($comment->name) .' says</em>';
-		echo '<p>'. nl2br(h($comment->message)) .'</p>';
-		if ($comment->comments) {
-			echo '<ul>';
-			draw_comments($comment);
-			echo '</ul>';
-		}
-		echo '</li>';
-	}
-}
-?>
-<? draw_comments($post->comments); ?>
-</ul>
+<h3><?= $post->numberOfComments() ?></h3>
+<? if ($post->comments): ?>
+	<ul>
+	<? foreach($post->comments as $level => $comment): ?>
+		<li>
+			level <?= $level ?>, id <?= $comment->id ?> -- <?= h($comment->name) ?><br/>
+		</li>
+	<? endforeach; ?>
+	</ul>
+	<? if ($post->comments->countUnapproved()): ?>
+		<p>
+			<?= $post->numberOfUnapprovedComments() ?> awaiting approval
+			<? if ($post->comments->countShadowed()): ?>
+				—
+				<?= $post->numberOfShadowedComments('approved comment is', 'approved comments are', 'no', 'one') ?>
+				therefore not visible.
+			<? endif; ?>
+		</p>
+	<? endif; ?>
+<? endif; # comments ?>

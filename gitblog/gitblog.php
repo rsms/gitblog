@@ -792,16 +792,19 @@ class GBExposedContent extends GBContent {
 		return $separator !== null ? implode($separator, $links) : $links;
 	}
 	
-	# An instance of GBComments
-	protected $_comments = null;
+	function numberOfComments($topological=true, $sone='comment', $smany='comments', $zero='No', $one='One') {
+		return counted($this->comments ? $this->comments->countApproved($topological) : 0,
+			$sone, $smany, $zero, $one);
+	}
 	
-	function __get($name) {
-		if ($name === 'comments') {
-			if ($this->_comments === null)
-				$this->_comments = GBComments::getCached(self::mkCachename());
-			return $this->_comments;
-		}
-		return null;
+	function numberOfShadowedComments($sone='comment', $smany='comments', $zero='No', $one='One') {
+		return counted($this->comments ? $this->comments->countShadowed() : 0,
+			$sone, $smany, $zero, $one);
+	}
+	
+	function numberOfUnapprovedComments($sone='comment', $smany='comments', $zero='No', $one='One') {
+		return counted($this->comments ? $this->comments->countUnapproved() : 0,
+			$sone, $smany, $zero, $one);
 	}
 	
 	function __sleep() {
@@ -834,7 +837,7 @@ function gb_filter_post_reload_content_html(GBExposedContent $c) {
 		}
 		$c->body = gb::apply_filters('body.html', $c->body);
 	}
-	if ($c->excerpt)
+	if ($c instanceof GBPost && $c->excerpt)
 		$c->excerpt = gb::apply_filters('excerpt.html', $c->excerpt);
 	return $c;
 }
@@ -876,7 +879,7 @@ class GBPost extends GBExposedContent {
 			$c->excerpt = false;
 		}
 		# comments member turns into an integer "number of comments"
-		$c->comments = $c->comments ? $c->comments->count() : 0;
+		$c->comments = $c->comments ? $c->comments->countApproved() : 0;
 		
 		return $c;
 	}
@@ -911,7 +914,7 @@ class GBPost extends GBExposedContent {
 }
 
 
-class GBComments extends GBContent {
+class GBComments extends GBContent implements IteratorAggregate {
 	/** [GBComment, ..] */
 	public $comments = array();
 	public $cachenamePrefix;
@@ -933,19 +936,52 @@ class GBComments extends GBContent {
 		$this->comments = $db->get();
 	}
 	
+	# these two are not serialized, but lazy-initialized by count()
+	public $_countTotal;
+	public $_countApproved;
+	public $_countApprovedTopo;
+	
 	/** Recursively count how many comments are in the $comments member */
-	function count($onlyApproved=true, $c=null) {
+	function count($c=null) {
 		if ($c === null)
 			$c = $this;
+		if ($c->_countTotal !== null)
+			return $c->_countTotal;
+		$c->_countTotal = $c->_countApproved = $c->_countApprovedTopo = 0;
 		if (!$c->comments)
 			return 0;
-		$count = 0;
 		foreach ($c->comments as $comment) {
-			if ($onlyApproved && !$comment->approved)
-				continue;
-			$count += $this->count($onlyApproved, $comment) + 1;
+			$c->_countTotal++;
+			if ($comment->approved) {
+				$c->_countApproved++;
+				$c->_countApprovedTopo++;
+			}
+			$this->count($comment);
+			$c->_countTotal += $comment->_countTotal;
+			if ($comment->approved)
+				$c->_countApprovedTopo += $comment->_countApprovedTopo;
+			$c->_countApproved += $comment->_countApproved;
 		}
-		return $count;
+		return $c->_countTotal;
+	}
+	
+	function countApproved($topological=true) {
+		$this->count();
+		return $topological ? $this->_countApprovedTopo : $this->_countApproved;
+	}
+	
+	/**
+	 * Number of comments which are approved -- by their parent comments are 
+	 * not -- thus they are topologically speaking shadowed, or hidden.
+	 */
+	function countShadowed() {
+		$this->count();
+		return $this->_countTotal - ($this->_countApprovedTopo + ($this->_countTotal - $this->_countApproved));
+	}
+	
+	function countUnapproved() {
+		$this->count();
+		return $this->_countTotal - $this->_countApproved;
 	}
 	
 	function cachename() {
@@ -959,10 +995,106 @@ class GBComments extends GBContent {
 		return @unserialize(file_get_contents($path));
 	}
 	
+	# implementation of IteratorAggregate
+	public function getIterator($onlyApproved=true) {
+		return new GBCommentsIterator($this, $onlyApproved);
+	}
+	
 	function __sleep() {
 		return array_merge(parent::__sleep(), array('comments', 'cachenamePrefix'));
 	}
 }
+
+/**
+ * Comments iterator. Accessible from GBComments::iterator
+ */
+class GBCommentsIterator implements Iterator {
+	protected $initialComment;
+	protected $comments;
+	protected $stack;
+	protected $idstack;
+	public $onlyApproved;
+	public $maxStackDepth;
+	
+	function __construct($comment, $onlyApproved=false, $maxStackDepth=50) {
+		$this->initialComment = $comment;
+		$this->onlyApproved = $onlyApproved;
+		$this->maxStackDepth = $maxStackDepth;
+	}
+	
+	function rewind() {
+		$this->comments = $this->initialComment->comments;
+		reset($this->comments);
+		$this->stack = array();
+		$this->idstack = array();			
+	}
+
+	function current() {
+		$comment = current($this->comments);
+		if ($comment && $comment->id === null) {
+			$comment->id = $this->idstack;
+			$comment->id[] = key($this->comments);
+			$comment->id = implode('.', $comment->id);
+		}
+		return $comment;
+	}
+
+	function key() {
+		return count($this->idstack);
+	}
+	
+	function next() {
+		$comment = current($this->comments);
+		if ($comment === false)
+			return;
+		if ($comment->comments && (!$this->onlyApproved || ($this->onlyApproved && $comment->approved)) ) {
+			# push current comments on stack
+			if (count($this->stack) === $this->maxStackDepth)
+				throw new OverflowException('stack depth > '.$this->maxStackDepth);
+			array_push($this->stack, $this->comments);
+			array_push($this->idstack, key($this->comments));
+			$this->comments = $comment->comments;
+		}
+		else {
+			next($this->comments);
+		}
+		
+		# fast-forward to next approved comment, if applicable
+		if ($this->onlyApproved) {
+			$comment = current($this->comments);
+			if ($comment && !$comment->approved) {
+				#var_dump('FWD from unapproved comment '.$this->current()->id);
+				$this->next();
+			}
+			elseif (!$comment) {
+				#var_dump('VALIDATE');
+				$this->valid();
+				$comment = current($this->comments);
+				if ($comment === false || !$comment->approved)
+					$this->next();
+			}
+		}
+	}
+
+	function valid() {
+		if (key($this->comments) === null) {
+			if ($this->stack) {
+				# end of branch -- pop the stack
+				while ($this->stack) {
+					array_pop($this->idstack);
+					$this->comments = array_pop($this->stack);
+					next($this->comments);
+					if (key($this->comments) !== null || !$this->stack)
+						break;
+				}
+				return key($this->comments) !== null;
+			}
+			return false;
+		}
+		return true;
+	}
+}
+
 
 /**
  * Comments object.
@@ -979,6 +1111,16 @@ class GBComment {
 	public $message;
 	public $approved;
 	public $comments;
+	
+	# members below are not serialized
+	
+	/** String id (indexpath), available during iteration */
+	public $id;
+	
+	/* these two are not serialized, but lazy-initialized by GBComments::count() */
+	public $_countTotal;
+	public $_countApproved;
+	public $_countApprovedTopo;
 	
 	function __construct($state=array()) {
 		if ($state) {
@@ -1000,6 +1142,10 @@ class GBComment {
 			$this->comments = array(1 => $comment);
 		else
 			$this->comments[array_pop(array_keys($this->comments))+1] = $comment;
+	}
+	
+	function __sleep() {
+		return array('date','ip_address','email','uri','name','message','approved','comments');
 	}
 }
 
@@ -1264,4 +1410,52 @@ gb::add_filter('excerpt.html', 'gb_texturize_html');
 gb::add_filter('excerpt.html', 'gb_convert_html_chars');
 gb::add_filter('excerpt.html', 'gb_html_to_xhtml');
 gb::add_filter('excerpt.html', 'gb_normalize_html_structure');
+
+# -----------------------------------------------------------------------------
+# Template helpers
+
+/**
+ * Ordinalize turns a number into an ordinal string used to denote the
+ * position in an ordered sequence such as 1st, 2nd, 3rd, 4th.
+ * 
+ * Examples
+ *  ordinalize(1)     -> "1st"
+ *  ordinalize(2)     -> "2nd"
+ *  ordinalize(1002)  -> "1002nd"
+ *  ordinalize(1003)  -> "1003rd"
+ */
+function ordinalize($number) {
+	$i = intval($number);
+	$h = $i % 100;
+	if ($h === 11 || $h === 12 || $h === 13)
+		return $i.'th';
+	else {
+		$x = $i % 10;
+		if ($x === 1)
+			return $i.'st';
+		elseif ($x === 2)
+			return $i.'nd';
+		elseif ($x === 3)
+			return $i.'rd';
+		else
+			return $i.'th';
+	}
+}
+
+/**
+ * Counted turns a number into $zero if $n is 0, $one if $n is 1 or
+ * otherwise $n
+ * 
+ * Examples:
+ *  counted(0)  -> "No"
+ *  counted(1, 'No', 'One', 'comment', 'comments')  -> "One comment"
+ *  counted(7, '', '', ' comments')  -> "7 comments"
+ */
+function counted($n, $sone='', $smany='', $zero='No', $one='One') {
+	if ($sone)
+		$sone = ' '.ltrim($sone);
+	if ($smany)
+		$smany = ' '.ltrim($smany);
+	return $n === 0 ? $zero.$smany : ($n === 1 ? $one.$sone : strval($n).$smany);
+}
 ?>

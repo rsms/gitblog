@@ -14,6 +14,9 @@
 		</ul>
 	</div>
 	<?= $post->body ?>
+	<? if ($post->excerpt): ?>
+		<p><a href="<?= $post->url() ?>#<?= $post->domID() ?>-more">Read more...</a></p>
+	<? endif; ?>
 	<div class="breaker"></div>
 <? endforeach ?>
 <? if ($postspage->nextpage != -1): ?>

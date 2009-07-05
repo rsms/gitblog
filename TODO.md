@@ -1,5 +1,10 @@
 # ToDo
 
+- Retain timezone info of content objects
+	
+	So we can print "written ... CEST" if the post was actually written in CEST
+	rather than normalizing all dates.
+
 - Package structure
 	
 		mkdir myblog && cd myblog

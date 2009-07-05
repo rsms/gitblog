@@ -7,8 +7,8 @@
 			<li>Author: <a href="mailto:<?= $post->author->email ?>"><?= $post->author->name ?></a></li>
 			<li>Published: <?= date('c', $post->published) ?></li>
 			<li>Modified: <?= date('c', $post->modified) ?></li>
-			<li>Tags: <?= implode(', ', $post->tags) ?></li>
-			<li>Categories: <?= implode(', ', $post->categories) ?></li>
+			<li>Tags: <?= $post->tagLinks() ?></li>
+			<li>Categories: <?= $post->categoryLinks() ?></li>
 			<li>Comments: <?= $post->comments ?></li>
 			<li>Version: <?= $post->id ?></li>
 		</ul>

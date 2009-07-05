@@ -9,7 +9,7 @@ if ($_SERVER['HTTP_X_GB_SHARED_SECRET'] !== gb::$secret) {
 	exit('error: 401 Unauthorized');
 }
 try {
-	GBRebuilder::rebuild(isset($_REQUEST['force-full-rebuild']));
+	GBRebuilder::rebuild(!isset($_REQUEST['force-full-rebuild']));
 }
 catch (Exception $e) {
 	echo 'error:';

@@ -668,6 +668,7 @@ class GBExposedContent extends GBContent {
 	public $tags = array();
 	public $categories = array();
 	public $comments;
+	public $commentsOpen = true;
 	
 	# 2038-01-19 03:14:07 UTC ("distant future" on 32bit systems)
 	const NOT_PUBLISHED = 2147483647;
@@ -770,26 +771,22 @@ class GBExposedContent extends GBContent {
 		return GITBLOG_SITE_URL . gb::$index_url . $this->urlpath();
 	}
 	
-	function tagLinks($separator=', ', $template='<a href="%u">%n</a>', $htmlescape=true) {
-		return $this->collLinks('tags', $separator, $template, $htmlescape);
+	function tagLinks($template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ') {
+		return $this->collLinks('tags', $template, $nglue, $endglue);
 	}
 	
-	function categoryLinks($separator=', ', $template='<a href="%u">%n</a>', $htmlescape=true) {
-		return $this->collLinks('categories', $separator, $template, $htmlescape);
+	function categoryLinks($template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ') {
+		return $this->collLinks('categories', $template, $nglue, $endglue);
 	}
 	
-	function collLinks($what, $separator=', ', $template='<a href="%u">%n</a>', $htmlescape=true) {
+	function collLinks($what, $template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ', $htmlescape=true) {
 		static $needles = array('%u', '%n');
 		$links = array();
 		$vn = $what.'_prefix';
 		$u = GITBLOG_SITE_URL . gb::$index_url . gb::$$vn;
-		
-		foreach ($this->$what as $tag) {
-			$n = $htmlescape ? htmlentities($tag) : $tag;
-			$links[] = str_replace($needles, array($u.urlencode($tag), $n), $template);
-		}
-		
-		return $separator !== null ? implode($separator, $links) : $links;
+		foreach ($this->$what as $tag)
+			$links[] = str_replace($needles, array($u.urlencode($tag), $htmlescape ? h($tag) : $tag), $template);
+		return $nglue !== null ? sentenceize($links, null, $nglue, $endglue) : $links;
 	}
 	
 	function numberOfComments($topological=true, $sone='comment', $smany='comments', $zero='No', $one='One') {
@@ -1457,5 +1454,19 @@ function counted($n, $sone='', $smany='', $zero='No', $one='One') {
 	if ($smany)
 		$smany = ' '.ltrim($smany);
 	return $n === 0 ? $zero.$smany : ($n === 1 ? $one.$sone : strval($n).$smany);
+}
+
+function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and ') {
+	if (!$collection)
+		return '';
+	if ($applyfunc)
+		$collection = array_map($applyfunc, $collection);
+	$n = count($collection);
+	if ($n === 1)
+		return $collection[0];
+	else {
+		$end = array_pop($collection);
+		return implode($nglue, $collection).$endglue.$end;
+	}
 }
 ?>

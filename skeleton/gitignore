@@ -1,0 +1,10 @@
+# general
+*~
+
+# mac specific
+.DS_Store
+* copy.*
+._*
+
+# gitblog specific
+gitblog

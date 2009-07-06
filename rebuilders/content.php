@@ -187,7 +187,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		if ($objects) {
 			$this->reloadObjects($objects);
 			foreach ($objects as $obj) {
-				echo 'gb> '.$obj->cachename().PHP_EOL;
+				#echo 'gb> '.$obj->cachename().PHP_EOL;
 				$obj->writeCache();
 			}
 		}
@@ -282,7 +282,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 				if ($pageno < $numpages-1)
 					$page->nextpage = $pageno+1;
 				gb_atomic_write($path, serialize($page), 0664);
-				echo 'gb> '.substr($path, $dirPrefixLen).PHP_EOL;
+				#echo 'gb> '.substr($path, $dirPrefixLen).PHP_EOL;
 			}
 		}
 	}

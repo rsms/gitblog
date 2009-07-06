@@ -3,7 +3,7 @@ error_reporting(E_ALL);
 $debug_time_started = microtime(true);
 
 # constants
-define('GB_SITE_URL', '0.1.0');
+define('GB_VERSION', '0.1.0');
 define('GB_DIR', dirname(__FILE__));
 if (!defined('GB_SITE_DIR')) {
 	$u = dirname($_SERVER['SCRIPT_NAME']);
@@ -42,6 +42,36 @@ if (!defined('GB_SITE_DIR')) {
 	}
 	unset($s);
 	unset($u);
+}
+if (!defined('GB_THEME_DIR')) {
+	$bt = debug_backtrace();
+	define('GB_THEME_DIR', dirname($bt[0]['file']));
+}
+if (!defined('GB_THEME_URL')) {
+	$relpath = gb_relpath(GB_SITE_DIR, GB_THEME_DIR);
+	if ($relpath === '' || $relpath === '.') {
+		define('GB_THEME_URL', GB_SITE_URL);
+	}
+	elseif ($relpath{0} === '.' || $relpath{0} === '/') {
+		$uplevels = $max_uplevels = 0;
+		if ($relpath{0} === '/') {
+			$uplevels = 1;
+		}
+		if ($relpath{0} === '.') {
+			function _empty($x) { return empty($x); }
+			$max_uplevels = count(explode('/',trim(parse_url(GB_SITE_URL, PHP_URL_PATH), '/')));
+			$uplevels = count(array_filter(explode('../', $relpath), '_empty'));
+		}
+		if ($uplevels > $max_uplevels) {
+			trigger_error('GB_THEME_URL could not be deduced since the theme you are '.
+				'using ('.GB_THEME_DIR.') is not reachable from '.GB_SITE_URL.
+				'. You need to manually define GB_THEME_URL before including gitblog.php',
+				E_USER_ERROR);
+		}
+	}
+	else {
+		define('GB_THEME_URL', GB_SITE_URL.$relpath.'/');
+	}
 }
 
 /**
@@ -377,7 +407,7 @@ class GitBlog {
 			.' --work-tree='.escapeshellarg(GB_SITE_DIR)
 			.' '.$cmd;
 		#var_dump($cmd);
-		$r = self::shell($cmd, $input);
+		$r = self::shell($cmd, $input, GB_SITE_DIR);
 		self::$gitQueryCount++;
 		# fail?
 		if ($r === null)
@@ -393,10 +423,10 @@ class GitBlog {
 	}
 	
 	/** Execute a command inside a shell */
-	static function shell($cmd, $input=null, $env=null) {
+	static function shell($cmd, $input=null, $cwd=null, $env=null) {
 		#var_dump($cmd);
 		# start process
-		$ps = gb_popen($cmd, null, $env === null ? $_ENV : $env);
+		$ps = gb_popen($cmd, $cwd, $env === null ? $_ENV : $env);
 		if (!$ps)
 			return null;
 		# stdin
@@ -473,6 +503,12 @@ class GitBlog {
 		$mkdirmode = $shared === 'all' ? 0777 : 0775;
 		$shared = $shared ? "--shared=$shared" : '';
 		
+		# sanity check
+		$themedir = GB_DIR.'/themes/'.$theme;
+		if (!is_dir($themedir))
+			throw new InvalidArgumentException(
+				'no theme named '.$theme' ('.$themedir.'not found or not a directory)');
+		
 		# create directories and chmod
 		if (!is_dir(GB_SITE_DIR.'/.git') && !mkdir(GB_SITE_DIR.'/.git', $mkdirmode, true))
 			return false;
@@ -493,27 +529,23 @@ class GitBlog {
 		copy(GB_DIR.'/skeleton/hooks/post-commit', GB_SITE_DIR.'/.git/hooks/post-commit');
 		chmod(GB_SITE_DIR.'/.git/hooks/post-commit', 0774);
 		
-		# Enable default theme
-		#$theme_files = glob(GB_DIR.'/themes/'.$theme.'/{*,*/*,*/*/*,*/*/*/*,*/*/*/*/*}',
-		#	GLOB_BRACE|GLOB_NOSORT|GLOB_MARK);
-		#foreach ($theme_files as $file) {
-		#	var_dump($file);
-		#}
-		#exit(0);
-		#$r = self::shell('cp -Rp '.escapeshellarg(GB_DIR.'/themes/default')
-		#	.' '.escapeshellarg(GB_SITE_DIR.'/theme'));
-		#if ($r[0] != 0)
-		#	return false;
-		#$r = self::shell('chmod -R g+rw '.escapeshellarg(GB_SITE_DIR.'/theme'));
-		## we don't care if the above failed
-		#self::exec("add theme");
+		# Copy .gitignore
+		copy(GB_DIR.'/skeleton/gitignore', GB_SITE_DIR.'/.gitignore');
+		chmod(GB_SITE_DIR.'/.gitignore', 0664);
+		self::add('.gitignore');
+		
+		# Copy theme
+		$lnname = GB_SITE_DIR.'/index.php';
+		$lntarget = gb_relpath($lnname, $themedir.'/index.php');
+		symlink($lntarget, $lnname);
+		self::add('index.php');
 		
 		# Add sample content
 		if ($add_sample_content) {
 			# Copy example "about" page
 			copy(GB_DIR.'/skeleton/content/pages/about.html', GB_SITE_DIR.'/content/pages/about.html');
 			chmod(GB_SITE_DIR.'/content/pages/about.html', 0664);
-			self::exec('add content/pages/about.html');
+			self::add('content/pages/about.html');
 		
 			# Copy example "hello world" post
 			$today = time();
@@ -525,10 +557,14 @@ class GitBlog {
 			$s = str_replace('0000/00-00-hello-world.html', basename(dirname($name)).'/'.basename($name), $s);
 			file_put_contents($path, $s);
 			chmod($path, 0664);
-			self::exec("add $name");
+			self::add($name);
 		}
 		
 		return true;
+	}
+	
+	static function add($pathspec, $forceIncludeIgnored=true) {
+		self::exec(($forceIncludeIgnored ? 'add --force ' : 'add ').escapeshellarg($pathspec));
 	}
 	
 	static function commit($message, $author=null) {
@@ -1460,5 +1496,70 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
 		$end = array_pop($collection);
 		return implode($nglue, $collection).$endglue.$end;
 	}
+}
+
+
+# -----------------------------------------------------------------------------
+# Request handler
+
+if (isset($gb_handle_request) && $gb_handle_request) {
+	$gb_urlpath = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
+
+	# verify integrity, implicitly rebuilding gitblog cache or need serious initing.
+	if (GitBlog::verifyIntegrity() === 2) {
+		header("Location: ".GB_SITE_URL."gitblog/admin/setup.php");
+		exit(0);
+	}
+
+	# verify configuration, like validity of the secret key.
+	GitBlog::verifyConfig();
+
+	if ($gb_urlpath) {
+		if (strpos($gb_urlpath, gb::$tags_prefix) === 0) {
+			# tag(s)
+			$tags = array_map('urldecode', explode(',', substr($gb_urlpath, strlen(gb::$tags_prefix))));
+			$posts = GitBlog::postsByTags($tags);
+			gb::$is_tags = true;
+		}
+		elseif (strpos($gb_urlpath, gb::$categories_prefix) === 0) {
+			# category(ies)
+			$cats = array_map('urldecode', explode(',', substr($gb_urlpath, strlen(gb::$categories_prefix))));
+			$posts = GitBlog::postsByCategories($cats);
+			gb::$is_categories = true;
+		}
+		elseif (strpos($gb_urlpath, gb::$feed_prefix) === 0) {
+			# feed
+			$postspage = GitBlog::postsPageByPageno(0);
+			gb::$is_feed = true;
+			# todo: check if theme has a custom feed, else use a standard feed renderer
+		}
+		elseif (preg_match(gb::$posts_url_prefix_re, $gb_urlpath)) {
+			# post
+			$post = GitBlog::postBySlug(urldecode($gb_urlpath));
+			if ($post === false)
+				gb::$is_404 = true;
+			elseif ($post->published > time())
+				gb::$is_404 = true;
+			else
+				gb::$title[] = $post->title;
+			gb::$is_post = true;
+		}
+		else {
+			# page
+			$post = GitBlog::pageBySlug(urldecode($gb_urlpath));
+			if ($post === false)
+				gb::$is_404 = true;
+			else
+				gb::$title[] = $post->title;
+			gb::$is_page = true;
+		}
+	}
+	else {
+		# posts
+		$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
+		$postspage = GitBlog::postsPageByPageno($pageno);
+		gb::$is_posts = true;
+	}
+	# from here on, the caller will have to do the rest
 }
 ?>

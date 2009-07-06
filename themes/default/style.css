@@ -1,0 +1,12 @@
+body { font-family:sans-serif; }
+#post-meta {  font-size:80%; background:#ddd; padding:10px; }
+#post-meta ul { list-style: none; padding:5px 10px;}
+.breaker { clear:both; }
+
+/* Comments */
+#comments { border-top:1px solid #ccc; }
+#comments ul { list-style:none; margin:0; padding:0 30px; }
+li.comment { width:500px; margin:0; }
+li.comment > img.avatar { display:block; float:left; }
+li.comment > div { float:left; margin:0 0 10px 10px; }
+li.comment p { margin:0; }

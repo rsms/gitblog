@@ -1,4 +1,7 @@
 <?
+$gb_handle_request = true;
+require 'gitblog/gitblog.php';
+
 if (gb::$is_feed) {
 	require 'feed.php';
 	exit(0);
@@ -15,20 +18,7 @@ elseif ((gb::$is_post || gb::$is_page) && $post->commentsOpen)
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 		<title><?= gb_title() ?></title>
-		<style type="text/css" media="screen">
-			body { font-family:sans-serif; }
-			#post-meta {  font-size:80%; background:#ddd; padding:10px; }
-			#post-meta ul { list-style: none; padding:5px 10px;}
-			.breaker { clear:both; }
-			
-			/* Comments */
-			#comments { border-top:1px solid #ccc; }
-			#comments ul { list-style:none; margin:0; padding:0 30px; }
-			li.comment { width:500px; margin:0; }
-			li.comment > img.avatar { display:block; float:left; }
-			li.comment > div { float:left; margin:0 0 10px 10px; }
-			li.comment p { margin:0; }
-		</style>
+		<link href="<?= GB_THEME_URL ?>style.css" type="text/css" rel="stylesheet" media="screen" />
 	</head>
 	<body>
 		<?

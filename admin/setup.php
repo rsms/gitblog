@@ -76,7 +76,7 @@ if (isset($_POST['submit'])) {
 	if (!$errors) {
 		$add_sample_content = isset($_POST['add-sample-content']) && $_POST['add-sample-content'] === 'true';
 		if (!GitBlog::init($add_sample_content))
-			$errors[] = 'Failed to create and initialize repository at '.var_export(gb::$repo,1);
+			$errors[] = 'Failed to create and initialize repository at '.var_export(GITBLOG_SITE_DIR,1);
 	}
 	
 	# -------------------------------------------------------------------------
@@ -119,13 +119,16 @@ if (isset($_POST['submit'])) {
 # prepare for rendering
 
 gb::$title[] = 'Setup';
-$is_writable_dir = dirname(gb::$repo);
-$is_writable = is_writable(file_exists(gb::$repo) ? gb::$repo : $is_writable_dir);
+$is_writable_dir = dirname(GITBLOG_SITE_DIR);
+$is_writable = is_writable(file_exists(GITBLOG_SITE_DIR) ? GITBLOG_SITE_DIR : $is_writable_dir);
 
 if (!$is_writable) {
-	$errors[] = "<b>Ooops.</b> The directory <code>".h($is_writable_dir)."</code> is not writable.
-		Gitblog need to write some files and create a few directories in this directory.
-		Please make this writable and reload this page.";
+	$errors[] = '<b>Ooops.</b> The directory <code>'.h($is_writable_dir).'</code> is not writable.
+		Gitblog need to create a few files in this directory.
+		<br/><br/>
+		Please make this directory (highlighted above) writable and then reload this page.';
+	# todo: check if the web server user and/or is the same as user and/or group
+	#       on directory. If so, suggest a chmod, otherwise suggest a chown.
 }
 
 include '_header.php';

@@ -71,22 +71,6 @@ class gb {
 	 */
 	static public $posts_pagesize = 10;
 	
-	/**
-	 * Absolute path to git repository.
-	 * 
-	 * Normally the default value is good, but in the case "site/" creates URL
-	 * clashes for you, you might want to change this.
-	 *
-	 * This should be the path to a non-bare repository, i.e. a directory in which
-	 * a working tree will be checked out and contain a regular .git-directory.
-	 *
-	 * The path must be writable by the web server and the contents will have 
-	 * umask 0220 (i.e. user and group writable) thus you can, after letting 
-	 * gitblog create the repo for you, chgrp or chown to allow for remote pushing
-	 * by other user(s) than the web server user.
-	 */
-	static public $repo;
-	
 	/** URL to gitblog index relative to GITBLOG_SITE_URL (request handler) */
 	static public $index_url = 'index.php/';
 	
@@ -148,8 +132,6 @@ class gb {
 		return $value;
 	}
 }
-
-gb::$repo = GITBLOG_SITE_DIR.'/site';
 
 if (file_exists(GITBLOG_SITE_DIR.'/gb-config.php'))
 	include GITBLOG_SITE_DIR.'/gb-config.php';
@@ -391,8 +373,8 @@ class GitBlog {
 	/** Execute a git command */
 	static function exec($cmd, $input=null) {
 		# build cmd
-		$cmd = 'git --git-dir='.escapeshellarg(gb::$repo.'/.git')
-			.' --work-tree='.escapeshellarg(gb::$repo)
+		$cmd = 'git --git-dir='.escapeshellarg(GITBLOG_SITE_DIR.'/.git')
+			.' --work-tree='.escapeshellarg(GITBLOG_SITE_DIR)
 			.' '.$cmd;
 		#var_dump($cmd);
 		$r = self::shell($cmd, $input);
@@ -432,15 +414,15 @@ class GitBlog {
 	}
 	
 	static function pathToTheme($file='') {
-		return gb::$repo."/theme/$file";
+		return GITBLOG_SITE_DIR.'/theme/'.$file;
 	}
 	
 	static function pathToCachedContent($dirname, $slug) {
-		return gb::$repo."/.git/info/gitblog/content/$dirname/$slug";
+		return GITBLOG_SITE_DIR.'/.git/info/gitblog/content/'.$dirname.'/'.$slug;
 	}
 	
 	static function pathToPostsPage($pageno) {
-		return gb::$repo."/.git/info/gitblog/content-paged-posts/".sprintf('%011d', $pageno);
+		return GITBLOG_SITE_DIR.sprintf('/.git/info/gitblog/content-paged-posts/%011d', $pageno);
 	}
 	
 	static function pathToPost($slug) {
@@ -492,46 +474,46 @@ class GitBlog {
 		$shared = $shared ? "--shared=$shared" : '';
 		
 		# create directories and chmod
-		if (!is_dir(gb::$repo.'/.git') && !mkdir(gb::$repo.'/.git', $mkdirmode, true))
+		if (!is_dir(GITBLOG_SITE_DIR.'/.git') && !mkdir(GITBLOG_SITE_DIR.'/.git', $mkdirmode, true))
 			return false;
-		chmod(gb::$repo, $mkdirmode);
-		chmod(gb::$repo.'/.git', $mkdirmode);
+		chmod(GITBLOG_SITE_DIR, $mkdirmode);
+		chmod(GITBLOG_SITE_DIR.'/.git', $mkdirmode);
 		
 		# git init
 		self::exec("init --quiet $shared");
 		
 		# Create empty standard directories
-		mkdir(gb::$repo.'/content/posts', $mkdirmode, true);
-		mkdir(gb::$repo.'/content/pages', $mkdirmode);
-		chmod(gb::$repo.'/content', $mkdirmode);
-		chmod(gb::$repo.'/content/posts', $mkdirmode);
-		chmod(gb::$repo.'/content/pages', $mkdirmode);
+		mkdir(GITBLOG_SITE_DIR.'/content/posts', $mkdirmode, true);
+		mkdir(GITBLOG_SITE_DIR.'/content/pages', $mkdirmode);
+		chmod(GITBLOG_SITE_DIR.'/content', $mkdirmode);
+		chmod(GITBLOG_SITE_DIR.'/content/posts', $mkdirmode);
+		chmod(GITBLOG_SITE_DIR.'/content/pages', $mkdirmode);
 		
 		# Copy post-commit hook
-		copy(GITBLOG_DIR.'/skeleton/hooks/post-commit', gb::$repo."/.git/hooks/post-commit");
-		chmod(gb::$repo."/.git/hooks/post-commit", 0774);
+		copy(GITBLOG_DIR.'/skeleton/hooks/post-commit', GITBLOG_SITE_DIR.'/.git/hooks/post-commit');
+		chmod(GITBLOG_SITE_DIR.'/.git/hooks/post-commit', 0774);
 		
 		# Enable default theme (todo: maybe a php-native recursive copy function for this?)
 		$r = self::shell('cp -Rp '.escapeshellarg(GITBLOG_DIR.'/themes/default')
-			.' '.escapeshellarg(gb::$repo."/theme"));
+			.' '.escapeshellarg(GITBLOG_SITE_DIR.'/theme'));
 		if ($r[0] != 0)
 			return false;
-		$r = self::shell('chmod -R g+rw '.escapeshellarg(gb::$repo."/theme"));
+		$r = self::shell('chmod -R g+rw '.escapeshellarg(GITBLOG_SITE_DIR.'/theme'));
 		# we don't care if the above failed
 		self::exec("add theme");
 		
 		# Add sample content
 		if ($add_sample_content) {
 			# Copy example "about" page
-			copy(GITBLOG_DIR.'/skeleton/content/pages/about.html', gb::$repo."/content/pages/about.html");
-			chmod(gb::$repo."/content/pages/about.html", 0664);
-			self::exec("add content/pages/about.html");
+			copy(GITBLOG_DIR.'/skeleton/content/pages/about.html', GITBLOG_SITE_DIR.'/content/pages/about.html');
+			chmod(GITBLOG_SITE_DIR.'/content/pages/about.html', 0664);
+			self::exec('add content/pages/about.html');
 		
 			# Copy example "hello world" post
 			$today = time();
 			$s = file_get_contents(GITBLOG_DIR.'/skeleton/content/posts/0000-00-00-hello-world.html');
 			$name = 'content/posts/'.date('Y/m-d').'-hello-world.html';
-			$path = gb::$repo."/$name";
+			$path = GITBLOG_SITE_DIR.'/'.$name;
 			@mkdir(dirname($path), 0775, true);
 			chmod(dirname($path), 0775);
 			$s = str_replace('0000/00-00-hello-world.html', basename(dirname($name)).'/'.basename($name), $s);
@@ -546,13 +528,13 @@ class GitBlog {
 	static function commit($message, $author=null) {
 		$author = $author ? '--author='.escapeshellarg($author) : '';
 		self::exec('commit -m '.escapeshellarg($message).' --quiet '.$author);
-		@chmod(gb::$repo."/.git/COMMIT_EDITMSG", 0664);
+		@chmod(GITBLOG_SITE_DIR.'/.git/COMMIT_EDITMSG', 0664);
 		return true;
 	}
 	
 	static function syncSiteURLcache() {
-		if (@file_get_contents(gb::$repo.'/.git/info/gitblog-site-url') !== GITBLOG_SITE_URL)
-			gb_atomic_write(gb::$repo.'/.git/info/gitblog-site-url', GITBLOG_SITE_URL, 0664);
+		if (@file_get_contents(GITBLOG_SITE_DIR.'/.git/info/gitblog-site-url') !== GITBLOG_SITE_URL)
+			gb_atomic_write(GITBLOG_SITE_DIR.'/.git/info/gitblog-site-url', GITBLOG_SITE_URL, 0664);
 	}
 	
 	/**
@@ -566,8 +548,8 @@ class GitBlog {
 	 */
 	static function verifyIntegrity() {
 		$r = 0;
-		if (!is_dir(gb::$repo."/.git/info/gitblog")) {
-			if (!is_dir(gb::$repo."/.git"))
+		if (!is_dir(GITBLOG_SITE_DIR.'/.git/info/gitblog')) {
+			if (!is_dir(GITBLOG_SITE_DIR.'/.git'))
 				return 2;
 			GBRebuilder::rebuild(true);
 			$r = 1;
@@ -608,16 +590,16 @@ class GBContent {
 	}
 	
 	static function getCached($name) {
-		$path = gb::$repo."/.git/info/gitblog/".gb_filenoext($name);
+		$path = GITBLOG_SITE_DIR.'/.git/info/gitblog/'.gb_filenoext($name);
 		return @unserialize(file_get_contents($path));
 	}
 	
 	function writeCache() {
-		$path = gb::$repo."/.git/info/gitblog/".$this->cachename();
+		$path = GITBLOG_SITE_DIR.'/.git/info/gitblog/'.$this->cachename();
 		$dirname = dirname($path);
 		
 		if (!is_dir($dirname)) {
-			$p = gb::$repo."/.git/info";
+			$p = GITBLOG_SITE_DIR.'/.git/info';
 			$parts = array_merge(array('gitblog'),explode('/',trim(dirname($this->cachename()),'/')));
 			foreach ($parts as $part) {
 				$p .= '/'.$part;
@@ -852,7 +834,7 @@ class GBPage extends GBExposedContent {
 	}
 	
 	static function getCached($slug) {
-		$path = gb::$repo.'/.git/info/gitblog/'.self::mkCachename($slug);
+		$path = GITBLOG_SITE_DIR.'/.git/info/gitblog/'.self::mkCachename($slug);
 		return @unserialize(file_get_contents($path));
 	}
 	
@@ -905,7 +887,7 @@ class GBPost extends GBExposedContent {
 	}
 	
 	static function getCached($published, $slug) {
-		$path = gb::$repo.'/.git/info/gitblog/'.self::mkCachename($published, $slug);
+		$path = GITBLOG_SITE_DIR.'/.git/info/gitblog/'.self::mkCachename($published, $slug);
 		return @unserialize(file_get_contents($path));
 	}
 	
@@ -992,7 +974,7 @@ class GBComments extends GBContent implements IteratorAggregate {
 	}
 	
 	static function getCached($cachenamePrefix) {
-		$path = gb::$repo.'/.git/info/gitblog/'.$cachenamePrefix.'.comments';
+		$path = GITBLOG_SITE_DIR.'/.git/info/gitblog/'.$cachenamePrefix.'.comments';
 		return @unserialize(file_get_contents($path));
 	}
 	
@@ -1168,8 +1150,8 @@ class GBUserAccount {
 	static public $db = null;
 	
 	static function _reload() {
-		if (file_exists(gb::$repo.'/.git/info/gitblog-users.php')) {
-			include gb::$repo.'/.git/info/gitblog-users.php';
+		if (file_exists(GITBLOG_SITE_DIR.'/.git/info/gitblog-users.php')) {
+			include GITBLOG_SITE_DIR.'/.git/info/gitblog-users.php';
 			self::$db = $db;
 		}
 		else {
@@ -1180,9 +1162,9 @@ class GBUserAccount {
 	static function sync() {
 		if (self::$db === null)
 			return;
-		$r = file_put_contents(gb::$repo.'/.git/info/gitblog-users.php', 
+		$r = file_put_contents(GITBLOG_SITE_DIR.'/.git/info/gitblog-users.php', 
 			'<? $db = '.var_export(self::$db, 1).'; ?>', LOCK_EX);
-		chmod(gb::$repo.'/.git/info/gitblog-users.php', 0660);
+		chmod(GITBLOG_SITE_DIR.'/.git/info/gitblog-users.php', 0660);
 		return $r;
 	}
 	

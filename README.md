@@ -46,7 +46,7 @@ Have a look in the file `gitblog/gitblog.php` -- scroll down a few lines and you
 
 ## Known bugs and issues
 
-- Moving the blog to a new URL requires editing of the `{gb::$repo}/.git/hooks/post-commit` hook.
+- Moving the blog to a new URL requires editing of the `{GITBLOG_SITE_DIR}/.git/hooks/post-commit` hook.
 
 
 ## Authors

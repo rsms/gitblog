@@ -3,7 +3,7 @@ require_once '_base.php';
 
 # do not render this page unless there is no repo
 if ($integrity !== 2) {
-	header("Location: ".GITBLOG_SITE_URL."gitblog/admin/");
+	header("Location: ".GB_SITE_URL."gitblog/admin/");
 	exit(0);
 }
 
@@ -27,8 +27,8 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# create gb-config.php
 	if (!$errors) {
-		$config_path = GITBLOG_SITE_DIR."/gb-config.php";
-		$s = file_get_contents(GITBLOG_DIR.'/skeleton/gb-config.php');
+		$config_path = GB_SITE_DIR."/gb-config.php";
+		$s = file_get_contents(GB_DIR.'/skeleton/gb-config.php');
 		# title
 		$s = preg_replace('/(gb::\$site_title[\t ]*=[\t ]*)\'[^\']*\';/', 
 			'${1}'.var_export($_POST['title'],1).";", $s, 1);
@@ -76,7 +76,7 @@ if (isset($_POST['submit'])) {
 	if (!$errors) {
 		$add_sample_content = isset($_POST['add-sample-content']) && $_POST['add-sample-content'] === 'true';
 		if (!GitBlog::init($add_sample_content))
-			$errors[] = 'Failed to create and initialize repository at '.var_export(GITBLOG_SITE_DIR,1);
+			$errors[] = 'Failed to create and initialize repository at '.var_export(GB_SITE_DIR,1);
 	}
 	
 	# -------------------------------------------------------------------------
@@ -104,7 +104,7 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# send the client along
 	if (!$errors) {
-		header('Location: '.GITBLOG_SITE_URL);
+		header('Location: '.GB_SITE_URL);
 		exit(0);
 	}
 }
@@ -119,8 +119,8 @@ if (isset($_POST['submit'])) {
 # prepare for rendering
 
 gb::$title[] = 'Setup';
-$is_writable_dir = dirname(GITBLOG_SITE_DIR);
-$is_writable = is_writable(file_exists(GITBLOG_SITE_DIR) ? GITBLOG_SITE_DIR : $is_writable_dir);
+$is_writable_dir = dirname(GB_SITE_DIR);
+$is_writable = is_writable(file_exists(GB_SITE_DIR) ? GB_SITE_DIR : $is_writable_dir);
 
 if (!$is_writable) {
 	$errors[] = '<b>Ooops.</b> The directory <code>'.h($is_writable_dir).'</code> is not writable.

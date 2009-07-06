@@ -5,7 +5,7 @@ require 'gitblog/gitblog.php';
 
 # verify integrity, implicitly rebuilding gitblog cache or need serious initing.
 if (GitBlog::verifyIntegrity() === 2) {
-	header("Location: ".GITBLOG_SITE_URL."gitblog/admin/setup.php");
+	header("Location: ".GB_SITE_URL."gitblog/admin/setup.php");
 	exit(0);
 }
 

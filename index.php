@@ -1,4 +1,4 @@
 <?
 require 'gitblog.php';
-header("Location: ".GITBLOG_SITE_URL."gitblog/admin/");
+header("Location: ".GB_SITE_URL."gitblog/admin/");
 ?>

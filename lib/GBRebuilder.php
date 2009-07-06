@@ -17,10 +17,10 @@ class GBRebuilder {
 	
 	static public $rebuilders = array();
 	
-	/** Load rebuilders from GITBLOG_DIR/rebuilders */
+	/** Load rebuilders from GB_DIR/rebuilders */
 	static function loadRebuilders() {
 		self::$rebuilders = array();
-		foreach (glob(GITBLOG_DIR.'/rebuilders/*.php') as $path) {
+		foreach (glob(GB_DIR.'/rebuilders/*.php') as $path) {
 			$n = basename($path);
 			if (preg_match('/^[a-z_][0-9a-z_]*\.php$/i', $n)) {
 				include_once $path;

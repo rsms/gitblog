@@ -60,7 +60,7 @@
 <? endif; # comments ?>
 <? if ($post->commentsOpen): ?>
 	<h3 id="reply">Add a comment</h3>
-	<form id="reply-form" action="<?= GITBLOG_SITE_URL ?>gitblog/actions/post-comment.php" method="POST">
+	<form id="reply-form" action="<?= GB_SITE_URL ?>gitblog/actions/post-comment.php" method="POST">
 		<input type="hidden" name="reply-id" value="" />
 		<p>
 			<textarea name="message" id="reply-message"></textarea>

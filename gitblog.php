@@ -5,74 +5,72 @@ $debug_time_started = microtime(true);
 # constants
 define('GB_VERSION', '0.1.0');
 define('GB_DIR', dirname(__FILE__));
+$u = dirname($_SERVER['SCRIPT_NAME']);
+$s = dirname($_SERVER['SCRIPT_FILENAME']);
+if (substr($_SERVER['SCRIPT_FILENAME'], -20) === '/gitblog/gitblog.php')
+	exit(0);
+$ingb = (strpos($s, '/gitblog/') !== false || substr($s, -8) === '/gitblog') 
+	&& (strpos(realpath($s), realpath(GB_DIR)) === 0);
 if (!defined('GB_SITE_DIR')) {
-	$u = dirname($_SERVER['SCRIPT_NAME']);
-	$s = dirname($_SERVER['SCRIPT_FILENAME']);
-	if (strpos($s, '/gitblog/') !== false) {
-		if (strpos(realpath($s), realpath(dirname(__FILE__))) === 0) {
-			# confirmed: inside gitblog
-			$max = 20;
-			while($s !== '/' && $max--) {
-				if (substr($s, -7) === 'gitblog') {
-					$s = dirname($s);
-					$u = dirname($u);
-					break;
-				}
+	if ($ingb) {
+		# confirmed: inside gitblog -- back up to before the gitblog dir and 
+		# assume that's the site dir.
+		$max = 20;
+		while($s !== '/' && $max--) {
+			if (substr($s, -7) === 'gitblog') {
 				$s = dirname($s);
 				$u = dirname($u);
+				break;
 			}
+			$s = dirname($s);
+			$u = dirname($u);
 		}
 	}
-	define('GB_SITE_DIR', $s);
+	define('GB_SITE_DIR', realpath($s));
 	if (!defined('GB_SITE_URL')) {
 		# URL to the base of the site.
-		#
-		# If your blog is hosted on it's own domain, for example 
-		# http://my.blog.com/, the value of this parameter could be either "/" or the
-		# complete url "http://my.blog.com/".
-		#
-		# If your blog is hosted in a subdirectory, for example
-		# http://somesite.com/blogs/user/ the value of this parameter could be either
-		# "/blogs/user/" or the complete url "http://somesite.com/blogs/user/".
-		#
 		# Must end with a slash ("/").
 		define('GB_SITE_URL', 
 			(isset($_SERVER['HTTPS']) ? 'https://' : 'http://')
 			.$_SERVER['SERVER_NAME'] . ($u === '/' ? $u : $u.'/'));
 	}
-	unset($s);
-	unset($u);
 }
-if (!defined('GB_THEME_DIR')) {
-	$bt = debug_backtrace();
-	define('GB_THEME_DIR', dirname($bt[0]['file']));
+if (!$ingb) {
+	# we only need (and can deduce) these while running the theme
+	if (!defined('GB_THEME_DIR')) {
+		$bt = debug_backtrace();
+		define('GB_THEME_DIR', dirname($bt[0]['file']));
+	}
+	if (!defined('GB_THEME_URL')) {
+		$relpath = gb_relpath(GB_SITE_DIR, GB_THEME_DIR);
+		if ($relpath === '' || $relpath === '.') {
+			define('GB_THEME_URL', GB_SITE_URL);
+		}
+		elseif ($relpath{0} === '.' || $relpath{0} === '/') {
+			$uplevels = $max_uplevels = 0;
+			if ($relpath{0} === '/') {
+				$uplevels = 1;
+			}
+			if ($relpath{0} === '.') {
+				function _empty($x) { return empty($x); }
+				$max_uplevels = count(explode('/',trim(parse_url(GB_SITE_URL, PHP_URL_PATH), '/')));
+				$uplevels = count(array_filter(explode('../', $relpath), '_empty'));
+			}
+			if ($uplevels > $max_uplevels) {
+				trigger_error('GB_THEME_URL could not be deduced since the theme you are '.
+					'using ('.GB_THEME_DIR.') is not reachable from '.GB_SITE_URL.
+					'. You need to manually define GB_THEME_URL before including gitblog.php',
+					E_USER_ERROR);
+			}
+		}
+		else {
+			define('GB_THEME_URL', GB_SITE_URL.$relpath.'/');
+		}
+	}
 }
-if (!defined('GB_THEME_URL')) {
-	$relpath = gb_relpath(GB_SITE_DIR, GB_THEME_DIR);
-	if ($relpath === '' || $relpath === '.') {
-		define('GB_THEME_URL', GB_SITE_URL);
-	}
-	elseif ($relpath{0} === '.' || $relpath{0} === '/') {
-		$uplevels = $max_uplevels = 0;
-		if ($relpath{0} === '/') {
-			$uplevels = 1;
-		}
-		if ($relpath{0} === '.') {
-			function _empty($x) { return empty($x); }
-			$max_uplevels = count(explode('/',trim(parse_url(GB_SITE_URL, PHP_URL_PATH), '/')));
-			$uplevels = count(array_filter(explode('../', $relpath), '_empty'));
-		}
-		if ($uplevels > $max_uplevels) {
-			trigger_error('GB_THEME_URL could not be deduced since the theme you are '.
-				'using ('.GB_THEME_DIR.') is not reachable from '.GB_SITE_URL.
-				'. You need to manually define GB_THEME_URL before including gitblog.php',
-				E_USER_ERROR);
-		}
-	}
-	else {
-		define('GB_THEME_URL', GB_SITE_URL.$relpath.'/');
-	}
-}
+unset($s);
+unset($u);
+unset($ingb);
 
 /**
  * Configuration.
@@ -341,6 +339,8 @@ function gb_utcstrtotime($input, $fallbacktime=false) {
  * /var/gitblog/site/theme, /var/gitblog/site/theme             => ""
  */
 function gb_relpath($from, $to) {
+	if ($from === $to)
+		return '.';
 	$fromv = explode('/', trim($from,'/'));
 	$tov = explode('/', trim($to,'/'));
 	$len = min(count($fromv), count($tov));

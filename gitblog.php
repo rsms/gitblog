@@ -507,7 +507,7 @@ class GitBlog {
 		$themedir = GB_DIR.'/themes/'.$theme;
 		if (!is_dir($themedir))
 			throw new InvalidArgumentException(
-				'no theme named '.$theme' ('.$themedir.'not found or not a directory)');
+				'no theme named '.$theme.' ('.$themedir.'not found or not a directory)');
 		
 		# create directories and chmod
 		if (!is_dir(GB_SITE_DIR.'/.git') && !mkdir(GB_SITE_DIR.'/.git', $mkdirmode, true))
@@ -516,7 +516,7 @@ class GitBlog {
 		chmod(GB_SITE_DIR.'/.git', $mkdirmode);
 		
 		# git init
-		self::exec("init --quiet $shared");
+		self::exec('init --quiet '.$shared);
 		
 		# Create empty standard directories
 		mkdir(GB_SITE_DIR.'/content/posts', $mkdirmode, true);
@@ -539,6 +539,10 @@ class GitBlog {
 		$lntarget = gb_relpath($lnname, $themedir.'/index.php');
 		symlink($lntarget, $lnname);
 		self::add('index.php');
+		
+		# Add gb-config.php (might been added already, might be missing and/or
+		# might be ignored by custom .gitignore -- doesn't really matter)
+		self::add('gb-config.php', false);
 		
 		# Add sample content
 		if ($add_sample_content) {

@@ -2,26 +2,48 @@
 
 A git-based blog/cms platform for PHP, meant as a replacement for Wordpress.
 
+Post-action hooks in git are used to manage an intermediate cache which consist only of structured data (no formatting), allowing dynamic presentation. This is one of the biggest differences tech-wise in comparison to Jekyll and similar tools.
+
+## Features
+
+- Fully git-based -- no mysql or similar involved
+- Everything is versioned
+- Themes
+- No custom file formats for content (only JSON and HTML)
+- High performance
+
+### Work in progress
+
+- Hierarchical comments
+- Remote editing (git push/pull)
+
+### Planned
+
+- Plugins
+- Pingback
+- Web administration
+
+
 ## Installing & Getting started
 
 Clone a copy of gitblog:
 
-	$ cd my/website/document/root
-	$ git clone git://github.com/rsms/gitblog.git my-blog
-	$ cd my-blog
+	$ cd /path/to/my-blog
+	$ git clone git://github.com/rsms/gitblog.git
 
 If your web server is not running as yourself, your group, or the root user, you need to change owner. In this example `www-data` is the web server user. (You will still be able to edit the blog.)
 
 	$ chmod -R g+w .
 	$ sudo chown -R www-data .
 
-Open a web browser and point it to your `/my-blog`. Enter email and your real name -- these will be used for commit messages. Also choose a good pass phrase wich in combination with your email will grand you administration privileges in the web administration interface.
+Open a web browser and point it to your `/my-blog/gitblog`. Enter email and your real name -- these will be used for commit messages. Also choose a good pass phrase wich in combination with your email will grand you administration privileges in the web administration interface.
 
 When you're done you should see a single "Hello world" post. Okay, all good.
 
+> **What did just happen?** Gitblog initialized a git repository in `/path/to/my-blog` and added a few standard files and directories. If you ever would like to start over, just delete everything except the gitblog directory and visit `/my-blog/gitblog` in a browser again.
+
 Let's try editing the hello world post:
 
-	$ cd site
 	$ $EDITOR content/posts/*/*-*-hello-world.html
 
 Make some changes, be creative!
@@ -34,7 +56,14 @@ Now, let's commit the changes, pusing them live:
 
 Reload your web browser and... voila!
 
-(It's normal to see `error: Could not access 'HEAD@{1}'` on stderr the first time you commit a change.)
+*Note:* If you see `error: Could not access 'HEAD@{1}'` on stderr when committing, do not worry. This is an issue that currently do not affect gitblog, but we're looking into what causes it.
+
+
+## Requirements
+
+- PHP 5.1 or newer (only standard modules are needed)
+- Git 1.6 or newer
+- POSIX system
 
 
 ## Further play
@@ -46,7 +75,7 @@ Have a look in the file `gitblog/gitblog.php` -- scroll down a few lines and you
 
 ## Known bugs and issues
 
-- Moving the blog to a new URL requires editing of the `{GB_SITE_DIR}/.git/hooks/post-commit` hook.
+- Post-hook system is a bit shaky because of the nature of itself. Running scripts directly instead of POSTing to a URL would be better but many systems does not have CLI PHP or have another version than the web PHP.
 
 
 ## Authors

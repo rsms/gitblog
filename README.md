@@ -36,7 +36,7 @@ If your web server is not running as yourself, your group, or the root user, you
 	$ chmod -R g+w .
 	$ sudo chown -R www-data .
 
-Open a web browser and point it to your `/my-blog/gitblog`. Enter email and your real name -- these will be used for commit messages. Also choose a good pass phrase wich in combination with your email will grand you administration privileges in the web administration interface.
+Open a web browser and point it to your `/my-blog/gitblog`. Enter email and your real name -- these will be used for commit messages. Also choose a good pass phrase which in combination with your email will grand you administration privileges in the web administration interface.
 
 When you're done you should see a single "Hello world" post. Okay, all good.
 

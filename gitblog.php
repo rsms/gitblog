@@ -1599,7 +1599,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 
 	# verify configuration, like validity of the secret key.
 	GitBlog::verifyConfig();
-
+	
 	if ($gb_urlpath) {
 		if (strpos($gb_urlpath, gb::$tags_prefix) === 0) {
 			# tag(s)

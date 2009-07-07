@@ -222,6 +222,15 @@ class GBContentFinalizer extends GBContentRebuilder {
 	}
 	
 	function _checkCommentDeps() {
+		# map comments to dirty objects (this way, together with the loop below,
+		# we map all dirty comments and dirty objects, leaving maping between clean ones)
+		foreach (self::$comments as $id => $cobj) {
+			$parentName = substr($cobj->name, 0, -9); # .comments
+			$parentNameLen = strlen($parentName);
+			foreach (self::$dirtyObjects as $parentObj)
+				if (substr($parentObj->name, 0, $parentNameLen) === $parentName)
+					$parentObj->comments = $cobj;
+		}
 		# assure GBExposedContent objects with dirty comments are added to dirtyObjects
 		foreach (self::$dirtyComments as $id => $cobj) {
 			$parentName = substr($cobj->name, 0, -9); # .comments

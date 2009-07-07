@@ -11,4 +11,6 @@ gb::$secret = '';
 # probably want to set index_url to "" (the empty string). May differ 
 # depending on your rewrite rules.
 #gb::$index_url = '';
+# Note that if you use lighttpd, read this: "Configuring PHP"
+# http://redmine.lighttpd.net/projects/lighttpd/wiki/Docs:ModFastCGI#FastCGI-and-Programming-Languages
 ?>

@@ -35,7 +35,7 @@ This is how .comment-files look:
 {
 	"1" : {
 	  "date": "2008-11-24T21:27:06+0200",
-		"ip_address": "89.233.196.218",
+		"ipAddress": "89.233.196.218",
 		"email": "maxberggren@gmail.com",
 		"uri": "http://maxberggren.com",
 		"name": "Max Berggren",

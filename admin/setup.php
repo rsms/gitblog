@@ -119,11 +119,10 @@ if (isset($_POST['submit'])) {
 # prepare for rendering
 
 gb::$title[] = 'Setup';
-$is_writable_dir = dirname(GB_SITE_DIR);
-$is_writable = is_writable(file_exists(GB_SITE_DIR) ? GB_SITE_DIR : $is_writable_dir);
+$is_writable = is_writable(GB_SITE_DIR);
 
 if (!$is_writable) {
-	$errors[] = '<b>Ooops.</b> The directory <code>'.h($is_writable_dir).'</code> is not writable.
+	$errors[] = '<b>Ooops.</b> The directory <code>'.h(GB_SITE_DIR).'</code> is not writable.
 		Gitblog need to create a few files in this directory.
 		<br/><br/>
 		Please make this directory (highlighted above) writable and then reload this page.';

@@ -25,9 +25,9 @@ echo '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
 		<published><?= date('c', $post->published) ?></published>
 		<updated><?= date('c', $post->modified) ?></updated>
 		<?= $post->tagLinks('<category scheme="'.GB_SITE_URL.gb::$tags_prefix.'" term="%n" />',
-			"\n\t\t", "\n\t\t").($post->tags ? "\n\t\t" : '') ?>
+			"\n\t\t", "\n\t\t").($post->tags ? "\n" : '') ?>
 		<?= $post->categoryLinks('<category scheme="'.GB_SITE_URL.gb::$categories_prefix.'" term="%n" />',
-			"\n\t\t", "\n\t\t").($post->categories ? "\n\t\t" : '') ?>
+			"\n\t\t", "\n\t\t").($post->categories ? "\n" : '') ?>
 		<comments><?= $post->comments ?></comments>
 		<gb:version><?= $post->id ?></gb:version>
 		<? if ($post->excerpt): ?>

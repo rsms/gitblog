@@ -102,6 +102,13 @@ class gb {
 	/** URL to gitblog index relative to GB_SITE_URL (request handler) */
 	static public $index_url = 'index.php/';
 	
+	/**
+	 * Log messages of priority >=$log_filter will be sent to syslog.
+	 * Disable logging by setting this to -1.
+	 * See the "Logging" section in gitblog.php for more information.
+	 */
+	static public $log_filter = LOG_WARNING;
+	
 	# --------------------------------------------------------------------------
 	# The following are by default set in the gb-config.php file.
 	# See gb-config.php for detailed documentation.
@@ -158,6 +165,61 @@ class gb {
 			foreach ($funcs as $func)
 				$value = call_user_func($func, $value);
 		return $value;
+	}
+	
+	# --------------------------------------------------------------------------
+	# Logging
+	static public $log_open = false;
+	
+	static function openlog($ident=null, $options=LOG_PID, $facility=LOG_USER) {
+		if ($ident === null) {
+			$u = parse_url(GB_SITE_URL);
+			$ident = 'gitblog.'.isset($u['host']) ? $u['host'] .'.' : '';
+			if (isset($u['path']))
+				$ident .= str_replace('/', '.', trim($u['path'],'/'));
+		}
+		self::$log_open = openlog($ident, $options, $facility);
+		return self::$log_open;
+	}
+	
+	static function vlog($priority, $vargs, $btoffset=1) {
+		if ($priority > self::$log_filter)
+			return true;
+		$bt = debug_backtrace();
+		$bt = $bt[$btoffset];
+		$msg = '['.gb_relpath(GB_SITE_DIR, $bt['file']).':'.$bt['line'].'] ';
+		if(count($vargs) > 1) {
+			$fmt = array_shift($vargs);
+			$msg .= vsprintf($fmt, $vargs);
+		}
+		elseif ($vargs) {
+			$msg .= $vargs[0];
+		}
+		if (!self::$log_open && !self::openlog() && $priority < LOG_WARNING) {
+			trigger_error($msg, E_USER_ERROR);
+			return $msg;
+		}
+		return syslog($priority, $msg) ? $msg : false;
+	}
+	
+	/**
+	 * Send a message to syslog.
+	 * 
+	 * INT  CONSTANT    DESCRIPTION
+	 * ---- ----------- ----------------------------------
+	 * 0    LOG_EMERG   system is unusable
+	 * 1    LOG_ALERT   action must be taken immediately
+	 * 2    LOG_CRIT    critical conditions
+	 * 3    LOG_ERR     error conditions
+	 * 4    LOG_WARNING warning conditions
+	 * 5    LOG_NOTICE  normal, but significant, condition
+	 * 6    LOG_INFO    informational message
+	 * 7    LOG_DEBUG   debug-level message
+	 */
+	static function log($priority, $fmt/* [mixed ..] */) {
+		$vargs = func_get_args();
+		$priority = array_shift($vargs);
+		return self::vlog($priority, $vargs);
 	}
 }
 
@@ -301,6 +363,13 @@ function gb_normalize_git_name($name) {
 #	}
 #	return $s;
 #}
+
+
+/** Normalize $time (any format strtotime can handle) to a ISO timestamp. */
+function gb_strtoisotime($time) {
+	$d = new DateTime($time);
+	return $d->format('c');
+}
 
 
 /**
@@ -701,6 +770,7 @@ class GBExposedContent extends GBContent {
 	public $categories = array();
 	public $comments;
 	public $commentsOpen = true;
+	public $pingbackOpen = true;
 	
 	# 2038-01-19 03:14:07 UTC ("distant future" on 32bit systems)
 	const NOT_PUBLISHED = 2147483647;
@@ -1132,14 +1202,18 @@ class GBCommentsIterator implements Iterator {
  * Managed through GBCommentDB
  */
 class GBComment {
+	const TYPE_COMMENT = 'c';
+	const TYPE_PINGBACK = 'p';
+	
 	public $date;
-	public $ip_address;
+	public $ipAddress;
 	public $email;
 	public $uri;
 	public $name;
 	public $message;
 	public $approved;
 	public $comments;
+	public $type;
 	
 	# members below are not serialized
 	
@@ -1152,6 +1226,7 @@ class GBComment {
 	public $_countApprovedTopo;
 	
 	function __construct($state=array()) {
+		$this->type = self::TYPE_COMMENT;
 		if ($state) {
 			foreach ($state as $k => $v) {
 				if ($k === 'comments' && $v !== null)
@@ -1174,7 +1249,7 @@ class GBComment {
 	}
 	
 	function __sleep() {
-		return array('date','ip_address','email','uri','name','message','approved','comments');
+		return array('date','ipAddress','email','uri','name','message','approved','comments');
 	}
 }
 
@@ -1187,10 +1262,17 @@ class GBUserAccount {
 	public $email;
 	public $passhash;
 	
-	function __construct($name, $email, $passhash) {
+	function __construct($name=null, $email=null, $passhash=null) {
 		$this->name = $name;
 		$this->email = $email;
 		$this->passhash = $passhash;
+	}
+	
+	static function __set_state($state) {
+		$o = new self;
+		foreach ($state as $k => $v)
+			$o->$k = $v;
+		return $o;
 	}
 	
 	static public $db = null;

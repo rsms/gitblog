@@ -187,7 +187,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		if ($objects) {
 			$this->reloadObjects($objects);
 			foreach ($objects as $obj) {
-				#echo 'gb> '.$obj->cachename().PHP_EOL;
+				gb::log(LOG_INFO, 'wrote %s', $obj->cachename());
 				$obj->writeCache();
 			}
 		}
@@ -265,7 +265,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 			# check if any objects on this page are dirty
 			if (!$need_rewrite && GBContentFinalizer::$dirtyObjects) {
 				foreach ($page as $post) {
-					if (in_array($post, GBContentFinalizer::$dirtyObjects)) {
+					if (isset(GBContentFinalizer::$dirtyObjects[$post->id])) {
 						$need_rewrite = true;
 						break;
 					}
@@ -282,7 +282,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 				if ($pageno < $numpages-1)
 					$page->nextpage = $pageno+1;
 				gb_atomic_write($path, serialize($page), 0664);
-				#echo 'gb> '.substr($path, $dirPrefixLen).PHP_EOL;
+				gb::log(LOG_INFO, 'wrote %s', substr($path, $dirPrefixLen));
 			}
 		}
 	}

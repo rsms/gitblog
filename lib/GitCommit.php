@@ -4,10 +4,10 @@ class GitCommit {
 	public $tree;
 	public $authorEmail;
 	public $authorName;
-	public $authorDate; # UTC timestamp
+	public $authorDate; # GBDateTime
 	public $comitterEmail;
 	public $comitterName;
-	public $comitterDate; # UTC timestamp
+	public $comitterDate; # GBDateTime
 	public $message;
 	public $files; # array example: array(GitPatch::CREATE => array('file1', 'file3'), GitPatch::DELETE => array('file2'))
 	public $previousFiles; # available for GitPatch::RENAME and COPY. array('file1', 'file2', ..)
@@ -79,7 +79,7 @@ class GitCommit {
 					break;
 				
 				if (substr($field, -4) == 'Date')
-					$c->$field = strtotime(substr($out, $a, $b-$a));
+					$c->$field = new GBDateTime(substr($out, $a, $b-$a));
 				else
 					$c->$field = substr($out, $a, $b-$a);
 				

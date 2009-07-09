@@ -3,8 +3,8 @@
 		<h3>Details</h3>
 		<ul>
 			<li>Author: <a href="mailto:<?= $post->author->email ?>"><?= $post->author->name ?></a></li>
-			<li>Published: <?= date('c', $post->published) ?></li>
-			<li>Modified: <?= date('c', $post->modified) ?></li>
+			<li>Published: <?= $post->published ?></li>
+			<li>Modified: <?= $post->modified ?></li>
 			<li>Tags: <?= $post->tagLinks() ?></li>
 			<li>Categories: <?= $post->categoryLinks() ?></li>
 			<li>Version: <?= $post->id ?></li>

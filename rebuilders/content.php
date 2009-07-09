@@ -43,7 +43,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 	 *  fnext: "html"
 	 */
 	function parsePostName($name, &$date, &$slug, &$fnext) {
-		$date = strtotime(str_replace(array('.','_','/'), '-', substr($name, 14, 10)).' UTC');
+		$date = new GBDateTime(str_replace(array('.','_','/'), '-', substr($name, 14, 10)).'T00:00:00Z');
 		$lastdot = strrpos($name, '.', strrpos($name, '/'));
 		if ($lastdot > 25) {
 			$slug = substr($name, 25, $lastdot-25);
@@ -82,7 +82,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 			self::$posts[] = $obj;
 		}
 		
-		if ($obj->published === false && $date !== false)
+		if ($obj->published === null)
 			$obj->published = $date;
 		
 		return true;
@@ -91,7 +91,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 
 /** Sort GBContent objects on published, descending */
 function gb_sortfunc_cobj_date_published_r(GBContent $a, GBContent $b) {
-	return $b->published - $a->published;
+	return $b->published->time - $a->published->time;
 }
 
 
@@ -249,7 +249,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		$published_posts = array();
 		$time_now = time();
 		foreach (GBPostsRebuilder::$posts as $post)
-			if ($post->published <= $time_now)
+			if ($post->draft === false && $post->published->time <= $time_now)
 				$published_posts[] = $post->condensedVersion();
 		$pages = array_chunk($published_posts, gb::$posts_pagesize);
 		$numpages = count($pages);

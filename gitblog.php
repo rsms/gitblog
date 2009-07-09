@@ -280,28 +280,6 @@ function gb_popen($cmd, $cwd=null, $env=null) {
 }
 
 
-/** Parse MIME-like headers. */
-function gb_parse_content_obj_headers($lines, &$out) {
-	$lines = explode("\n", $lines);
-	$k = null;
-	foreach ($lines as $line) {
-		if (!$line)
-			continue;
-		if ($line{0} === ' ' || $line{0} === "\t") {
-			# continuation
-			if ($k !== null)
-				$out[$k] .= ltrim($line);
-			continue;
-		}
-		$line = explode(':', $line, 2);
-		if (isset($line[1])) {
-			$k = $line[0];
-			$out[$k] = ltrim($line[1]);
-		}
-	}
-}
-
-
 /** path w/o extension */
 function gb_filenoext($path) {
 	$p = strrpos($path, '.', strrpos($path, '/'));
@@ -343,56 +321,10 @@ function gb_normalize_git_name($name) {
 }
 
 
-#function gb_utf8_wildcard_escape($name) {
-#	$s = '';
-#	$len = strlen($name);
-#	$starcount = 0;
-#	
-#	for ($i=0; $i<$len; $i++) {
-#		if (ord($name{$i}) > 127) {
-#			$starcount++;
-#			if ($i)
-#				$s = substr($s, 0, -$starcount).'*';
-#			else
-#				$s .= '*';
-#		}
-#		else {
-#			$s .= $name{$i};
-#			$starcount = 0;
-#		}
-#	}
-#	return $s;
-#}
-
-
 /** Normalize $time (any format strtotime can handle) to a ISO timestamp. */
 function gb_strtoisotime($time) {
 	$d = new DateTime($time);
 	return $d->format('c');
-}
-
-
-/**
- * Parse a date string to UNIX timestamp.
- * If no timezone information is present, UTC is assumed.
- * Returns false on error.
- */
-function gb_utcstrtotime($input, $fallbacktime=false) {
-	$t = date_parse($input);
-	if ($t['error_count']) {
-		trigger_error(__FUNCTION__.'('.var_export($input,1).'): '.implode(', ', $t['errors']));
-		return false;
-	}
-	if ($fallbacktime === false)
-		$fallbacktime = time();
-	$ts = gmmktime($t['hour'], $t['minute'], $t['second'], 
-		$t['month'] === false ? date('n', $fallbacktime) : $t['month'],
-		$t['day'] === false ? date('j', $fallbacktime) : $t['day'],
-		$t['year'] === false ? date('Y', $fallbacktime) : $t['year'], 
-		isset($t['is_dst']) ? ($t['is_dst'] ? 1 : 0) : -1);
-	if (isset($t['zone']))
-		$ts += $t['zone']*60;
-	return $ts;
 }
 
 
@@ -440,6 +372,11 @@ function gb_relpath($from, $to) {
 function gb_hms_from_time($ts) {
 	$p = date('his', $ts);
 	return (intval($p{0}.$p{1})*60*60) + (intval($p{2}.$p{3})*60) + intval($p{4}.$p{5});
+}
+
+function gb_strbool($s) {
+	$s = strtoupper($s);
+	return ($s === 'TRUE' || $s === 'YES' || $s === '1' || $s === 'ON');
 }
 
 #------------------------------------------------------------------------------
@@ -528,8 +465,7 @@ class GitBlog {
 		$st = strptime($slug, gb::$posts_url_prefix);
 		$date = gmmktime($st['tm_hour'], $st['tm_min'], $st['tm_sec'], 
 			$st['tm_mon']+1, $st['tm_mday'], 1900+$st['tm_year']);
-		$slug = $st['unparsed'];
-		$cachename = date('Y/m-d-', $date).$slug;
+		$cachename = gmstrftime('%Y/%m-%d-', $date).$st['unparsed'];
 		return self::pathToCachedContent('posts', $cachename);
 	}
 	
@@ -682,6 +618,71 @@ class GitBlog {
 	}
 }
 
+class GBDateTime {
+	public $time;
+	public $origTZOffset;
+	
+	function __construct($time='now', $origTZOffset=0) {
+		if (is_int($time)) {
+			$this->time = $time;
+		}
+		else {
+			$st = date_parse($time);
+			if (isset($st['zone']) && $st['zone'] !== 0)
+				$this->origTZOffset = -$st['zone']*60;
+			if (isset($st['is_dst']) && $st['is_dst'] === true)
+				$this->origTZOffset += 3600;
+			$this->time = gmmktime($st['hour'], $st['minute'], $st['second'], 
+				$st['month'], $st['day'], $st['year']);
+			$this->time -= $this->origTZOffset;
+		}
+	}
+	
+	function format($strftimefmt) {
+		return strftime($strftimefmt, $this->time);
+	}
+
+	function utcformat($strftimefmt) {
+		return gmstrftime($strftimefmt, $this->time);
+	}
+	
+	function originalTimezoneOffset($format='H:i') {
+		return ($this->origTZOffset < 0 ? '-':'+').gmdate($format, $this->origTZOffset);
+	}
+	
+	function __toString() {
+		return gmstrftime('%FT%H:%M:%S', $this->time + $this->origTZOffset).$this->originalTimezoneOffset();
+	}
+	
+	function __sleep() {
+		$this->d = gmstrftime('%FT%H:%M:%SZ', $this->time);
+		return array('d', 'origTZOffset');
+	}
+	
+	function __wakeup() {
+		$st = strptime($this->d, '%FT%H:%M:%SZ');
+		$this->time = gmmktime($st['tm_hour'], $st['tm_min'], $st['tm_sec'], 
+			$st['tm_mon']+1, $st['tm_mday'], 1900+$st['tm_year']);
+		unset($this->d);
+	}
+	
+	function override($partial) {
+		if (!$partial)
+			return $this;
+		$st = date_parse($partial);
+		if ($st['error_count'])
+			return $this;
+		$t = gmmktime($st['hour'], $st['minute'], $st['second'],
+			$st['month'] === false ? gmdate('n', $this->time) : $st['month'],
+			$st['day'] === false ? gmdate('j', $this->time) : $st['day'],
+			$st['year'] === false ? gmdate('Y', $this->time) : $st['year'], 
+			isset($st['is_dst']) ? ($st['is_dst'] ? 1 : 0) : -1);
+		if (isset($st['zone']))
+			$t += $st['zone']*60;
+		return new self($t);
+	}
+}
+
 
 # -----------------------------------------------------------------------------
 # Content (posts, pages, etc)
@@ -692,8 +693,8 @@ class GBContent {
 	public $id;
 	public $mimeType = null;
 	public $author = null;
-	public $modified = false; # timestamp
-	public $published = false; # timestamp
+	public $modified = false; # GBDateTime
+	public $published = false; # GBDateTime
 	
 	function __construct($name=null, $id=null) {
 		$this->name = $name;
@@ -743,7 +744,7 @@ class GBContent {
 		}
 		else {
 			#	combine day from published with time from authorDate
-			$this->published = strtotime(
+			$this->published = new GBDateTime(
 				date('Y-m-d', $this->published).'T'.date('H:i:sO', $initial->authorDate));
 		}
 		
@@ -771,9 +772,7 @@ class GBExposedContent extends GBContent {
 	public $comments;
 	public $commentsOpen = true;
 	public $pingbackOpen = true;
-	
-	# 2038-01-19 03:14:07 UTC ("distant future" on 32bit systems)
-	const NOT_PUBLISHED = 2147483647;
+	public $draft = false;
 	
 	static public $filters = array(
 		'application/xhtml+xml' => array('gb_html_postprocess_filter'),
@@ -809,7 +808,7 @@ class GBExposedContent extends GBContent {
 		$this->meta = array();
 		
 		if ($bodystart > 0)
-			gb_parse_content_obj_headers(substr($data, 0, $bodystart), $this->meta);
+			self::parseMetaHeaders(substr($data, 0, $bodystart), $this->meta);
 		
 		# lift lists from meta to this
 		static $special_lists = array('tag'=>'tags', 'category'=>'categories');
@@ -844,15 +843,29 @@ class GBExposedContent extends GBContent {
 		$this->applyInfoFromCommits($commits);
 		
 		# specific publish (date and) time?
-		$mp = isset($this->meta['publish']) ? $this->meta['publish'] : 
-			(isset($this->meta['published']) ? $this->meta['published'] : false);
-		$mp = $mp ? strtoupper($mp) : $mp;
-		if ($mp === 'FALSE' || $mp === 'NO')
-			$this->published = false;
-		elseif ($mp && $mp !== false && $mp !== 'TRUE' && $mp !== 'YES')
-			$this->published = gb_utcstrtotime($mp, $this->published);
-		if ($this->published === false)
-			$this->published = self::NOT_PUBLISHED;
+		$mp = false;
+		if (isset($this->meta['publish'])) {
+			$mp = $this->meta['publish'];
+			unset($this->meta['publish']);
+		}
+		elseif (isset($this->meta['published'])) {
+			$mp = $this->meta['published'];
+			unset($this->meta['published']);
+		}
+		if ($mp) {
+			$mp = strtoupper($mp);
+			if ($mp === 'FALSE' || $mp === 'NO' || $mp === '0')
+				$this->draft = true;
+			elseif ($mp && $mp !== false && $mp !== 'TRUE' && $mp !== 'YES' && $mp !== '1')
+				$this->published->applyString($mp);
+		}
+		
+		# handle draft meta tag
+		if (isset($this->meta['draft'])) {
+			$s = rtrim($this->meta['draft']);
+			unset($this->meta['draft']);
+			$this->draft = ($s === '' || gb_strbool($s));
+		}
 		
 		# apply filters
 		$fnext = array_pop(gb_fnsplit($this->name));
@@ -910,6 +923,26 @@ class GBExposedContent extends GBContent {
 		return array_merge(parent::__sleep(), array(
 			'slug','meta','title','body','tags','categories','comments'));
 	}
+	
+	static function parseMetaHeaders($lines, &$out) {
+		$lines = explode("\n", $lines);
+		$k = null;
+		foreach ($lines as $line) {
+			if (!$line)
+				continue;
+			if ($line{0} === ' ' || $line{0} === "\t") {
+				# continuation
+				if ($k !== null)
+					$out[$k] .= ltrim($line);
+				continue;
+			}
+			$line = explode(':', $line, 2);
+			if (isset($line[1])) {
+				$k = $line[0];
+				$out[strtolower($k)] = ltrim($line[1]);
+			}
+		}
+	}
 }
 
 /** trim(c->body) */
@@ -953,10 +986,6 @@ class GBPage extends GBExposedContent {
 		$path = GB_SITE_DIR.'/.git/info/gitblog/'.self::mkCachename($slug);
 		return @unserialize(file_get_contents($path));
 	}
-	
-	protected function getCachedComments() {
-		return GBPageComments::getCached(self::mkCachename());
-	}
 }
 
 
@@ -984,18 +1013,18 @@ class GBPost extends GBExposedContent {
 	}
 	
 	function urlpath() {
-		return gmstrftime(gb::$posts_url_prefix, $this->published)
+		return $this->published->utcformat(gb::$posts_url_prefix)
 			. str_replace('%2F', '/', urlencode($this->slug));
 	}
 	
 	function domID() {
-		return 'post-'.preg_replace('/[^A-Za-z0-9_-]+/', '-', 
-			gmdate('Y-m-d-', $this->published).$this->slug);
+		return 'post-'.$this->published->utcformat('%Y-%m-%d-')
+			. preg_replace('/[^A-Za-z0-9_-]+/', '-', $this->slug);
 	}
 	
 	static function mkCachename($published, $slug) {
 		# Note: the path prefix is a dependency for GBContentFinalizer::finalize
-		return 'content/posts/'.gmdate('Y/m-d-', $published).$slug;
+		return 'content/posts/'.$published->utcformat('%Y/%m-%d-').$slug;
 	}
 	
 	function cachename() {
@@ -1624,7 +1653,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 			$post = GitBlog::postBySlug(urldecode($gb_urlpath));
 			if ($post === false)
 				gb::$is_404 = true;
-			elseif ($post->published > time())
+			elseif ($post->draft === true || $post->published->time > time())
 				gb::$is_404 = true;
 			else
 				gb::$title[] = $post->title;

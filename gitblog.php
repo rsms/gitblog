@@ -583,9 +583,17 @@ class GitBlog {
 		return true;
 	}
 	
-	static function syncSiteURLcache() {
-		if (@file_get_contents(GB_SITE_DIR.'/.git/info/gitblog-site-url') !== GB_SITE_URL)
-			gb_atomic_write(GB_SITE_DIR.'/.git/info/gitblog-site-url', GB_SITE_URL, 0664);
+	static function writeSiteStateCache() {
+		$state = GB_SITE_URL.' '.GB_VERSION;
+		return gb_atomic_write(GB_SITE_DIR.'/.git/info/gitblog-site-state', $state, 0664);
+	}
+	
+	static function upgradeCache($fromVersion, $rebuild) {
+		gb::log(LOG_WARNING, 'upgrading cache from gitblog '.$fromVersion.' -> gitblog '.GB_VERSION);
+		self::writeSiteStateCache();
+		if ($rebuild)
+			GBRebuilder::rebuild(true);
+		gb::log(LOG_WARNING, 'upgrade of cache to gitblog '.GB_VERSION.' complete');
 	}
 	
 	/**
@@ -596,6 +604,7 @@ class GitBlog {
 	 *   -1 Error (the error has been logged through trigger_error).
 	 *   1  gitblog cache was updated.
 	 *   2  gitdir is missing and need to be created (git init).
+	 *   3  upgrade performed
 	 */
 	static function verifyIntegrity() {
 		$r = 0;
@@ -605,7 +614,22 @@ class GitBlog {
 			GBRebuilder::rebuild(true);
 			$r = 1;
 		}
-		self::syncSiteURLcache();
+		
+		# sync site state
+		$state = @file_get_contents(GB_SITE_DIR.'/.git/info/gitblog-site-state');
+		$state = $state ? explode(' ', $state) : false;
+		if (!$state) {
+			# here the version MIGHT have changed. We don't really know, but are optimistic.
+			self::writeSiteStateCache();
+		}
+		elseif ($state[1] !== GB_VERSION) {
+			self::upgradeCache($state[1], $r !== 1);
+			$r = 3;
+		}
+		elseif ($state[0] !== GB_SITE_URL) {
+			self::writeSiteStateCache();
+		}
+		
 		return $r;
 	}
 	

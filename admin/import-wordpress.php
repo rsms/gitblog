@@ -255,16 +255,17 @@ class WordpressImporter {
 		$meta = array_merge($obj->meta, array(
 			'title' => $obj->title,
 			'published' => $obj->published->__toString(),
-			'tags' => implode(', ', $obj->tags),
-			'categories' => implode(', ', $obj->categories),
+			'draft' => $obj->draft ? 'yes' : 'no',
 			'comments' => $obj->commentsOpen ? 'yes' : 'no',
 			'pingback' => $obj->pingbackOpen ? 'yes' : 'no',
-			'draft' => $obj->draft ? 'yes' : 'no',
 			'wp-id' => $obj->wpid
 		));
-		
 		if ($obj instanceof WPPage)
 			$meta['order'] = $obj->order;
+		if ($obj->tags)
+			$meta['tags'] = implode(', ', $obj->tags);
+		if ($obj->categories)
+			$meta['categories'] = implode(', ', $obj->categories);
 		
 		# mux meta and body
 		$data = '';

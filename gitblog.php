@@ -982,6 +982,8 @@ class GBExposedContent extends GBContent {
 
 
 class GBPage extends GBExposedContent {
+	public $order = 0; # order in menu, etc.
+	
 	static function mkCachename($slug) {
 		return 'content/pages/'.$slug;
 	}

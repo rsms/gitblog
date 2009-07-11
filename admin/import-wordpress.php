@@ -263,6 +263,9 @@ class WordpressImporter {
 			'wp-id' => $obj->wpid
 		));
 		
+		if ($obj instanceof WPPage)
+			$meta['order'] = $obj->order;
+		
 		# mux meta and body
 		$data = '';
 		foreach ($meta as $k => $v) {
@@ -395,6 +398,9 @@ class WordpressImporter {
 				$datelocalstr = $n->nodeValue;
 				$datelocal = new GBDateTime($n->nodeValue);
 				$obj->wpdate = $datelocal;
+			}
+			elseif ($name === 'wp:menu_order' && ($obj instanceof WPPage)) {
+				$obj->order = intval($n->nodeValue);
 			}
 			elseif ($is_exposed && $name === 'wp:status') {
 				$obj->draft = ($n->nodeValue === 'draft');

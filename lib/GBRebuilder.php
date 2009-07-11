@@ -34,6 +34,8 @@ class GBRebuilder {
 	 * Rebuild caches, indexes, etc.
 	 */
 	static function rebuild($forceFullRebuild=false) {
+		gb::log(LOG_NOTICE, 'rebuilding cache'.($forceFullRebuild ? ' (forcing full rebuild)':''));
+		
 		# Load rebuilders if needed
 		if (empty(self::$rebuilders))
 			self::loadRebuilders();

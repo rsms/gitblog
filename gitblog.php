@@ -88,18 +88,15 @@ class gb {
 	static public $feed_prefix = 'feed';
 
 	/** URL prefix (strftime pattern) */
-	static public $posts_url_prefix = '%Y/%m/%d/';
-	
-	/** URL prefix (pcre pattern) */
-	static public $posts_url_prefix_re = '/^\d{4}\/\d{2}\/\d{2}\//';
+	static public $posts_prefix = '%Y/%m/%d/';
 
-	/**
-	 * Number of posts per page.
-	 * Changing this requires a rebuild before actually activated.
-	 */
+	/** URL prefix for pages */
+	static public $pages_prefix = '';
+
+	/** Number of posts per page. */
 	static public $posts_pagesize = 10;
 	
-	/** URL to gitblog index relative to GB_SITE_URL (request handler) */
+	/** URL to gitblog index _relative_ to GB_SITE_URL */
 	static public $index_url = 'index.php/';
 	
 	/**
@@ -107,7 +104,7 @@ class gb {
 	 * Disable logging by setting this to -1.
 	 * See the "Logging" section in gitblog.php for more information.
 	 */
-	static public $log_filter = LOG_WARNING;
+	static public $log_filter = LOG_NOTICE;
 	
 	# --------------------------------------------------------------------------
 	# The following are by default set in the gb-config.php file.
@@ -134,52 +131,27 @@ class gb {
 	static public $is_feed = false;
 	
 	# --------------------------------------------------------------------------
-	# Filters
-	static public $filters = array();
-	
-	/**
-	 * Add a filter
-	 * 
-	 * Lower number for $priority means earlier execution of $func.
-	 * 
-	 * If $func returns boolean FALSE the filter chain is broken, not applying
-	 * any more filter after the one returning FALSE. Returning anything else
-	 * have no effect.
-	 */
-	static function add_filter($tag, $func, $priority=100) {
-		if (!isset(self::$filters[$tag]))
-			self::$filters[$tag] = array($priority => array($func));
-		elseif (!isset(self::$filters[$tag][$priority]))
-			self::$filters[$tag][$priority] = array($func);
-		else
-			self::$filters[$tag][$priority][] = $func;
-	}
-	
-	/** Apply filters for $tag on $value */
-	static function apply_filters($tag, $value) {
-		$a = @self::$filters[$tag];
-		if ($a === null)
-			return $value;
-		ksort($a, SORT_NUMERIC);
-		foreach ($a as $funcs)
-			foreach ($funcs as $func)
-				$value = call_user_func($func, $value);
-		return $value;
-	}
-	
-	# --------------------------------------------------------------------------
 	# Logging
 	static public $log_open = false;
 	
-	static function openlog($ident=null, $options=LOG_PID, $facility=LOG_USER) {
-		if ($ident === null) {
-			$u = parse_url(GB_SITE_URL);
-			$ident = 'gitblog.'.isset($u['host']) ? $u['host'] .'.' : '';
-			if (isset($u['path']))
-				$ident .= str_replace('/', '.', trim($u['path'],'/'));
-		}
-		self::$log_open = openlog($ident, $options, $facility);
-		return self::$log_open;
+	/**
+	 * Send a message to syslog.
+	 * 
+	 * INT  CONSTANT    DESCRIPTION
+	 * ---- ----------- ----------------------------------
+	 * 0    LOG_EMERG   system is unusable
+	 * 1    LOG_ALERT   action must be taken immediately
+	 * 2    LOG_CRIT    critical conditions
+	 * 3    LOG_ERR     error conditions
+	 * 4    LOG_WARNING warning conditions
+	 * 5    LOG_NOTICE  normal, but significant, condition
+	 * 6    LOG_INFO    informational message
+	 * 7    LOG_DEBUG   debug-level message
+	 */
+	static function log($priority, $fmt/* [mixed ..] */) {
+		$vargs = func_get_args();
+		$priority = array_shift($vargs);
+		return self::vlog($priority, $vargs);
 	}
 	
 	static function vlog($priority, $vargs, $btoffset=1) {
@@ -202,24 +174,15 @@ class gb {
 		return syslog($priority, $msg) ? $msg : false;
 	}
 	
-	/**
-	 * Send a message to syslog.
-	 * 
-	 * INT  CONSTANT    DESCRIPTION
-	 * ---- ----------- ----------------------------------
-	 * 0    LOG_EMERG   system is unusable
-	 * 1    LOG_ALERT   action must be taken immediately
-	 * 2    LOG_CRIT    critical conditions
-	 * 3    LOG_ERR     error conditions
-	 * 4    LOG_WARNING warning conditions
-	 * 5    LOG_NOTICE  normal, but significant, condition
-	 * 6    LOG_INFO    informational message
-	 * 7    LOG_DEBUG   debug-level message
-	 */
-	static function log($priority, $fmt/* [mixed ..] */) {
-		$vargs = func_get_args();
-		$priority = array_shift($vargs);
-		return self::vlog($priority, $vargs);
+	static function openlog($ident=null, $options=LOG_PID, $facility=LOG_USER) {
+		if ($ident === null) {
+			$u = parse_url(GB_SITE_URL);
+			$ident = 'gitblog.'.isset($u['host']) ? $u['host'] .'.' : '';
+			if (isset($u['path']))
+				$ident .= str_replace('/', '.', trim($u['path'],'/'));
+		}
+		self::$log_open = openlog($ident, $options, $facility);
+		return self::$log_open;
 	}
 }
 
@@ -380,20 +343,6 @@ function gb_strbool($s) {
 }
 
 #------------------------------------------------------------------------------
-# Helper functions for themes/templates
-
-gb::$title = array(gb::$site_title);
-
-function gb_title($glue=' — ', $html=true) {
-	$s = implode($glue, array_reverse(gb::$title));
-	return $html ? h($s) : $s;
-}
-
-function h($s) {
-	return htmlentities($s, ENT_COMPAT, 'UTF-8');
-}
-
-#------------------------------------------------------------------------------
 # Exceptions
 
 class GitError extends Exception {}
@@ -420,10 +369,11 @@ class GitBlog {
 			return null;
 		# check for errors
 		if ($r[0] != 0) {
+			$msg = trim($r[1]."\n".$r[2]);
 			if (strpos($r[2], 'Not a git repository') !== false)
-				throw new GitUninitializedRepoError($r[2]);
+				throw new GitUninitializedRepoError($msg);
 			else
-				throw new GitError($r[2]);
+				throw new GitError($msg);
 		}
 		return $r[1];
 	}
@@ -461,8 +411,8 @@ class GitBlog {
 		return GB_SITE_DIR.sprintf('/.git/info/gitblog/content-paged-posts/%011d', $pageno);
 	}
 	
-	static function pathToPost($slug) {
-		$st = strptime($slug, gb::$posts_url_prefix);
+	static function pathToPost($path, $strptime=null) {
+		$st = ($strptime !== null) ? $strptime : strptime($path, gb::$posts_prefix);
 		$date = gmmktime($st['tm_hour'], $st['tm_min'], $st['tm_sec'], 
 			$st['tm_mon']+1, $st['tm_mday'], 1900+$st['tm_year']);
 		$cachename = gmstrftime('%Y/%m-%d-', $date).$st['unparsed'];
@@ -474,8 +424,8 @@ class GitBlog {
 		return @unserialize(file_get_contents($path));
 	}
 	
-	static function postBySlug($slug) {
-		$path = self::pathToPost($slug);
+	static function postBySlug($slug, $strptime=null) {
+		$path = self::pathToPost($slug, $strptime);
 		return @unserialize(file_get_contents($path));
 	}
 	
@@ -576,6 +526,38 @@ class GitBlog {
 		self::exec(($forceIncludeIgnored ? 'add --force ' : 'add ').escapeshellarg($pathspec));
 	}
 	
+	static function reset($pathspec=null, $commit=null, $flags='-q') {
+		if ($pathspec) {
+			if (is_array($pathspec))
+				$pathspec = implode(' ', array_map('escapeshellarg',$pathspec));
+			else
+				$pathspec = escapeshellarg($pathspec);
+			$pathspec = ' '.$pathspec;
+		}
+		$commitargs = '';
+		if ($commit) {
+			$badtype = false;
+			if (!is_array($commit))
+				$commit = array($commit);
+			foreach ($commit as $c) {
+				if (is_object($c)) {
+					if (strtolower(get_class($c)) !== 'GitCommit')
+						$badtype = true;
+					else
+						$commitargs .= ' '.escapeshellarg($c->id);
+				}
+				elseif (is_string($c))
+					$commitargs .= escapeshellarg($c);
+				else
+					$badtype = true;
+				if ($badtype)
+					throw new InvalidArgumentException('$commit argument must be a string, a GitCommit '
+						.'object or an array of any of the two mentioned types');
+			}
+		}
+		self::exec('reset '.$flags.' '.$commitargs.' --'.$pathspec);
+	}
+	
 	static function commit($message, $author=null) {
 		$author = $author ? '--author='.escapeshellarg($author) : '';
 		self::exec('commit -m '.escapeshellarg($message).' --quiet '.$author);
@@ -584,16 +566,24 @@ class GitBlog {
 	}
 	
 	static function writeSiteStateCache() {
-		$state = GB_SITE_URL.' '.GB_VERSION;
-		return gb_atomic_write(GB_SITE_DIR.'/.git/info/gitblog-site-state', $state, 0664);
+		# format: <0 site url> SP <1 version> SP <2 urlencoded posts_prefix> SP <3 posts_pagesize>
+		$state = implode(' ',array(
+			GB_SITE_URL,
+			GB_VERSION,
+			urlencode(gb::$posts_prefix),
+			gb::$posts_pagesize
+		));
+		$dst = GB_SITE_DIR.'/.git/info/gitblog-site-state';
+		gb::log(LOG_NOTICE, 'wrote site state to '.$dst);
+		return gb_atomic_write($dst, $state, 0664);
 	}
 	
 	static function upgradeCache($fromVersion, $rebuild) {
-		gb::log(LOG_WARNING, 'upgrading cache from gitblog '.$fromVersion.' -> gitblog '.GB_VERSION);
+		gb::log(LOG_NOTICE, 'upgrading cache from gitblog '.$fromVersion.' -> gitblog '.GB_VERSION);
 		self::writeSiteStateCache();
 		if ($rebuild)
 			GBRebuilder::rebuild(true);
-		gb::log(LOG_WARNING, 'upgrade of cache to gitblog '.GB_VERSION.' complete');
+		gb::log(LOG_NOTICE, 'upgrade of cache to gitblog '.GB_VERSION.' complete');
 	}
 	
 	/**
@@ -610,22 +600,35 @@ class GitBlog {
 		$r = 0;
 		if (!is_dir(GB_SITE_DIR.'/.git/info/gitblog')) {
 			if (!is_dir(GB_SITE_DIR.'/.git'))
-				return 2;
+				return 2; # no repo/not initialized
+			self::writeSiteStateCache();
 			GBRebuilder::rebuild(true);
 			$r = 1;
 		}
 		
-		# sync site state
+		# check site state
+		# format: <0 site url> SP <1 version> SP <2 urlencoded posts_prefix> SP <3 posts_pagesize>
 		$state = @file_get_contents(GB_SITE_DIR.'/.git/info/gitblog-site-state');
 		$state = $state ? explode(' ', $state) : false;
 		if (!$state) {
-			# here the version MIGHT have changed. We don't really know, but are optimistic.
+			# here the version MIGHT have changed. We don't really know, but we're optimistic.
 			self::writeSiteStateCache();
 		}
+		# prio 1: version mismatch causes cache upgrade and possibly a rebuild.
 		elseif ($state[1] !== GB_VERSION) {
 			self::upgradeCache($state[1], $r !== 1);
 			$r = 3;
 		}
+		# prio 2: some part which do affect cache state have changed and we need
+		#         to issue a rebuild to some extent (currently we perform a full
+		#         rebuild).
+		elseif (@intval($state[3]) !== gb::$posts_pagesize) {
+			self::writeSiteStateCache();
+			GBRebuilder::rebuild(true);
+			$r = 1;
+		}
+		# prio 3: some part which does not affect cache state have changed. We only
+		#         need to write an updated state file.
 		elseif ($state[0] !== GB_SITE_URL) {
 			self::writeSiteStateCache();
 		}
@@ -649,6 +652,7 @@ class GBDateTime {
 	function __construct($time='now', $origTZOffset=0) {
 		if (is_int($time)) {
 			$this->time = $time;
+			$this->origTZOffset = $origTZOffset;
 		}
 		else {
 			$st = date_parse($time);
@@ -658,7 +662,10 @@ class GBDateTime {
 				$this->origTZOffset += 3600;
 			$this->time = gmmktime($st['hour'], $st['minute'], $st['second'], 
 				$st['month'], $st['day'], $st['year']);
-			$this->time -= $this->origTZOffset;
+			if ($this->origTZOffset !== null)
+				$this->time -= $this->origTZOffset;
+			else
+				$this->origTZOffset = 0;
 		}
 	}
 	
@@ -671,7 +678,10 @@ class GBDateTime {
 	}
 	
 	function originalTimezoneOffset($format='H:i') {
-		return ($this->origTZOffset < 0 ? '-':'+').gmdate($format, $this->origTZOffset);
+		if ($this->origTZOffset < 0)
+			return '-'.gmdate($format, -$this->origTZOffset);
+		else
+			return '+'.gmdate($format, $this->origTZOffset);
 	}
 	
 	function __toString() {
@@ -690,20 +700,36 @@ class GBDateTime {
 		unset($this->d);
 	}
 	
-	function override($partial) {
-		if (!$partial)
-			return $this;
-		$st = date_parse($partial);
-		if ($st['error_count'])
-			return $this;
-		$t = gmmktime($st['hour'], $st['minute'], $st['second'],
-			$st['month'] === false ? gmdate('n', $this->time) : $st['month'],
-			$st['day'] === false ? gmdate('j', $this->time) : $st['day'],
-			$st['year'] === false ? gmdate('Y', $this->time) : $st['year'], 
-			isset($st['is_dst']) ? ($st['is_dst'] ? 1 : 0) : -1);
-		if (isset($st['zone']))
-			$t += $st['zone']*60;
-		return new self($t);
+	function mergeString($s, $adjustTimezone=false) {
+		$t = date_parse($s);
+		$ds = '';
+		if ($t['hour'] !== false)
+			$ds = sprintf('%02d:%02d:%02d', $t['hour'],$t['minute'],$t['second']);
+		else
+			$ds = $this->utcformat('%H:%M:%S');
+		$tzoffset = 0;
+		if (isset($t['zone'])) {
+			$tzoffset = -($t['zone']*60);
+			if ($tzoffset < 0)
+				$ds .= '-'.gmstrftime('%H:%M', -$tzoffset);
+			else
+				$ds .= '+'.gmstrftime('%H:%M', $tzoffset);
+		}
+		else {
+			$ds .= $this->originalTimezoneOffset();
+		}
+		
+		if ($adjustTimezone)
+			$default = explode('-',gmstrftime('%F', strtotime($this->utcformat('%F'))+$tzoffset));
+		else
+			$default = explode('-',$this->utcformat('%F'));
+		
+		$ds = (($t['year'] !== false) ? $t['year'] : $default[0]). '-'
+			. (($t['month'] !== false) ? $t['month'] : $default[1]). '-'
+			. (($t['day'] !== false) ? $t['day'] : $default[2])
+			. 'T' . $ds;
+		
+		return new GBDateTime($ds);
 	}
 }
 
@@ -798,26 +824,11 @@ class GBExposedContent extends GBContent {
 	public $pingbackOpen = true;
 	public $draft = false;
 	
-	static public $filters = array(
-		'application/xhtml+xml' => array('gb_html_postprocess_filter'),
-		'text/html' => array('gb_html_postprocess_filter'),
-	);
-	
 	function __construct($name=null, $id=null, $slug=null, $meta=array(), $body=null) {
 		parent::__construct($name, $id);
 		$this->slug = $slug;
 		$this->meta = $meta;
 		$this->body = $body;
-	}
-	
-	function applyFilters() {
-		if (isset(self::$filters[$this->mimeType])) {
-			foreach (self::$filters[$this->mimeType] as $filter)
-				if ($filter($this) === false)
-					break;
-		}
-		else
-			echo "no filters for content of type $this->mimeType\n";
 	}
 	
 	function reload($data, $commits) {
@@ -881,7 +892,7 @@ class GBExposedContent extends GBContent {
 			if ($mp === 'FALSE' || $mp === 'NO' || $mp === '0')
 				$this->draft = true;
 			elseif ($mp && $mp !== false && $mp !== 'TRUE' && $mp !== 'YES' && $mp !== '1')
-				$this->published->applyString($mp);
+				$this->published = $this->published->mergeString($mp);
 		}
 		
 		# handle draft meta tag
@@ -893,12 +904,12 @@ class GBExposedContent extends GBContent {
 		
 		# apply filters
 		$fnext = array_pop(gb_fnsplit($this->name));
-		gb::apply_filters('post-reload-GBExposedContent', $this);
-		gb::apply_filters('post-reload-GBExposedContent.'.$fnext, $this);
+		GBFilter::apply('post-reload-GBExposedContent', $this);
+		GBFilter::apply('post-reload-GBExposedContent.'.$fnext, $this);
 		$cls = get_class($this);
 		if ($cls !== 'GBExposedContent') {
-			gb::apply_filters('post-reload-'.$cls, $this);
-			gb::apply_filters('post-reload-'.$cls.'.'.$fnext, $this);
+			GBFilter::apply('post-reload-'.$cls, $this);
+			GBFilter::apply('post-reload-'.$cls.'.'.$fnext, $this);
 		}
 	}
 	
@@ -969,37 +980,6 @@ class GBExposedContent extends GBContent {
 	}
 }
 
-/** trim(c->body) */
-function gb_filter_post_reload_content(GBExposedContent $c) {
-	if ($c->body)
-		$c->body = trim($c->body);
-	return $c;
-}
-
-gb::add_filter('post-reload-GBExposedContent', 'gb_filter_post_reload_content');
-
-/** Converts LF to <br/>LF and extracts excerpt for GBPost objects */
-function gb_filter_post_reload_content_html(GBExposedContent $c) {
-	if ($c->body) {
-		# create excerpt for GBPosts if not already set
-		if ($c instanceof GBPost && !$c->excerpt) {
-			$p = strpos($c->body, '<!--more-->');
-			if ($p !== false) {
-				$c->excerpt = substr($c->body, 0, $p);
-				$c->body = $c->excerpt
-					.'<div id="'.$c->domID().'-more" class="post-more-anchor"></div>'
-					.substr($c->body, $p+strlen('<!--more-->'));
-			}
-		}
-		$c->body = gb::apply_filters('body.html', $c->body);
-	}
-	if ($c instanceof GBPost && $c->excerpt)
-		$c->excerpt = gb::apply_filters('excerpt.html', $c->excerpt);
-	return $c;
-}
-
-gb::add_filter('post-reload-GBExposedContent.html', 'gb_filter_post_reload_content_html');
-
 
 class GBPage extends GBExposedContent {
 	static function mkCachename($slug) {
@@ -1037,7 +1017,7 @@ class GBPost extends GBExposedContent {
 	}
 	
 	function urlpath() {
-		return $this->published->utcformat(gb::$posts_url_prefix)
+		return $this->published->utcformat(gb::$posts_prefix)
 			. str_replace('%2F', '/', urlencode($this->slug));
 	}
 	
@@ -1414,169 +1394,18 @@ class GBUserAccount {
 }
 
 # -----------------------------------------------------------------------------
-# General filters
-
-# Convert short-hands to nice unicode characters.
-# Shamelessly borrowed from my worst nightmare Wordpress.
-function gb_texturize_html($text) {
-	$next = true;
-	$has_pre_parent = false;
-	$output = '';
-	$curl = '';
-	$textarr = preg_split('/(<.*>|\[.*\])/Us', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
-	$stop = count($textarr);
-	
-	static $static_characters = array(
-		'---', ' -- ', '--', "xn\xe2\x80\x93", '...', '``', '\'s', '\'\'', ' (tm)',
-		# cockney:
-		"'tain't","'twere","'twas","'tis","'twill","'til","'bout",
-		"'nuff","'round","'cause");
-	static $static_replacements = array("\xe2\x80\x94"," \xe2\x80\x94 ",
-		"\xe2\x80\x93","xn--","\xe2\x80\xa6","\xe2\x80\x9c","\xe2\x80\x99s",
-		"\xe2\x80\x9d"," \xe2\x84\xa2",
-		# cockney
-		"\xe2\x80\x99tain\xe2\x80\x99t","\xe2\x80\x99twere",
-		"\xe2\x80\x99twas","\xe2\x80\x99tis","\xe2\x80\x99twill","\xe2\x80\x99til",
-		"\xe2\x80\x99bout","\xe2\x80\x99nuff","\xe2\x80\x99round","\xe2\x80\x99cause");
-	
-	static $dynamic_characters = array('/\'(\d\d(?:&#8217;|\')?s)/', '/(\s|\A|")\'/', '/(\d+)"/', '/(\d+)\'/',
-	 	'/(\S)\'([^\'\s])/', '/(\s|\A)"(?!\s)/', '/"(\s|\S|\Z)/', '/\'([\s.]|\Z)/', '/(\d+)x(\d+)/');
-	static $dynamic_replacements = array("\xe2\x80\x99\$1","\$1\xe2\x80\x98","\$1\xe2\x80\xb3","\$1\xe2\x80\xb2",
-		"\$1\xe2\x80\x99$2","\$1\xe2\x80\x9c\$2","\xe2\x80\x9d\$1","\xe2\x80\x99\$1","\$1\xc3\x97\$2");
-	
-	for ( $i = 0; $i < $stop; $i++ ) {
-		$curl = $textarr[$i];
-		
-		if (isset($curl{0}) && '<' != $curl{0} && '[' != $curl{0} && $next && !$has_pre_parent)
-		{ # If it's not a tag
-			# static strings
-			$curl = str_replace($static_characters, $static_replacements, $curl);
-			# regular expressions
-			$curl = preg_replace($dynamic_characters, $dynamic_replacements, $curl);
-		} elseif (strpos($curl, '<code') !== false || strpos($curl, '<kbd') !== false
-			|| strpos($curl, '<style') !== false || strpos($curl, '<script') !== false)
-		{
-			$next = false;
-		} elseif (strpos($curl, '<pre') !== false) {
-			$has_pre_parent = true;
-		} elseif (strpos($curl, '</pre>') !== false) {
-			$has_pre_parent = false;
-		} else {
-			$next = true;
-		}
-		
-		$curl = preg_replace('/&([^#])(?![a-zA-Z1-4]{1,8};)/', '&#038;$1', $curl);
-		$output .= $curl;
-	}
-	
-	return $output;
-}
-
-function gb_convert_html_chars($content) {
-	# Translation of invalid Unicode references range to valid range,
-	# often added by Windows programs after a copy-paste.
-	static $wp_htmltranswinuni = array(
-	'&#128;' => '&#8364;', # the Euro sign
-	'&#129;' => '',
-	'&#130;' => '&#8218;', # these are Windows CP1252 specific characters
-	'&#131;' => '&#402;',  # they would look weird on non-Windows browsers
-	'&#132;' => '&#8222;',
-	'&#133;' => '&#8230;',
-	'&#134;' => '&#8224;',
-	'&#135;' => '&#8225;',
-	'&#136;' => '&#710;',
-	'&#137;' => '&#8240;',
-	'&#138;' => '&#352;',
-	'&#139;' => '&#8249;',
-	'&#140;' => '&#338;',
-	'&#141;' => '',
-	'&#142;' => '&#382;',
-	'&#143;' => '',
-	'&#144;' => '',
-	'&#145;' => '&#8216;',
-	'&#146;' => '&#8217;',
-	'&#147;' => '&#8220;',
-	'&#148;' => '&#8221;',
-	'&#149;' => '&#8226;',
-	'&#150;' => '&#8211;',
-	'&#151;' => '&#8212;',
-	'&#152;' => '&#732;',
-	'&#153;' => '&#8482;',
-	'&#154;' => '&#353;',
-	'&#155;' => '&#8250;',
-	'&#156;' => '&#339;',
-	'&#157;' => '',
-	'&#158;' => '',
-	'&#159;' => '&#376;'
-	);
-	
-	# Converts lone & characters into &#38; (a.k.a. &amp;)
-	$content = preg_replace('/&([^#])(?![a-z1-4]{1,8};)/i', '&#038;$1', $content);
-	
-	# Fix Microsoft Word pastes
-	$content = strtr($content, $wp_htmltranswinuni);
-	
-	return $content;
-}
-
-# HTML -> XHTML
-function gb_html_to_xhtml($content) {
-	return str_replace(array('<br>','<hr>'), array('<br />','<hr />'), $content);
-}
-
-# LF => <br />, etc
-function gb_normalize_html_structure($pee, $br = 1) {
-	$pee = $pee . "\n"; // just to make things a little easier, pad the end
-	$pee = preg_replace('|<br />\s*<br />|', "\n\n", $pee);
-	// Space things out a little
-	$allblocks = '(?:table|thead|tfoot|caption|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|select|form|map|area|blockquote|address|math|style|input|p|h[1-6]|hr)';
-	$pee = preg_replace('!(<' . $allblocks . '[^>]*>)!', "\n$1", $pee);
-	$pee = preg_replace('!(</' . $allblocks . '>)!', "$1\n\n", $pee);
-	$pee = str_replace(array("\r\n", "\r"), "\n", $pee); // cross-platform newlines
-	if ( strpos($pee, '<object') !== false ) {
-		$pee = preg_replace('|\s*<param([^>]*)>\s*|', "<param$1>", $pee); // no pee inside object/embed
-		$pee = preg_replace('|\s*</embed>\s*|', '</embed>', $pee);
-	}
-	$pee = preg_replace("/\n\n+/", "\n\n", $pee); // take care of duplicates
-	$pee = preg_replace('/\n?(.+?)(?:\n\s*\n|\z)/s', "<p>$1</p>\n", $pee); // make paragraphs, including one at the end
-	$pee = preg_replace('|<p>\s*?</p>|', '', $pee); // under certain strange conditions it could create a P of entirely whitespace
-	$pee = preg_replace('!<p>([^<]+)\s*?(</(?:div|address|form)[^>]*>)!', "<p>$1</p>$2", $pee);
-	$pee = preg_replace( '|<p>|', "$1<p>", $pee );
-	$pee = preg_replace('!<p>\s*(</?' . $allblocks . '[^>]*>)\s*</p>!', "$1", $pee); // don't pee all over a tag
-	$pee = preg_replace("|<p>(<li.+?)</p>|", "$1", $pee); // problem with nested lists
-	$pee = preg_replace('|<p><blockquote([^>]*)>|i', "<blockquote$1><p>", $pee);
-	$pee = str_replace('</blockquote></p>', '</p></blockquote>', $pee);
-	$pee = preg_replace('!<p>\s*(</?' . $allblocks . '[^>]*>)!', "$1", $pee);
-	$pee = preg_replace('!(</?' . $allblocks . '[^>]*>)\s*</p>!', "$1", $pee);
-	if ($br) {
-		$pee = preg_replace_callback('/<(script|style).*?<\/\\1>/s', create_function('$matches', 'return str_replace("\n", "<WPPreserveNewline />", $matches[0]);'), $pee);
-		$pee = preg_replace('|(?<!<br />)\s*\n|', "<br />\n", $pee); // optionally make line breaks
-		$pee = str_replace('<WPPreserveNewline />', "\n", $pee);
-	}
-	$pee = preg_replace('!(</?' . $allblocks . '[^>]*>)\s*<br />!', "$1", $pee);
-	$pee = preg_replace('!<br />(\s*</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)[^>]*>)!', '$1', $pee);
-	if (strpos($pee, '<pre') !== false)
-		$pee = preg_replace_callback('!(<pre.*?>)(.*?)</pre>!is', 'clean_pre', $pee );
-	$pee = preg_replace( "|\n</p>$|", '</p>', $pee );
-	#$pee = preg_replace('/<p>\s*?(' . get_shortcode_regex() . ')\s*<\/p>/s', '$1', $pee); // don't auto-p wrap shortcodes that stand alone
-
-	return $pee;
-}
-
-# Applied to GBExposedContent->body
-gb::add_filter('body.html', 'gb_texturize_html');
-gb::add_filter('body.html', 'gb_convert_html_chars');
-gb::add_filter('body.html', 'gb_html_to_xhtml');
-gb::add_filter('body.html', 'gb_normalize_html_structure');
-
-# Applied to GBExposedContent->excerpt
-gb::add_filter('excerpt.html', 'gb_texturize_html');
-gb::add_filter('excerpt.html', 'gb_convert_html_chars');
-gb::add_filter('excerpt.html', 'gb_html_to_xhtml');
-gb::add_filter('excerpt.html', 'gb_normalize_html_structure');
-
-# -----------------------------------------------------------------------------
 # Template helpers
+
+gb::$title = array(gb::$site_title);
+
+function gb_title($glue=' — ', $html=true) {
+	$s = implode($glue, array_reverse(gb::$title));
+	return $html ? h($s) : $s;
+}
+
+function h($s) {
+	return htmlentities($s, ENT_COMPAT, 'UTF-8');
+}
 
 /**
  * Ordinalize turns a number into an ordinal string used to denote the
@@ -1612,8 +1441,8 @@ function ordinalize($number) {
  * 
  * Examples:
  *  counted(0)  -> "No"
- *  counted(1, 'No', 'One', 'comment', 'comments')  -> "One comment"
- *  counted(7, '', '', ' comments')  -> "7 comments"
+ *  counted(1, 'comment', 'comments', 'No', 'One')  -> "One comment"
+ *  counted(7, 'comment', 'comments')  -> "7 comments"
  */
 function counted($n, $sone='', $smany='', $zero='No', $one='One') {
 	if ($sone)
@@ -1672,9 +1501,9 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 			gb::$is_feed = true;
 			# todo: check if theme has a custom feed, else use a standard feed renderer
 		}
-		elseif (preg_match(gb::$posts_url_prefix_re, $gb_urlpath)) {
+		elseif (($strptime = strptime($gb_urlpath, gb::$posts_prefix)) !== false) {
 			# post
-			$post = GitBlog::postBySlug(urldecode($gb_urlpath));
+			$post = GitBlog::postBySlug(urldecode($gb_urlpath), $strptime);
 			if ($post === false)
 				gb::$is_404 = true;
 			elseif ($post->draft === true || $post->published->time > time())

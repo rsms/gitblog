@@ -43,7 +43,8 @@ class GBPostsRebuilder extends GBContentRebuilder {
 	 *  fnext: "html"
 	 */
 	function parsePostName($name, &$date, &$slug, &$fnext) {
-		$date = new GBDateTime(str_replace(array('.','_','/'), '-', substr($name, 14, 10)).'T00:00:00Z');
+		$date = str_replace(array('.','_','/'), '-', substr($name, 14, 10));
+		$date = new GBDateTime($date.'T00:00:00Z');
 		$lastdot = strrpos($name, '.', strrpos($name, '/'));
 		if ($lastdot > 25) {
 			$slug = substr($name, 25, $lastdot-25);
@@ -313,8 +314,10 @@ class GBContentFinalizer extends GBContentRebuilder {
 			if (substr($path, -1) === '/')
 				continue;
 			$cachename = substr($path, $prefix_len);
-			if (!isset($cachenames[$cachename]))
+			if (!isset($cachenames[$cachename])) {
+				gb::log(LOG_NOTICE, 'removing unused cache "%s" (cachename: "%s")', $path, $cachename);
 				unlink($path);
+			}
 		}
 	}
 }

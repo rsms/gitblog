@@ -61,10 +61,7 @@
 <? if ($post->commentsOpen): ?>
 	<h3 id="reply">Add a comment</h3>
 	<form id="comment-form" action="<?= GB_SITE_URL ?>gitblog/helpers/post-comment.php" method="POST">
-		<?= gb_nonce_field('post-comment-'.$post->name) ?>
-		<input type="hidden" id="comment-client-timezone-offset" name="client-timezone-offset" value="" />
-		<input type="hidden" name="reply-post" value="<?= h($post->name) ?>" />
-		<input type="hidden" name="reply-to" value="" />
+		<?= gb_comment_fields() ?>
 		<p>
 			<textarea id="comment-reply-message" name="reply-message"></textarea>
 		</p>
@@ -77,11 +74,9 @@
 			<input type="submit" value="Add comment" />
 		</p>
 	</form>
-	<script type="text/javascript" charset="utf-8">
+	<script type="text/javascript">
+		//<![CDATA[
 		document.getElementById('comment-form').onsubmit = function(e) {
-			function trim(s) {
-				return 
-			}
 			function check_filled(id, default_value) {
 				var elem = document.getElementById(id);
 				if (!elem)
@@ -93,7 +88,6 @@
 				}
 				return true;
 			}
-			document.getElementById('comment-client-timezone-offset').value = -((new Date()).getTimezoneOffset()*60);
 			if (!check_filled('comment-reply-message', ''))
 				return false;
 			if (!check_filled('comment-author-name', 'Name'))
@@ -102,6 +96,7 @@
 				return false;
 			return true;
 		}
+	//]]>
 	</script>
 <? else: ?>
 	<p>Comments are closed.</p>

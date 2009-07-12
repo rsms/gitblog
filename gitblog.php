@@ -184,6 +184,41 @@ class gb {
 		self::$log_open = openlog($ident, $options, $facility);
 		return self::$log_open;
 	}
+	
+	# --------------------------------------------------------------------------
+	# Info about the Request
+	
+	static protected $current_url = null;
+	
+	static function url_to($part) {
+		$v = $part.'_prefix';
+		return GB_SITE_URL.self::$index_url.self::$$v;
+	}
+	
+	static function url() {
+		if (self::$current_url === null) {
+			$u = new GBURL();
+			$u->secure = isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] == 'on');
+			$u->scheme = $u->secure ? 'https' : 'http';
+			$u->host = isset($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] :
+			  	(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost');
+			if(($p = strpos($u->host,':')) !== false) {
+				$u->port = intval(substr($u->host, $p+1));
+				$u->host = substr($u->host, 0, $p);
+			}
+			elseif(isset($_SERVER['SERVER_PORT'])) {
+				$u->port = intval($_SERVER['SERVER_PORT']);
+			}
+			else {
+				$u->port = $u->secure ? 443 : 80;
+			}
+			$u->query = isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : '';
+			$u->path = $u->query ? substr(@$_SERVER['REQUEST_URI'], 0, strpos($_SERVER['REQUEST_URI'],'?')) 
+				: rtrim(@$_SERVER['REQUEST_URI'],'?');
+			self::$current_url = $u;
+		}
+		return self::$current_url;
+	}
 }
 
 if (file_exists(GB_SITE_DIR.'/gb-config.php'))
@@ -213,7 +248,56 @@ ini_set('unserialize_callback_func', '__autoload');
 $_ENV['PATH'] .= ':/opt/local/bin';
 
 #------------------------------------------------------------------------------
-# Universal functions
+# Utilities
+
+class GBURL {
+	public $scheme;
+	public $host;
+	public $secure;
+	public $port;
+	public $path = '/';
+	public $query;
+	public $fragment;
+	
+	function __construct($url=null) {
+		if ($url !== null) {
+			$p = @parse_url($url);
+			if ($p === false)
+				throw new InvalidArgumentException('unable to parse URL '.var_export($url,1));
+			foreach ($p as $k => $v)
+				$this->$k = $v;
+			$this->secure = $this->scheme === 'https';
+			if ($this->port === null)
+				$this->port = $this->scheme === 'https' ? 443 : ($this->scheme === 'http' ? 80 : null);
+		}
+	}
+	
+	function __toString($query=true, $path=true, $host=true, $port=true) {
+		$s = $this->scheme . '://';
+		
+		if ($host === true)
+			$s .= $this->host;
+		elseif ($host !== false)
+			$s .= $host;
+		
+		if ($port === true && $this->port !== null && ($this->secure === true && $this->port !== 443) || ($this->secure === false && $this->port !== 80))
+			$s .= ':' . $this->port;
+		elseif ($port !== true && $port !== false)
+			$s .= ':' . $port;
+		
+		if ($path === true)
+			$s .= $this->path;
+		elseif ($path !== false)
+			$s .= $path;
+		
+		if ($query === true && $this->query)
+			$s .= '?'.$this->query;
+		elseif ($port !== true && $query !== false && $query)
+			$s .= '?'.$query;
+		
+		return $s;
+	}
+}
 
 /** Atomic write */
 function gb_atomic_write($filename, $data, $chmod=null) {
@@ -939,6 +1023,14 @@ class GBExposedContent extends GBContent {
 		return GB_SITE_URL . gb::$index_url . $this->urlpath();
 	}
 	
+	function commentsStageName() {
+		return gb_filenoext($this->name).'.comments';
+	}
+	
+	function getCommentsDB() {
+		return new GBCommentDB(GB_SITE_DIR.'/'.$post->commentsStageName());
+	}
+	
 	function tagLinks($template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ') {
 		return $this->collLinks('tags', $template, $nglue, $endglue);
 	}
@@ -995,6 +1087,10 @@ class GBExposedContent extends GBContent {
 				$out[strtolower($k)] = ltrim($line[1]);
 			}
 		}
+	}
+	
+	static function findByCacheName($cachename) {
+		return @unserialize(file_get_contents(GB_SITE_DIR.'/.git/info/gitblog/'.$cachename));
 	}
 }
 
@@ -1290,7 +1386,10 @@ class GBComment {
 						$v[$k2] = new self($v2);
 				}
 				elseif ($k === 'date' && $v !== null) {
-					$v = is_string($v) ? new GBDateTime($v) : new GBDateTime($v['time'], $v['offset']);
+					if (is_string($v))
+					 	$v = new GBDateTime($v);
+				 	elseif (is_array($v))
+						$v = new GBDateTime($v['time'], $v['offset']);
 				}
 				$this->$k = $v;
 			}
@@ -1465,7 +1564,7 @@ function gb_title($glue=' — ', $html=true) {
 }
 
 function h($s) {
-	return htmlentities($s, ENT_COMPAT, 'UTF-8');
+	return filter_var($s, FILTER_SANITIZE_SPECIAL_CHARS);
 }
 
 function gb_nonce_field($context='', $name="gb-nonce", $referrer=true) {
@@ -1479,11 +1578,23 @@ function gb_nonce_field($context='', $name="gb-nonce", $referrer=true) {
 	return $html;
 }
 
-function gb_timezone_offset_field($name="timezone-offset") {
-	return '<script type="text/javascript">'."\n//<!--\n"
-		. 'document.write(\'<input type="hidden" name="timezone-offset" value="'
-			. '\'+((new Date()).getTimezoneOffset()*60)+\'" /\'+\'>\');'."\n//-->"
-		. '</script>';
+function gb_timezone_offset_field($id='client-timezone-offset') {
+	return '<input type="hidden" id="'.$id.'" name="client-timezone-offset" value="" />'
+		. '<script type="text/javascript">'."\n//<![CDATA[\n"
+		. 'document.getElementById("'.$id.'").value = -((new Date()).getTimezoneOffset()*60);'
+		."\n//]]></script>";
+}
+
+function gb_comment_fields($post=null) {
+	if ($post === null) {
+		unset($post);
+		global $post;
+	}
+	$post_cachename = $post->cachename();
+	return gb_nonce_field('post-comment-'.$post_cachename)
+		. gb_timezone_offset_field('comment-client-timezone-offset')
+		. '<input type="hidden" name="reply-post" value="'.h($post_cachename).'" />'
+		. '<input type="hidden" name="reply-to" value="" />';
 }
 
 /**
@@ -1578,7 +1689,15 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 			# feed
 			$postspage = GitBlog::postsPageByPageno(0);
 			gb::$is_feed = true;
-			# todo: check if theme has a custom feed, else use a standard feed renderer
+			# if the theme has a "feed.php" file, include that one
+			if (is_file(GB_THEME_DIR.'/feed.php')) {
+				require GB_THEME_DIR.'/feed.php';
+			}
+			# otherwise we'll handle the feed
+			else {
+				require GB_DIR.'/helpers/feed.php';
+			}
+			exit(0);
 		}
 		elseif (($strptime = strptime($gb_urlpath, gb::$posts_prefix)) !== false) {
 			# post
@@ -1609,7 +1728,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 	}
 	
 	# initialize session (for comment nonces)
-	if ((gb::$is_post === true || gb::$is_page === true) && $post->commentsOpen) {
+	if (gb::$is_404 === false && (gb::$is_post === true || gb::$is_page === true) && $post->commentsOpen) {
 		session_start();
 		$_SESSION['gb-nonce'] = gb_nonce_make();
 	}

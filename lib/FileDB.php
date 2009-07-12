@@ -59,13 +59,16 @@ class FileDB {
 	function commit() {
 		if ($this->txFp === false)
 			throw new LogicException('transaction is not active');
-		$e = null;
+		$ex = null;
 		try {
 			$this->txWriteData();
-		} catch (Exception $e) {}
-		$this->txEnd($e);
-		if ($e)
-			throw $e;
+		}
+		catch (Exception $e) {
+			$ex = $e;
+		}
+		$this->txEnd($ex);
+		if ($ex)
+			throw $ex;
 	}
 	
 	function rollback() {

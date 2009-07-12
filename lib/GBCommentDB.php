@@ -1,6 +1,7 @@
 <?
 class GBCommentDB extends JSONDB {
 	public $lastComment = false;
+	public $autocommitToRepo = true;
 	
 	function parseData() {
 		parent::parseData();
@@ -8,12 +9,36 @@ class GBCommentDB extends JSONDB {
 			$this->data[$k] = new GBComment($v);
 	}
 	
+	function encodeData() {
+		$c = new GBComment();
+		$c->comments =& $this->data;
+		$it = new GBCommentsIterator($c);
+		foreach ($it as $comment) {
+			unset($comment->id);
+			unset($comment->_countTotal);
+			unset($comment->_countApproved);
+			unset($comment->_countApprovedTopo);
+			if (is_object($comment->date))
+				$comment->date = strval($comment->date);
+		}
+		parent::encodeData();
+	}
+	
 	function commit() {
 		parent::commit();
-		#GitBlog::add($this->file);
-		#$author = $this->lastComment ? $this->lastComment->gitAuthor() : null;
-		#GitBlog::commit('comment', $author);
-		#$this->lastComment = false;
+		# commit to repo
+		if ($this->autocommitToRepo) {
+			GitBlog::add($this->file);
+			try {
+				$author = $this->lastComment ? $this->lastComment->gitAuthor() : GBUserAccount::getAdmin()->gitAuthor();
+				GitBlog::commit('comment', $author);
+				$this->lastComment = false;
+			}
+			catch (GitError $e) {
+				GitBlog::reset($this->file);
+				throw $e;
+			}
+		}
 	}
 	
 	function rollback() {
@@ -21,7 +46,7 @@ class GBCommentDB extends JSONDB {
 		$this->lastComment = false;
 	}
 	
-	function resolveIndexPath($indexpath, GBComment $comment, $skipIfSameAsComment=null) {
+	function resolveIndexPath($indexpath, $comment, $skipIfSameAsComment=null) {
 		foreach ($indexpath as $i) {
 			if (!isset($comment->comments[$i]))
 				return null;
@@ -39,7 +64,8 @@ class GBCommentDB extends JSONDB {
 				$this->begin();
 			if ($this->data === null)
 				$this->txReadData();
-			$v = new GBComment(array('comments' => $this->data));
+			$v = new GBComment();
+			$v->comments =& $this->data;
 			$v = $this->resolveIndexPath(explode('.', $index), $v);
 			if ($temptx)
 				$this->txEnd();
@@ -80,48 +106,66 @@ class GBCommentDB extends JSONDB {
 		# begin if in temporary tx
 		if ($temptx)
 			$this->begin();
-		# assure data is loaded
-		if ($this->data === null)
-			$this->txReadData();
-		# add
-		$newindex = false;
-		$this->lastComment = $comment;
-		if ($index !== null) {
-			if (!$this->data) {
-				if ($temptx)
-					$this->rollback();
-				throw new OutOfBoundsException('invalid comment index '.$index);
-			}
-			$parentc = new GBComment(array('comments' => $this->data));
-			$parentc = $this->resolveIndexPath(explode('.', $index), $parentc, $comment);
-			if ($parentc && ($skipDuplicate && $parentc->same($comment) || !$skipDuplicate))
-				$newindex = $index.'.'.$parentc->append($comment);
-			else
-				$newindex = false;
-		}
-		else {
-			if (!$this->data) {
-				$newindex = 1;
-				$this->data = array(1 => $comment);
+		try {
+			# assure data is loaded
+			if ($this->data === null)
+				$this->txReadData();
+			# add
+			$newindex = false;
+			$this->lastComment = $comment;
+			if ($index !== null) {
+				if (!$this->data)
+					throw new OutOfBoundsException('invalid comment index '.$index);
+			
+				$indexpath = explode('.', $index);
+				if (!$indexpath)
+					throw new InvalidArgumentException('$index is empty');
+				if (count($indexpath) === 1) {
+					if (!isset($this->data[$indexpath[0]]))
+						throw new OutOfBoundsException('invalid comment index '.$index);
+					$parentc = $this->data[$indexpath[0]];
+				}
+				else {
+					$rootc = new GBComment();
+					$rootc->comments =& $this->data;
+					$parentc = $this->resolveIndexPath($indexpath, $rootc, $comment);
+				}
+			
+				if (!$parentc)
+					throw new OutOfBoundsException('invalid comment index '.$index);
+			
+				if ( ($skipDuplicate && !$parentc->same($comment)) || !$skipDuplicate )
+					$newindex = $index.'.'.$parentc->append($comment);
 			}
 			else {
-				$newindex = array_pop(array_keys($this->data))+1;
-				$skip = false;
-				if ($skipDuplicate) {
-					$parentc = new GBComment(array('comments' => $this->data));
-					$it = new GBCommentsIterator($parentc);
-					foreach ($it as $c) {
-						if ($c->same($comment)) {
-							$skip = true;
-							break;
+				if (!$this->data) {
+					$newindex = 1;
+					$this->data = array(1 => $comment);
+				}
+				else {
+					$newindex = array_pop(array_keys($this->data))+1;
+					$skip = false;
+					if ($skipDuplicate) {
+						$parentc = new GBComment(array('comments' => $this->data));
+						$it = new GBCommentsIterator($parentc);
+						foreach ($it as $c) {
+							if ($c->same($comment)) {
+								$skip = true;
+								break;
+							}
 						}
 					}
+					if ($skip)
+						$newindex = false;
+					else
+						$this->data[$newindex] = $comment;
 				}
-				if ($skip)
-					$newindex = false;
-				else
-					$this->data[$newindex] = $comment;
 			}
+		}
+		catch (Exception $e) {
+			if ($temptx)
+				$this->rollback();
+			throw $e;
 		}
 		# commit if in temporary tx
 		if ($temptx)

@@ -1,7 +1,6 @@
 <?
 require '../gitblog.php';
 ini_set('html_errors', '0');
-header('Content-Type: text/plain; charset=utf-8');
 
 GitBlog::verifyConfig();
 
@@ -59,6 +58,7 @@ $fields = array(
 );
 
 function exit2($msg, $status='400 Bad Request') {
+	header('Content-Type: text/plain; charset=utf-8');
 	header('Status: '.$status);
 	exit($status."\n".$msg."\n");
 }
@@ -109,6 +109,9 @@ if ( $input['client-timezone-offset'] !== false
 if ($input['author-url'] !== false)
 	$input['author-uri'] = GBFilter::apply('sanitize-url', $input['author-url']);
 
+# set author cookie
+gb_author_cookie::set($input['author-email'], $input['author-name'], $input['author-uri']);
+
 # create comment object
 $comment = new GBComment(array(
 	'date'      => $date->__toString(),
@@ -125,38 +128,45 @@ $comment = GBFilter::apply('pre-comment', $comment);
 
 # append to comment db
 if ($comment) {
-	$cdb = $post->getCommentsDB();
-	$index = $cdb->append($comment, $input['reply-to'] ? $input['reply-to'] : null);
-	
-	# duplicate?
-	if ($index === false) {
-		# done
-		if (isset($input['gb-referrer']))
-			header('Location: '.$input['gb-referrer'].'#reply');
-		else
-			echo "skipped duplicate comment\n";
-		exit(0);
-	}
-	
-	# add & commit
-	GitBlog::add($pathspec);
 	try {
-		$ciauthor = ($input['author-name'] ? $input['author-name'].' ' : '') 
-			. '<'.$input['author-email'].'>';
-		$cimsg = 'new comment';
-		if ($input['reply-to'])
-			$cimsg .= ' in reply to comment #'.$input['reply-to'].')';
-		GitBlog::commit($cimsg, $ciauthor);
+		$cdb = $post->getCommentsDB();
+		$index = $cdb->append($comment, $input['reply-to'] ? $input['reply-to'] : null);
+		
+		# duplicate?
+		if ($index === false) {
+			if (isset($input['gb-referrer'])) {
+				header('Status: 304 Not Modified');
+				header('Location: '.$input['gb-referrer'].'#skipped-duplicate-reply');
+				exit(0);
+			}
+			else {
+				exit2("duplicate comment\n", '200 OK');
+			}
+		}
 		
 		# done
-		if (isset($input['gb-referrer']))
+		if (isset($input['gb-referrer'])) {
 			header('Location: '.$input['gb-referrer'].'#comment-'.$index);
-		else
-			echo "new comment index: $index\n";
+			#header('Content-Type: text/html; charset=utf-8');
+			#$url = h($input['gb-referrer'].'#comment-'.$index);
+			#echo '<html><head><meta http-equiv="refresh" content="0;url='
+			#	. $url.'" /></head><body>'
+			#	.'<a href="'.$url.'">Continue</a></body></html>';
+		}
+		else {
+			exit2("new comment index: $index\n", '200 OK');
+		}
 	}
-	catch (GitError $e) {
-		GitBlog::reset($pathspec);
+	catch (Exception $e) {
+		if ($e instanceof GitError && strpos($e->getMessage(), 'nothing to commit') !== false) {
+			header('Status: 304 Not Modified');
+			header('Location: '.$input['gb-referrer'].'#skipped-duplicate-reply');
+			exit(0);
+		}
+		header('Content-Type: text/plain; charset=utf-8');
 		header('Status: 500 Internal Server Error');
+		echo '$input => ';var_export($input);echo "\n";
+		flush();
 		throw $e;
 	}
 }

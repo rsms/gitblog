@@ -1028,7 +1028,7 @@ class GBExposedContent extends GBContent {
 	}
 	
 	function getCommentsDB() {
-		return new GBCommentDB(GB_SITE_DIR.'/'.$post->commentsStageName());
+		return new GBCommentDB(GB_SITE_DIR.'/'.$this->commentsStageName());
 	}
 	
 	function tagLinks($template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ') {
@@ -1397,8 +1397,7 @@ class GBComment {
 	}
 	
 	function same(GBComment $comment) {
-		return (($this->email === $comment->email)
-			&& ($this->body === $comment->body));
+		return (($this->email === $comment->email) && ($this->body === $comment->body));
 	}
 	
 	function gitAuthor() {
@@ -1415,6 +1414,15 @@ class GBComment {
 			$this->comments[$k] = $comment;
 		}
 		return $k;
+	}
+	
+	function nameLink($attrs='') {
+		if ($this->uri)
+			return '<a href="'.h($this->uri).'" '.$attrs.'>'.h($this->name).'</a>';
+		elseif ($attrs)
+			return '<span '.$attrs.'>'.h($this->name).'</span>';
+		else
+			return h($this->name);
 	}
 	
 	function __sleep() {
@@ -1554,6 +1562,38 @@ function gb_nonce_verify($nonce, $context='') {
 }
 
 # -----------------------------------------------------------------------------
+# Author cookie
+
+class gb_author_cookie {
+	static public $cookie;
+	
+	static function set($email=null, $name=null, $uri=null, $cookiename='gb-author') {
+		if (self::$cookie === null)
+			self::$cookie = array();
+		if ($email !== null) self::$cookie['email'] = $email;
+		if ($name !== null) self::$cookie['name'] = $name;
+		if ($uri !== null) self::$cookie['uri'] = $uri;
+		$cookie = rawurlencode(serialize(self::$cookie));
+		$cookieurl = new GBURL(GB_SITE_URL);
+		setrawcookie($cookiename, $cookie, time()+(3600*24*365), $cookieurl->path, $cookieurl->host, $cookieurl->secure);
+	}
+
+	static function get($part=null, $cookiename='gb-author') {
+		if (self::$cookie === null) {
+			if (isset($_COOKIE[$cookiename])) {
+				$s = get_magic_quotes_gpc() ? stripslashes($_COOKIE[$cookiename]) : $_COOKIE[$cookiename];
+				self::$cookie = @unserialize($s);
+			}
+			if (!self::$cookie)
+				self::$cookie = array();
+		}
+		if ($part === null)
+			return self::$cookie;
+		return isset(self::$cookie[$part]) ? self::$cookie[$part] : null;
+	}
+}
+
+# -----------------------------------------------------------------------------
 # Template helpers
 
 gb::$title = array(gb::$site_title);
@@ -1567,11 +1607,10 @@ function h($s) {
 	return filter_var($s, FILTER_SANITIZE_SPECIAL_CHARS);
 }
 
-function gb_nonce_field($context='', $name="gb-nonce", $referrer=true) {
+function gb_nonce_field($context='', $referrer=true, $id_prefix='', $name='gb-nonce') {
 	$nonce = gb_nonce_make($context);
-	$_SESSION['gb-nonce'] = $nonce;
 	$name = h($name);
-	$html = '<input type="hidden" id="' . $name . '" name="' . $name 
+	$html = '<input type="hidden" id="' . $id_prefix.$name . '" name="' . $name 
 		. '" value="' . $nonce . '" />';
 	if ($referrer)
 		$html .= '<input type="hidden" name="gb-referrer" value="'. h($_SERVER['REQUEST_URI']) . '" />';
@@ -1585,16 +1624,28 @@ function gb_timezone_offset_field($id='client-timezone-offset') {
 		."\n//]]></script>";
 }
 
-function gb_comment_fields($post=null) {
+function gb_comment_author_field($what, $default_value='', $id_prefix='comment-', $attrs='') {
+	$value = gb_author_cookie::get($what);
+	if (!$value)
+		$value = $default_value;
+	return '<input type="text" id="'.$id_prefix.'author-'.$what.'" name="author-'
+		.$what.'" value="'.h($value).'"'
+		.' onfocus="if(this.value==unescape(\''.rawurlencode($default_value).'\'))this.value=\'\';"'
+		.' onblur="if(this.value==\'\')this.value=unescape(\''.rawurlencode($default_value).'\');"'
+		.' '.$attrs.' />';
+}
+
+function gb_comment_fields($post=null, $id_prefix='comment-') {
 	if ($post === null) {
 		unset($post);
 		global $post;
 	}
 	$post_cachename = $post->cachename();
-	return gb_nonce_field('post-comment-'.$post_cachename)
-		. gb_timezone_offset_field('comment-client-timezone-offset')
-		. '<input type="hidden" name="reply-post" value="'.h($post_cachename).'" />'
-		. '<input type="hidden" name="reply-to" value="" />';
+	$nonce_context = 'post-comment-'.$post_cachename;
+	return gb_nonce_field($nonce_context, true, $id_prefix)
+		. gb_timezone_offset_field($id_prefix.'client-timezone-offset')
+		. '<input type="hidden" id="'.$id_prefix.'reply-post" name="reply-post" value="'.h($post_cachename).'" />'
+		. '<input type="hidden" id="'.$id_prefix.'reply-to" name="reply-to" value="" />';
 }
 
 /**
@@ -1725,12 +1776,6 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
 		$postspage = GitBlog::postsPageByPageno($pageno);
 		gb::$is_posts = true;
-	}
-	
-	# initialize session (for comment nonces)
-	if (gb::$is_404 === false && (gb::$is_post === true || gb::$is_page === true) && $post->commentsOpen) {
-		session_start();
-		$_SESSION['gb-nonce'] = gb_nonce_make();
 	}
 	
 	# from here on, the caller will have to do the rest

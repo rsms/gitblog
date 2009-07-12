@@ -50,16 +50,20 @@ class JSONDB extends FileDB {
 			$this->throwJsonEncoderError();
 	}
 	
+	function encodeData() {
+		$this->data = json_encode($this->data);
+		if ($this->data === null)
+			$this->throwJsonEncoderError();
+	}
+	
 	protected function txReadData() {
 		parent::txReadData();
 		$this->parseData();
 	}
 	
 	protected function txWriteData() {
-		$this->data = json_encode($this->data);
-		if ($this->data === null)
-			$this->throwJsonEncoderError();
-		elseif ($this->data != $this->originalData)
+		$this->encodeData();
+		if ($this->data != $this->originalData)
 			parent::txWriteData();
 	}
 	

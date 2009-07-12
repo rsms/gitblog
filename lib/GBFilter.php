@@ -356,8 +356,8 @@ function gb_sanitize_url($s, $default_scheme='http') {
 	if ($u === false || !isset($u['scheme'])) {
 		if (($p = strpos($s, '://')) !== false)
 			$s = substr($s, $p+3);
-		$u = parse_url($default_scheme.'://'.ltrim($s,'/'));
-		if ($u === false)
+		$u = @parse_url($default_scheme.'://'.ltrim($s,'/'));
+		if ($u === false || !isset($u['host']) || strpos($u['host'], '.') === false)
 			return false;
 	}
 	if (!isset($u['path']))

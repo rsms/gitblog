@@ -290,6 +290,10 @@ function gb_strtoisotime($time) {
 	return $d->format('c');
 }
 
+function gb_hash($data) {
+	return base_convert(hash_hmac('sha1', $data, gb::$secret), 16, 36);
+}
+
 
 /**
  * Calculate relative path.
@@ -526,7 +530,7 @@ class GitBlog {
 		self::exec(($forceIncludeIgnored ? 'add --force ' : 'add ').escapeshellarg($pathspec));
 	}
 	
-	static function reset($pathspec=null, $commit=null, $flags='-q') {
+	static function reset($pathspec=null, $commitobj=null, $flags='-q') {
 		if ($pathspec) {
 			if (is_array($pathspec))
 				$pathspec = implode(' ', array_map('escapeshellarg',$pathspec));
@@ -535,11 +539,11 @@ class GitBlog {
 			$pathspec = ' '.$pathspec;
 		}
 		$commitargs = '';
-		if ($commit) {
+		if ($commitobj) {
 			$badtype = false;
-			if (!is_array($commit))
-				$commit = array($commit);
-			foreach ($commit as $c) {
+			if (!is_array($commitobj))
+				$commitobj = array($commitobj);
+			foreach ($commitobj as $c) {
 				if (is_object($c)) {
 					if (strtolower(get_class($c)) !== 'GitCommit')
 						$badtype = true;
@@ -551,7 +555,7 @@ class GitBlog {
 				else
 					$badtype = true;
 				if ($badtype)
-					throw new InvalidArgumentException('$commit argument must be a string, a GitCommit '
+					throw new InvalidArgumentException('$commitobj argument must be a string, a GitCommit '
 						.'object or an array of any of the two mentioned types');
 			}
 		}
@@ -647,50 +651,61 @@ class GitBlog {
 
 class GBDateTime {
 	public $time;
-	public $origTZOffset;
+	public $offset;
 	
-	function __construct($time='now', $origTZOffset=0) {
-		if (is_int($time)) {
-			$this->time = $time;
-			$this->origTZOffset = $origTZOffset;
+	function __construct($time=null, $offset=null) {
+		if ($time === null || is_int($time)) {
+			$this->time = ($time === null) ? time() : $time;
+			$this->offset = ($offset === null) ? self::localTimezoneOffset() : $offset;
 		}
 		else {
 			$st = date_parse($time);
 			if (isset($st['zone']) && $st['zone'] !== 0)
-				$this->origTZOffset = -$st['zone']*60;
+				$this->offset = -$st['zone']*60;
 			if (isset($st['is_dst']) && $st['is_dst'] === true)
-				$this->origTZOffset += 3600;
+				$this->offset += 3600;
 			$this->time = gmmktime($st['hour'], $st['minute'], $st['second'], 
 				$st['month'], $st['day'], $st['year']);
-			if ($this->origTZOffset !== null)
-				$this->time -= $this->origTZOffset;
+			if ($this->offset !== null)
+				$this->time -= $this->offset;
 			else
-				$this->origTZOffset = 0;
+				$this->offset = 0;
 		}
 	}
 	
-	function format($strftimefmt) {
-		return strftime($strftimefmt, $this->time);
+	function format($format='%FT%H:%M:%S%z') {
+		return strftime($format, $this->time);
 	}
 
-	function utcformat($strftimefmt) {
-		return gmstrftime($strftimefmt, $this->time);
+	function utcformat($format='%FT%H:%M:%SZ') {
+		return gmstrftime($format, $this->time);
 	}
 	
-	function originalTimezoneOffset($format='H:i') {
-		if ($this->origTZOffset < 0)
-			return '-'.gmdate($format, -$this->origTZOffset);
-		else
-			return '+'.gmdate($format, $this->origTZOffset);
+	function origformat($format='%FT%H:%M:%S', $tzformat='H:i') {
+		return gmstrftime($format, $this->time + $this->offset)
+			. self::formatTimezoneOffset($this->offset, $tzformat);
+	}
+	
+	/**
+	 * The offset for timezones west of UTC is always negative, and for those
+	 * east of UTC is always positive.
+	 */
+	static function localTimezoneOffset() {
+		$tod = gettimeofday();
+		return -($tod['minuteswest']*60);
+	}
+	
+	static function formatTimezoneOffset($offset, $format='H:i') {
+		return ($offset < 0) ? '-'.gmdate($format, -$offset) : '+'.gmdate($format, $offset);
 	}
 	
 	function __toString() {
-		return gmstrftime('%FT%H:%M:%S', $this->time + $this->origTZOffset).$this->originalTimezoneOffset();
+		return $this->origformat();
 	}
 	
 	function __sleep() {
 		$this->d = gmstrftime('%FT%H:%M:%SZ', $this->time);
-		return array('d', 'origTZOffset');
+		return array('d', 'offset');
 	}
 	
 	function __wakeup() {
@@ -698,6 +713,12 @@ class GBDateTime {
 		$this->time = gmmktime($st['tm_hour'], $st['tm_min'], $st['tm_sec'], 
 			$st['tm_mon']+1, $st['tm_mday'], 1900+$st['tm_year']);
 		unset($this->d);
+	}
+	
+	function reintrepretTimezone($tzoffset) {
+		$gmts = $this->offset === 0 ? $this->time : strtotime($this->utcformat());
+		$ds = gmstrftime('%FT%H:%M:%S', $gmts+$tzoffset) . self::formatTimezoneOffset($tzoffset);
+		return new GBDateTime($ds);
 	}
 	
 	function mergeString($s, $adjustTimezone=false) {
@@ -710,13 +731,10 @@ class GBDateTime {
 		$tzoffset = 0;
 		if (isset($t['zone'])) {
 			$tzoffset = -($t['zone']*60);
-			if ($tzoffset < 0)
-				$ds .= '-'.gmstrftime('%H:%M', -$tzoffset);
-			else
-				$ds .= '+'.gmstrftime('%H:%M', $tzoffset);
+			$ds .= self::formatTimezoneOffset($tzoffset);
 		}
 		else {
-			$ds .= $this->originalTimezoneOffset();
+			$ds .= self::formatTimezoneOffset($this->offset);
 		}
 		
 		if ($adjustTimezone)
@@ -1068,6 +1086,9 @@ class GBComments extends GBContent implements IteratorAggregate {
 		$db = new GBCommentDB();
 		$db->loadString($data);
 		$this->comments = $db->get();
+		
+		# apply filters
+		GBFilter::apply('post-reload-comments', $this);
 	}
 	
 	# these two are not serialized, but lazy-initialized by count()
@@ -1245,7 +1266,7 @@ class GBComment {
 	public $email;
 	public $uri;
 	public $name;
-	public $message;
+	public $body;
 	public $approved;
 	public $comments;
 	public $type;
@@ -1272,19 +1293,29 @@ class GBComment {
 		}
 	}
 	
+	function same(GBComment $comment) {
+		return (($this->email === $comment->email)
+			&& ($this->body === $comment->body));
+	}
+	
 	function gitAuthor() {
 		return ($this->name ? $this->name.' ' : '').($this->email ? '<'.$this->email.'>' : '');
 	}
 	
 	function append(GBComment $comment) {
-		if ($this->comments === null)
+		if ($this->comments === null) {
+			$k = 1;
 			$this->comments = array(1 => $comment);
-		else
-			$this->comments[array_pop(array_keys($this->comments))+1] = $comment;
+		}
+		else {
+			$k = array_pop(array_keys($this->comments))+1;
+			$this->comments[$k] = $comment;
+		}
+		return $k;
 	}
 	
 	function __sleep() {
-		return array('date','ipAddress','email','uri','name','message','approved','comments');
+		return array('date','ipAddress','email','uri','name','body','approved','comments');
 	}
 }
 
@@ -1332,7 +1363,7 @@ class GBUserAccount {
 	}
 	
 	static function passhash($email, $passphrase) {
-		return sha1($email . ' ' . $passphrase);# . ' ' . gb::$secret);
+		return gb_hash($email . ' ' . $passphrase);
 	}
 	
 	static function create($email, $passphrase, $name, $admin=false) {
@@ -1396,6 +1427,30 @@ class GBUserAccount {
 }
 
 # -----------------------------------------------------------------------------
+# Nonce
+
+function gb_nonce_time() {
+	static $nonce_life = 86400;
+	return (int)ceil(time() / ( $nonce_life / 2 ));
+}
+
+function gb_nonce_make($context='') {
+	return gb_hash(gb_nonce_time() . $context . $_SERVER['REMOTE_ADDR']);
+}
+
+function gb_nonce_verify($nonce, $context='') {
+	$nts = gb_nonce_time();
+	# generated (0-12] hours ago
+	if ( gb_hash($nts . $context . $_SERVER['REMOTE_ADDR']) === $nonce )
+		return 1;
+	# generated (12-24) hours ago
+	if ( gb_hash(($nts - 1) . $context . $_SERVER['REMOTE_ADDR']) === $nonce )
+		return 2;
+	# Invalid nonce
+	return false;
+}
+
+# -----------------------------------------------------------------------------
 # Template helpers
 
 gb::$title = array(gb::$site_title);
@@ -1407,6 +1462,24 @@ function gb_title($glue=' — ', $html=true) {
 
 function h($s) {
 	return htmlentities($s, ENT_COMPAT, 'UTF-8');
+}
+
+function gb_nonce_field($context='', $name="gb-nonce", $referrer=true) {
+	$nonce = gb_nonce_make($context);
+	$_SESSION['gb-nonce'] = $nonce;
+	$name = h($name);
+	$html = '<input type="hidden" id="' . $name . '" name="' . $name 
+		. '" value="' . $nonce . '" />';
+	if ($referrer)
+		$html .= '<input type="hidden" name="gb-referrer" value="'. h($_SERVER['REQUEST_URI']) . '" />';
+	return $html;
+}
+
+function gb_timezone_offset_field($name="timezone-offset") {
+	return '<script type="text/javascript">'."\n//<!--\n"
+		. 'document.write(\'<input type="hidden" name="timezone-offset" value="'
+			. '\'+((new Date()).getTimezoneOffset()*60)+\'" /\'+\'>\');'."\n//-->"
+		. '</script>';
 }
 
 /**
@@ -1530,6 +1603,13 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		$postspage = GitBlog::postsPageByPageno($pageno);
 		gb::$is_posts = true;
 	}
+	
+	# initialize session (for comment nonces)
+	if ((gb::$is_post === true || gb::$is_page === true) && $post->commentsOpen) {
+		session_start();
+		$_SESSION['gb-nonce'] = gb_nonce_make();
+	}
+	
 	# from here on, the caller will have to do the rest
 }
 ?>

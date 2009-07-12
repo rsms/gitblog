@@ -11,7 +11,7 @@ class GBFilter {
 	 * any more filter after the one returning FALSE. Returning anything else
 	 * have no effect.
 	 */
-	static function add($tag, $func, $priority=100) {
+	static function add($tag, $func, $priority=10) {
 		if (!isset(self::$filters[$tag]))
 			self::$filters[$tag] = array($priority => array($func));
 		elseif (!isset(self::$filters[$tag][$priority]))
@@ -144,20 +144,74 @@ function gb_convert_html_chars($content) {
 	return $content;
 }
 
-# HTML -> XHTML
-function gb_html_to_xhtml($content) {
-	return str_replace(array('<br>','<hr>'), array('<br />','<hr />'), $content);
+function gb_convert_htmlents_to_xmlents($s) {
+	static $map = array(
+		'&quot;'=>'&#34;','&amp;'=>'&#38;','&frasl;'=>'&#47;','&lt;'=>'&#60;','&gt;'=>'&#62;',
+		'|'=>'&#124;','&nbsp;'=>'&#160;','&iexcl;'=>'&#161;','&cent;'=>'&#162;','&pound;'=>'&#163;',
+		'&curren;'=>'&#164;','&yen;'=>'&#165;','&brvbar;'=>'&#166;','&brkbar;'=>'&#166;',
+		'&sect;'=>'&#167;','&uml;'=>'&#168;','&die;'=>'&#168;','&copy;'=>'&#169;','&ordf;'=>'&#170;',
+		'&laquo;'=>'&#171;','&not;'=>'&#172;','&shy;'=>'&#173;','&reg;'=>'&#174;','&macr;'=>'&#175;',
+		'&hibar;'=>'&#175;','&deg;'=>'&#176;','&plusmn;'=>'&#177;','&sup2;'=>'&#178;','&sup3;'=>'&#179;',
+		'&acute;'=>'&#180;','&micro;'=>'&#181;','&para;'=>'&#182;','&middot;'=>'&#183;',
+		'&cedil;'=>'&#184;','&sup1;'=>'&#185;','&ordm;'=>'&#186;','&raquo;'=>'&#187;','&frac14;'=>'&#188;',
+		'&frac12;'=>'&#189;','&frac34;'=>'&#190;','&iquest;'=>'&#191;','&Agrave;'=>'&#192;',
+		'&Aacute;'=>'&#193;','&Acirc;'=>'&#194;','&Atilde;'=>'&#195;','&Auml;'=>'&#196;','&Aring;'=>'&#197;',
+		'&AElig;'=>'&#198;','&Ccedil;'=>'&#199;','&Egrave;'=>'&#200;','&Eacute;'=>'&#201;','&Ecirc;'=>'&#202;',
+		'&Euml;'=>'&#203;','&Igrave;'=>'&#204;','&Iacute;'=>'&#205;','&Icirc;'=>'&#206;','&Iuml;'=>'&#207;',
+		'&ETH;'=>'&#208;','&Ntilde;'=>'&#209;','&Ograve;'=>'&#210;','&Oacute;'=>'&#211;','&Ocirc;'=>'&#212;',
+		'&Otilde;'=>'&#213;','&Ouml;'=>'&#214;','&times;'=>'&#215;','&Oslash;'=>'&#216;','&Ugrave;'=>'&#217;',
+		'&Uacute;'=>'&#218;','&Ucirc;'=>'&#219;','&Uuml;'=>'&#220;','&Yacute;'=>'&#221;','&THORN;'=>'&#222;',
+		'&szlig;'=>'&#223;','&agrave;'=>'&#224;','&aacute;'=>'&#225;','&acirc;'=>'&#226;','&atilde;'=>'&#227;',
+		'&auml;'=>'&#228;','&aring;'=>'&#229;','&aelig;'=>'&#230;','&ccedil;'=>'&#231;','&egrave;'=>'&#232;',
+		'&eacute;'=>'&#233;','&ecirc;'=>'&#234;','&euml;'=>'&#235;','&igrave;'=>'&#236;','&iacute;'=>'&#237;',
+		'&icirc;'=>'&#238;','&iuml;'=>'&#239;','&eth;'=>'&#240;','&ntilde;'=>'&#241;','&ograve;'=>'&#242;',
+		'&oacute;'=>'&#243;','&ocirc;'=>'&#244;','&otilde;'=>'&#245;','&ouml;'=>'&#246;','&divide;'=>'&#247;',
+		'&oslash;'=>'&#248;','&ugrave;'=>'&#249;','&uacute;'=>'&#250;','&ucirc;'=>'&#251;','&uuml;'=>'&#252;',
+		'&yacute;'=>'&#253;','&thorn;'=>'&#254;','&yuml;'=>'&#255;','&OElig;'=>'&#338;','&oelig;'=>'&#339;',
+		'&Scaron;'=>'&#352;','&scaron;'=>'&#353;','&Yuml;'=>'&#376;','&fnof;'=>'&#402;','&circ;'=>'&#710;',
+		'&tilde;'=>'&#732;','&Alpha;'=>'&#913;','&Beta;'=>'&#914;','&Gamma;'=>'&#915;','&Delta;'=>'&#916;',
+		'&Epsilon;'=>'&#917;','&Zeta;'=>'&#918;','&Eta;'=>'&#919;','&Theta;'=>'&#920;','&Iota;'=>'&#921;',
+		'&Kappa;'=>'&#922;','&Lambda;'=>'&#923;','&Mu;'=>'&#924;','&Nu;'=>'&#925;','&Xi;'=>'&#926;',
+		'&Omicron;'=>'&#927;','&Pi;'=>'&#928;','&Rho;'=>'&#929;','&Sigma;'=>'&#931;','&Tau;'=>'&#932;',
+		'&Upsilon;'=>'&#933;','&Phi;'=>'&#934;','&Chi;'=>'&#935;','&Psi;'=>'&#936;','&Omega;'=>'&#937;',
+		'&alpha;'=>'&#945;','&beta;'=>'&#946;','&gamma;'=>'&#947;','&delta;'=>'&#948;','&epsilon;'=>'&#949;',
+		'&zeta;'=>'&#950;','&eta;'=>'&#951;','&theta;'=>'&#952;','&iota;'=>'&#953;','&kappa;'=>'&#954;',
+		'&lambda;'=>'&#955;','&mu;'=>'&#956;','&nu;'=>'&#957;','&xi;'=>'&#958;','&omicron;'=>'&#959;',
+		'&pi;'=>'&#960;','&rho;'=>'&#961;','&sigmaf;'=>'&#962;','&sigma;'=>'&#963;','&tau;'=>'&#964;',
+		'&upsilon;'=>'&#965;','&phi;'=>'&#966;','&chi;'=>'&#967;','&psi;'=>'&#968;','&omega;'=>'&#969;',
+		'&thetasym;'=>'&#977;','&upsih;'=>'&#978;','&piv;'=>'&#982;','&ensp;'=>'&#8194;','&emsp;'=>'&#8195;',
+		'&thinsp;'=>'&#8201;','&zwnj;'=>'&#8204;','&zwj;'=>'&#8205;','&lrm;'=>'&#8206;','&rlm;'=>'&#8207;',
+		'&ndash;'=>'&#8211;','&mdash;'=>'&#8212;','&lsquo;'=>'&#8216;','&rsquo;'=>'&#8217;','&sbquo;'=>'&#8218;',
+		'&ldquo;'=>'&#8220;','&rdquo;'=>'&#8221;','&bdquo;'=>'&#8222;','&dagger;'=>'&#8224;',
+		'&Dagger;'=>'&#8225;','&bull;'=>'&#8226;','&hellip;'=>'&#8230;','&permil;'=>'&#8240;','&prime;'=>'&#8242;',
+		'&Prime;'=>'&#8243;','&lsaquo;'=>'&#8249;','&rsaquo;'=>'&#8250;','&oline;'=>'&#8254;','&frasl;'=>'&#8260;',
+		'&euro;'=>'&#8364;','&image;'=>'&#8465;','&weierp;'=>'&#8472;','&real;'=>'&#8476;','&trade;'=>'&#8482;',
+		'&alefsym;'=>'&#8501;','&crarr;'=>'&#8629;','&lArr;'=>'&#8656;','&uArr;'=>'&#8657;','&rArr;'=>'&#8658;',
+		'&dArr;'=>'&#8659;','&hArr;'=>'&#8660;','&forall;'=>'&#8704;','&part;'=>'&#8706;','&exist;'=>'&#8707;',
+		'&empty;'=>'&#8709;','&nabla;'=>'&#8711;','&isin;'=>'&#8712;','&notin;'=>'&#8713;','&ni;'=>'&#8715;',
+		'&prod;'=>'&#8719;','&sum;'=>'&#8721;','&minus;'=>'&#8722;','&lowast;'=>'&#8727;','&radic;'=>'&#8730;',
+		'&prop;'=>'&#8733;','&infin;'=>'&#8734;','&ang;'=>'&#8736;','&and;'=>'&#8743;','&or;'=>'&#8744;',
+		'&cap;'=>'&#8745;','&cup;'=>'&#8746;','&int;'=>'&#8747;','&there4;'=>'&#8756;','&sim;'=>'&#8764;',
+		'&cong;'=>'&#8773;','&asymp;'=>'&#8776;','&ne;'=>'&#8800;','&equiv;'=>'&#8801;','&le;'=>'&#8804;',
+		'&ge;'=>'&#8805;','&sub;'=>'&#8834;','&sup;'=>'&#8835;','&nsub;'=>'&#8836;','&sube;'=>'&#8838;',
+		'&supe;'=>'&#8839;','&oplus;'=>'&#8853;','&otimes;'=>'&#8855;','&perp;'=>'&#8869;','&sdot;'=>'&#8901;',
+		'&lceil;'=>'&#8968;','&rceil;'=>'&#8969;','&lfloor;'=>'&#8970;','&rfloor;'=>'&#8971;','&lang;'=>'&#9001;',
+		'&rang;'=>'&#9002;','&larr;'=>'&#8592;','&uarr;'=>'&#8593;','&rarr;'=>'&#8594;','&darr;'=>'&#8595;',
+		'&harr;'=>'&#8596;','&loz;'=>'&#9674;','&spades;'=>'&#9824;','&clubs;'=>'&#9827;','&hearts;'=>'&#9829;',
+		'&diams;'=>'&#9830;'
+	);
+	return strtr($s, $map);
+}
+
+# HTML -> XHTML (very simplistic -- needs some work)
+function gb_html_to_xhtml($s) {
+	static $map = array('<br>'=>'<br />','<hr>'=>'<hr />');
+	return strtr($s, $map);
 }
 
 function gb_normalize_html_structure_clean_pre($matches) {
-	if ( is_array($matches) )
-		$text = $matches[1] . $matches[2] . "</pre>";
-	else
-		$text = $matches;
-	$text = str_replace('<br />', '', $text);
-	$text = str_replace('<p>', "\n", $text);
-	$text = str_replace('</p>', '', $text);
-	return $text;
+	static $map = array('<br />' => '', '<p>' => "\n", '</p>' => '');
+	return strtr(is_string($matches) ? $matches : $matches[1] . $matches[2] . '</pre>', $map);
 }
 
 
@@ -166,8 +220,7 @@ function gb_normalize_html_structure($s, $br = 1) {
 	$s = $s . "\n"; # just to make things a little easier, pad the end
 	$s = preg_replace('|<br />\s*<br />|', "\n\n", $s);
 	# Space things out a little
-	$allblocks = '(?:table|thead|tfoot|caption|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|'
-		.'pre|select|form|map|area|blockquote|address|math|style|input|p|h[1-6]|hr)';
+	static $allblocks = '(?:table|thead|tfoot|caption|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|select|form|map|area|blockquote|address|math|style|input|p|h[1-6]|hr)';
 	$s = preg_replace('!(<' . $allblocks . '[^>]*>)!', "\n$1", $s);
 	$s = preg_replace('!(</' . $allblocks . '>)!', "$1\n\n", $s);
 	$s = str_replace(array("\r\n", "\r"), "\n", $s); # cross-platform newlines
@@ -199,7 +252,7 @@ function gb_normalize_html_structure($s, $br = 1) {
 	$s = preg_replace( "|\n</p>$|", '</p>', $s );
 	#$s = preg_replace('/<p>\s*?(' . get_shortcode_regex() . ')\s*<\/p>/s', '$1', $s);
 	# ^ don't auto-p wrap shortcodes that stand alone
-	return $s;
+	return rtrim($s);
 }
 
 function gb_remove_accents($s) {
@@ -279,21 +332,170 @@ function gb_sanitize_title($s, $default='') {
 	return $s;
 }
 
+function gb_sanitize_url($s, $default_scheme='http') {
+	$u = @parse_url($s);
+	if ($u === false || !isset($u['scheme'])) {
+		if (($p = strpos($s, '://')) !== false)
+			$s = substr($s, $p+3);
+		$u = parse_url($default_scheme.'://'.ltrim($s,'/'));
+		if ($u === false)
+			return false;
+	}
+	if (!isset($u['path']))
+		$u['path'] = '/';
+	$s = $u['scheme'].'://';
+	if (isset($u['user']) || isset($u['pass'])) {
+		if (isset($u['user']))
+			$s .= $u['user'];
+		if (isset($u['pass']))
+			$s .= ':'.$u['pass'];
+		$s .= '@';
+	}
+	$s .= $u['host'] . $u['path'];
+	if (isset($u['query']))
+		$s .= '?'.$u['query'];
+	if (isset($u['fragment']))
+		$s .= '#'.$u['fragment'];
+	return $s;
+}
+
+/**
+ * Balances tags of string using a modified stack.
+ *
+ * @since 2.0.4
+ *
+ * @author Leonard Lin <leonard@acm.org>
+ * @license GPL v2.0
+ * @copyright November 4, 2001
+ * @version 1.1
+ * @todo Make better - change loop condition to $text in 1.2
+ * @internal Modified by Scott Reilly (coffee2code) 02 Aug 2004
+ *		1.1  Fixed handling of append/stack pop order of end text
+ *			 Added Cleaning Hooks
+ *		1.0  First Version
+ *
+ * @param string $text Text to be balanced.
+ * @return string Balanced text.
+ */
+function gb_force_balance_tags( $text ) {
+	$tagstack = array(); $stacksize = 0; $tagqueue = ''; $newtext = '';
+	$single_tags = array('br', 'hr', 'img', 'input'); #Known single-entity/self-closing tags
+	$nestable_tags = array('blockquote', 'div', 'span'); #Tags that can be immediately nested within themselves
+
+	# WP bug fix for comments - in case you REALLY meant to type '< !--'
+	$text = str_replace('< !--', '<    !--', $text);
+	# WP bug fix for LOVE <3 (and other situations with '<' before a number)
+	$text = preg_replace('#<([0-9]{1})#', '&lt;$1', $text);
+
+	while (preg_match("/<(\/?\w*)\s*([^>]*)>/",$text,$regex)) {
+		$newtext .= $tagqueue;
+
+		$i = strpos($text,$regex[0]);
+		$l = strlen($regex[0]);
+
+		# clear the shifter
+		$tagqueue = '';
+		# Pop or Push
+		if ( isset($regex[1][0]) && '/' == $regex[1][0] ) { # End Tag
+			$tag = strtolower(substr($regex[1],1));
+			# if too many closing tags
+			if($stacksize <= 0) {
+				$tag = '';
+				#or close to be safe $tag = '/' . $tag;
+			}
+			# if stacktop value = tag close value then pop
+			else if ($tagstack[$stacksize - 1] == $tag) { # found closing tag
+				$tag = '</' . $tag . '>'; # Close Tag
+				# Pop
+				array_pop ($tagstack);
+				$stacksize--;
+			} else { # closing tag not at top, search for it
+				for ($j=$stacksize-1;$j>=0;$j--) {
+					if ($tagstack[$j] == $tag) {
+					# add tag to tagqueue
+						for ($k=$stacksize-1;$k>=$j;$k--){
+							$tagqueue .= '</' . array_pop ($tagstack) . '>';
+							$stacksize--;
+						}
+						break;
+					}
+				}
+				$tag = '';
+			}
+		} else { # Begin Tag
+			$tag = strtolower($regex[1]);
+
+			# Tag Cleaning
+
+			# If self-closing or '', don't do anything.
+			if((substr($regex[2],-1) == '/') || ($tag == '')) {
+			}
+			# ElseIf it's a known single-entity tag but it doesn't close itself, do so
+			elseif ( in_array($tag, $single_tags) ) {
+				$regex[2] .= '/';
+			} else {	# Push the tag onto the stack
+				# If the top of the stack is the same as the tag we want to push, close previous tag
+				if (($stacksize > 0) && !in_array($tag, $nestable_tags) && ($tagstack[$stacksize - 1] == $tag)) {
+					$tagqueue = '</' . array_pop ($tagstack) . '>';
+					$stacksize--;
+				}
+				$stacksize = array_push ($tagstack, $tag);
+			}
+
+			# Attributes
+			$attributes = $regex[2];
+			if($attributes) {
+				$attributes = ' '.$attributes;
+			}
+			$tag = '<'.$tag.$attributes.'>';
+			#If already queuing a close tag, then put this tag on, too
+			if ($tagqueue) {
+				$tagqueue .= $tag;
+				$tag = '';
+			}
+		}
+		$newtext .= substr($text,0,$i) . $tag;
+		$text = substr($text,$i+$l);
+	}
+
+	# Clear Tag Queue
+	$newtext .= $tagqueue;
+
+	# Add Remaining text
+	$newtext .= $text;
+
+	# Empty Stack
+	while($x = array_pop($tagstack)) {
+		$newtext .= '</' . $x . '>'; # Add remaining tags to close
+	}
+
+	# WP fix for the bug with HTML comments
+	$newtext = str_replace("< !--","<!--",$newtext);
+	$newtext = str_replace("<    !--","< !--",$newtext);
+
+	return $newtext;
+}
+
 
 # Used to GBExposedContent->slug = filter(GBExposedContent->title)
 GBFilter::add('sanitize-title', 'gb_sanitize_title');
 
-# Applied to GBExposedContent->body
+# Applied to URLs from the outside world, for instance when adding comments
+GBFilter::add('sanitize-url', 'gb_sanitize_url');
+
+# Applied to HTML content prior to writing cache
 GBFilter::add('body.html', 'gb_texturize_html');
 GBFilter::add('body.html', 'gb_convert_html_chars');
 GBFilter::add('body.html', 'gb_html_to_xhtml');
 GBFilter::add('body.html', 'gb_normalize_html_structure');
+GBFilter::add('body.html', 'gb_convert_htmlents_to_xmlents');
 
-# Applied to GBExposedContent->excerpt
+# Applied to GBExposedContent->excerpt prior to writing cache
 GBFilter::add('excerpt.html', 'gb_texturize_html');
 GBFilter::add('excerpt.html', 'gb_convert_html_chars');
 GBFilter::add('excerpt.html', 'gb_html_to_xhtml');
 GBFilter::add('excerpt.html', 'gb_normalize_html_structure');
+GBFilter::add('excerpt.html', 'gb_convert_htmlents_to_xmlents');
 
 
 # -----------------------------------------------------------------------------
@@ -328,5 +530,96 @@ function gb_filter_post_reload_content_html(GBExposedContent $c) {
 
 GBFilter::add('post-reload-GBExposedContent', 'gb_filter_post_reload_content');
 GBFilter::add('post-reload-GBExposedContent.html', 'gb_filter_post_reload_content_html');
+
+
+# -----------------------------------------------------------------------------
+# GBComments filters
+
+function gb_filter_post_reload_comments(GBComments $comments) {
+	foreach ($comments->comments as $comment)
+		GBFilter::apply('post-reload-comment', $comment);
+	return $comments;
+}
+
+function gb_filter_post_reload_comment(GBComment $comment) {
+	$comment->body = GBFilter::apply('sanitize-comment', $comment->body);
+	return $comment;
+}
+
+class gb_allowed_tags {
+	# tagname => allowed attributes
+	static public $tags = array(
+		'a' => array('href', 'target', 'rel', 'name'),
+		'strong' => array(),
+		'b' => array(),
+		'blockquote' => array(),
+		'em' => array(),
+		'i' => array(),
+		'img' => array('src', 'width', 'height', 'alt', 'title'),
+		'u' => array(),
+		's' => array(),
+		'del' => array()
+	);
+	
+	static public $attrcbs = array();
+}
+
+# generate map of tag => attr callback proxies
+foreach (gb_allowed_tags::$tags as $t => $x) {
+	gb_allowed_tags::$attrcbs[$t] = create_function(
+		'$matches','return _gb_filter_allowed_attrs_cb(\''.$t.'\', $matches);');
+}
+
+function _gb_filter_allowed_attrs_cb($tag, $matches) {
+	$attr = strtolower($matches[1]);
+	if (!in_array($attr, gb_allowed_tags::$tags[$tag]))
+		return '';
+	return $attr.'='.$matches[2];
+}
+
+function _gb_filter_allowed_tags_cb($matches) {
+	$tag = strtolower($matches[1]);
+	if (($is_end = ($tag && $tag{0} === '/')))
+		$tag = substr($tag, 1);
+	if (!isset(gb_allowed_tags::$tags[$tag]))
+		return '';
+	if ($is_end)
+		return '</'.$tag.'>';
+	$attrs = false;
+	if (gb_allowed_tags::$tags[$tag] && $matches[2]) {
+		$attrs = trim(preg_replace_callback('/(\w+)=("[^"]*"|\'[^\']*\')/',
+			gb_allowed_tags::$attrcbs[$tag],
+			$matches[2]));
+	}
+	if ($attrs)
+		return '<'.$tag.' '.$attrs.'>';
+	return '<'.$tag.'>';
+}
+
+function gb_filter_allowed_tags($body) {
+	$body = preg_replace_callback('/<(\/?\w*)\s*([^>]*)>/', '_gb_filter_allowed_tags_cb', $body);
+	return $body;
+}
+
+function gb_filter_pre_comment(GBComment $comment) {
+	$comment->approved = true; # todo: akismet or something funky
+	return $comment;
+}
+
+# Applied to GBComment after being posted, but before being saved to stage
+GBFilter::add('pre-comment', 'gb_filter_pre_comment');
+
+# Applied to GBComments/GBComment after being reloaded but prior to writing cache.
+GBFilter::add('post-reload-comments', 'gb_filter_post_reload_comments');
+GBFilter::add('post-reload-comment', 'gb_filter_post_reload_comment');
+
+# Applied to GBComment::$body prior to writing the comments' cache.
+GBFilter::add('sanitize-comment', 'gb_texturize_html');
+GBFilter::add('sanitize-comment', 'gb_convert_html_chars');
+GBFilter::add('sanitize-comment', 'gb_html_to_xhtml');
+GBFilter::add('sanitize-comment', 'gb_force_balance_tags');
+GBFilter::add('sanitize-comment', 'gb_filter_allowed_tags');
+GBFilter::add('sanitize-comment', 'gb_normalize_html_structure');
+GBFilter::add('sanitize-comment', 'gb_convert_htmlents_to_xmlents');
 
 ?>

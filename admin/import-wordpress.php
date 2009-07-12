@@ -52,7 +52,7 @@ class WPComment extends GBComment {
 	$email;
 	$uri;
 	$name;
-	$message;
+	$body;
 	$approved;
 	$comments;
 	*/
@@ -479,7 +479,7 @@ class WordpressImporter {
 			'author_email' => 'email',
 			'author_url' => 'uri',
 			'author_IP' => 'ipAddress',
-			'content' => 'message'
+			'content' => 'body'
 		);
 		$datelocal = 0;
 		$datelocalstr = 0;
@@ -522,7 +522,7 @@ class WordpressImporter {
 		
 		# fix message
 		#if ($c->type === GBComment::TYPE_PINGBACK)
-		#	$c->message = html_entity_decode($c->message, ENT_COMPAT, 'UTF-8');
+		#	$c->body = html_entity_decode($c->body, ENT_COMPAT, 'UTF-8');
 		
 		return $c;
 	}
@@ -583,7 +583,7 @@ include '_header.php';
 
 if (isset($_FILES['wpxml'])) {
 	if ($_FILES['wpxml']['error'])
-		exit(gb::log(LOG_ERR, 'file upload failed with unknown error'));
+		exit(gb::log(LOG_ERR, 'file upload failed with unknown error</div></body></html>'));
 	$importer = new WordpressImporter();
 	?>
 	<style type="text/css" media="screen">

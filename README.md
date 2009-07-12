@@ -61,7 +61,7 @@ Reload your web browser and... voila!
 
 ## Requirements
 
-- PHP 5.1 or newer (only standard modules are needed)
+- PHP 5.2 or newer (only standard modules are needed though)
 - Git 1.6 or newer
 - POSIX system
 

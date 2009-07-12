@@ -21,11 +21,13 @@ class GBCommentDB extends JSONDB {
 		$this->lastComment = false;
 	}
 	
-	function resolveIndexPath($indexpath, GBComment $comment) {
+	function resolveIndexPath($indexpath, GBComment $comment, $skipIfSameAsComment=null) {
 		foreach ($indexpath as $i) {
 			if (!isset($comment->comments[$i]))
 				return null;
 			$comment = $comment->comments[$i];
+			if ($skipIfSameAsComment !== null && $skipIfSameAsComment->same($comment))
+				return null;
 		}
 		return $comment;
 	}
@@ -73,7 +75,7 @@ class GBCommentDB extends JSONDB {
 		}
 	}
 	
-	function append(GBComment $comment) {
+	function append(GBComment $comment, $index=null, $skipDuplicate=true) {
 		$temptx = $this->txFp === false && $this->autocommit;
 		# begin if in temporary tx
 		if ($temptx)
@@ -82,14 +84,49 @@ class GBCommentDB extends JSONDB {
 		if ($this->data === null)
 			$this->txReadData();
 		# add
+		$newindex = false;
 		$this->lastComment = $comment;
-		if (!$this->data)
-			$this->data = array(1 => $comment);
-		else
-			$this->data[array_pop(array_keys($this->data))+1] = $comment;
+		if ($index !== null) {
+			if (!$this->data) {
+				if ($temptx)
+					$this->rollback();
+				throw new OutOfBoundsException('invalid comment index '.$index);
+			}
+			$parentc = new GBComment(array('comments' => $this->data));
+			$parentc = $this->resolveIndexPath(explode('.', $index), $parentc, $comment);
+			if ($parentc && ($skipDuplicate && $parentc->same($comment) || !$skipDuplicate))
+				$newindex = $index.'.'.$parentc->append($comment);
+			else
+				$newindex = false;
+		}
+		else {
+			if (!$this->data) {
+				$newindex = 1;
+				$this->data = array(1 => $comment);
+			}
+			else {
+				$newindex = array_pop(array_keys($this->data))+1;
+				$skip = false;
+				if ($skipDuplicate) {
+					$parentc = new GBComment(array('comments' => $this->data));
+					$it = new GBCommentsIterator($parentc);
+					foreach ($it as $c) {
+						if ($c->same($comment)) {
+							$skip = true;
+							break;
+						}
+					}
+				}
+				if ($skip)
+					$newindex = false;
+				else
+					$this->data[$newindex] = $comment;
+			}
+		}
 		# commit if in temporary tx
 		if ($temptx)
 			$this->commit();
+		return $newindex !== false ? strval($newindex) : $newindex;
 	}
 	
 	function remove($index) {

@@ -536,17 +536,20 @@ class GitBlog {
 	
 	static function pageBySlug($slug) {
 		$path = self::pathToCachedContent('pages', $slug);
-		return @unserialize(file_get_contents($path));
+		$data = @file_get_contents($path);
+		return $data === false ? false : unserialize($data);
 	}
 	
 	static function postBySlug($slug, $strptime=null) {
 		$path = self::pathToPost($slug, $strptime);
-		return @unserialize(file_get_contents($path));
+		$data = @file_get_contents($path);
+		return $data === false ? false : unserialize($data);
 	}
 	
 	static function postsPageByPageno($pageno) {
 		$path = self::pathToPostsPage($pageno);
-		return @unserialize(file_get_contents($path));
+		$data = @file_get_contents($path);
+		return $data === false ? false : unserialize($data);
 	}
 	
 	static function urlToTags($tags) {
@@ -922,9 +925,8 @@ class GBContent {
 			$this->published = $initial->authorDate;
 		}
 		else {
-			#	combine day from published with time from authorDate
-			$this->published = new GBDateTime(
-				date('Y-m-d', $this->published).'T'.date('H:i:sO', $initial->authorDate));
+			#	merge time
+			$this->published = $this->published->mergeString($initial->authorDate->origformat('%H:%M:%S'));
 		}
 		
 		if (!$this->author) {
@@ -970,6 +972,13 @@ class GBExposedContent extends GBContent {
 		
 		$this->body = null;
 		$this->meta = array();
+		
+		# extract base date from name
+		if (!$commits) {
+			$prefix = 'content/'.($this instanceof GBPost ? 'posts/' : 'pages/');
+			$date = str_replace(array('.','_','/'), '-', substr($this->name, strpos($this->name, $prefix)+strlen($prefix), 10));
+			$this->published = new GBDateTime($date.'T00:00:00Z');
+		}
 		
 		if ($bodystart > 0)
 			self::parseMetaHeaders(substr($data, 0, $bodystart), $this->meta);
@@ -1792,6 +1801,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 				gb::$is_404 = true;
 			else
 				gb::$title[] = $post->title;
+			
 			gb::$is_post = true;
 		}
 		else {

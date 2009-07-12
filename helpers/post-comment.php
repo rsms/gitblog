@@ -58,6 +58,15 @@ $fields = array(
 	'gb-referrer' => FILTER_SANITIZE_URL
 );
 
+function exit2($msg, $status='400 Bad Request') {
+	header('Status: '.$status);
+	exit($status."\n".$msg."\n");
+}
+
+# only allow POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST')
+	exit2('Only POST is allowed', '405 Method Not Allowed');
+
 # sanitize and validate input
 static $required_fields = array('reply-post', 'reply-message', 'author-email', 'author-name');
 $input = filter_input_array(INPUT_POST, $fields);
@@ -69,14 +78,23 @@ foreach ($required_fields as $field) {
 		$fields_missing[] = $field;
 }
 if ($fields_missing)
-	exit('missing parameter(s): '.implode(', ', $fields_missing));
+	exit2('missing parameter(s): '.implode(', ', $fields_missing));
 
-# remove any ".." and trim "/" from $input['reply-post']
+# sanitize $input['reply-post']
 $input['reply-post'] = trim(str_replace('..', '', $input['reply-post']), '/');
+if (strpos($input['reply-post'], 'content/') !== 0)
+	exit2('malformed parameter "reply-post"');
+
+# look up post/page
+$post = GBExposedContent::findByCacheName($input['reply-post']);
+
+# verify existing content and that comments are enabled
+if (!$post) exit2('no such reply-post '.$input['reply-post']);
+if (!$post->commentsOpen) exit2('commenting not allowed', '403 Forbidden');
 
 # verify nonce
 if ($input['gb-nonce'] && gb_nonce_verify($input['gb-nonce'], 'post-comment-'.$input['reply-post']) === false)
-	exit('nonce verification failure');
+	exit2('nonce verification failure');
 
 # adjust date with clients local timezone
 $date = new GBDateTime(null, 0);
@@ -107,9 +125,7 @@ $comment = GBFilter::apply('pre-comment', $comment);
 
 # append to comment db
 if ($comment) {
-	$pathspec = gb_filenoext($input['reply-post']).'.comments';
-	$stagename = GB_SITE_DIR.'/'.$pathspec;
-	$cdb = new GBCommentDB($stagename);
+	$cdb = $post->getCommentsDB();
 	$index = $cdb->append($comment, $input['reply-to'] ? $input['reply-to'] : null);
 	
 	# duplicate?
@@ -125,7 +141,8 @@ if ($comment) {
 	# add & commit
 	GitBlog::add($pathspec);
 	try {
-		$ciauthor = ($input['author-name'] ? $input['author-name'].' ' : '') . '<'.$input['author-email'].'>';
+		$ciauthor = ($input['author-name'] ? $input['author-name'].' ' : '') 
+			. '<'.$input['author-email'].'>';
 		$cimsg = 'new comment';
 		if ($input['reply-to'])
 			$cimsg .= ' in reply to comment #'.$input['reply-to'].')';
@@ -139,6 +156,7 @@ if ($comment) {
 	}
 	catch (GitError $e) {
 		GitBlog::reset($pathspec);
+		header('Status: 500 Internal Server Error');
 		throw $e;
 	}
 }

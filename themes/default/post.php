@@ -12,8 +12,8 @@
 	</div>
 <?= $post->body ?>
 <div id="comments">
-	<h3><?= $post->numberOfComments() ?></h3>
 <? if ($post->comments): ?>
+	<h3><?= $post->numberOfComments() ?></h3>
 	<ul>
 	<? $prevlevel = 0; foreach($post->comments as $level => $comment):
 			if ($level > $prevlevel)

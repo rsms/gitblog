@@ -30,7 +30,7 @@
 				<div class="body">
 					<?= $comment->body ?>
 				</div>
-				<a href="#comment-<?= $comment->id ?>"><?= counted(13, 'day', 'days') ?> ago</a>
+				<a href="#comment-<?= $comment->id ?>"><?= counted(intval((time() - $comment->date->time)/86400), 'day', 'days', '0') ?> ago</a>
 				<? if ($post->commentsOpen || $level): ?>
 					<small>
 					<? if ($level): ?>

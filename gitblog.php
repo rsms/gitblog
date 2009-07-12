@@ -1285,9 +1285,13 @@ class GBComment {
 		$this->type = self::TYPE_COMMENT;
 		if ($state) {
 			foreach ($state as $k => $v) {
-				if ($k === 'comments' && $v !== null)
+				if ($k === 'comments' && $v !== null) {
 					foreach ($v as $k2 => $v2)
 						$v[$k2] = new self($v2);
+				}
+				elseif ($k === 'date' && $v !== null) {
+					$v = is_string($v) ? new GBDateTime($v) : new GBDateTime($v['time'], $v['offset']);
+				}
 				$this->$k = $v;
 			}
 		}

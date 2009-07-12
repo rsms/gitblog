@@ -101,42 +101,42 @@ function gb_convert_html_chars($content) {
 	# Translation of invalid Unicode references range to valid range,
 	# often added by Windows programs after a copy-paste.
 	static $map = array(
-	'&#128;' => '&#8364;', # the Euro sign
-	'&#129;' => '',
-	'&#130;' => '&#8218;', # these are Windows CP1252 specific characters
-	'&#131;' => '&#402;',  # they would look weird on non-Windows browsers
-	'&#132;' => '&#8222;',
-	'&#133;' => '&#8230;',
-	'&#134;' => '&#8224;',
-	'&#135;' => '&#8225;',
-	'&#136;' => '&#710;',
-	'&#137;' => '&#8240;',
-	'&#138;' => '&#352;',
-	'&#139;' => '&#8249;',
-	'&#140;' => '&#338;',
-	'&#141;' => '',
-	'&#142;' => '&#382;',
-	'&#143;' => '',
-	'&#144;' => '',
-	'&#145;' => '&#8216;',
-	'&#146;' => '&#8217;',
-	'&#147;' => '&#8220;',
-	'&#148;' => '&#8221;',
-	'&#149;' => '&#8226;',
-	'&#150;' => '&#8211;',
-	'&#151;' => '&#8212;',
-	'&#152;' => '&#732;',
-	'&#153;' => '&#8482;',
-	'&#154;' => '&#353;',
-	'&#155;' => '&#8250;',
-	'&#156;' => '&#339;',
-	'&#157;' => '',
-	'&#158;' => '',
-	'&#159;' => '&#376;'
+		'&#128;' => '&#8364;', # the Euro sign
+		'&#129;' => '',
+		'&#130;' => '&#8218;', # these are Windows CP1252 specific characters
+		'&#131;' => '&#402;',  # they would look weird on non-Windows browsers
+		'&#132;' => '&#8222;',
+		'&#133;' => '&#8230;',
+		'&#134;' => '&#8224;',
+		'&#135;' => '&#8225;',
+		'&#136;' => '&#710;',
+		'&#137;' => '&#8240;',
+		'&#138;' => '&#352;',
+		'&#139;' => '&#8249;',
+		'&#140;' => '&#338;',
+		'&#141;' => '',
+		'&#142;' => '&#382;',
+		'&#143;' => '',
+		'&#144;' => '',
+		'&#145;' => '&#8216;',
+		'&#146;' => '&#8217;',
+		'&#147;' => '&#8220;',
+		'&#148;' => '&#8221;',
+		'&#149;' => '&#8226;',
+		'&#150;' => '&#8211;',
+		'&#151;' => '&#8212;',
+		'&#152;' => '&#732;',
+		'&#153;' => '&#8482;',
+		'&#154;' => '&#353;',
+		'&#155;' => '&#8250;',
+		'&#156;' => '&#339;',
+		'&#157;' => '',
+		'&#158;' => '',
+		'&#159;' => '&#376;'
 	);
 	
 	# Converts lone & characters into &#38; (a.k.a. &amp;)
-	$content = preg_replace('/&([^#])(?![a-z1-4]{1,8};)/i', '&#038;$1', $content);
+	$content = preg_replace('/&([^#])(?![a-z1-4]{1,8};)/i', '&#38;$1', $content);
 	
 	# Fix Microsoft Word pastes
 	$content = strtr($content, $map);
@@ -144,10 +144,10 @@ function gb_convert_html_chars($content) {
 	return $content;
 }
 
-function gb_convert_htmlents_to_xmlents($s) {
+function gb_htmlents_to_xmlents($s) {
 	static $map = array(
 		'&quot;'=>'&#34;','&amp;'=>'&#38;','&frasl;'=>'&#47;','&lt;'=>'&#60;','&gt;'=>'&#62;',
-		'|'=>'&#124;','&nbsp;'=>'&#160;','&iexcl;'=>'&#161;','&cent;'=>'&#162;','&pound;'=>'&#163;',
+		'&nbsp;'=>'&#160;','&iexcl;'=>'&#161;','&cent;'=>'&#162;','&pound;'=>'&#163;',
 		'&curren;'=>'&#164;','&yen;'=>'&#165;','&brvbar;'=>'&#166;','&brkbar;'=>'&#166;',
 		'&sect;'=>'&#167;','&uml;'=>'&#168;','&die;'=>'&#168;','&copy;'=>'&#169;','&ordf;'=>'&#170;',
 		'&laquo;'=>'&#171;','&not;'=>'&#172;','&shy;'=>'&#173;','&reg;'=>'&#174;','&macr;'=>'&#175;',
@@ -201,6 +201,25 @@ function gb_convert_htmlents_to_xmlents($s) {
 		'&diams;'=>'&#9830;'
 	);
 	return strtr($s, $map);
+}
+
+function _gb_xmlents_to_utf8_cb($matches) {
+	$s = html_entity_decode($matches[0], ENT_QUOTES, 'UTF-8');
+	if (strlen($s) === 1) {
+		$n = ord($s);
+		if (
+			($n === 34 || $n === 39 || $n === 38 || $n === 60 || $n === 62)
+			||
+			(($n < 32) && ($n !== 9 && $n !== 10 && $n !== 13))
+		)
+			return $matches[0];
+	}
+	return $s;
+}
+
+function gb_xmlents_to_utf8($s) {
+	return preg_replace_callback('/&(?:#(?:\d{2,}|x[0-9a-fA-F]{2,})|\w+);/',
+		'_gb_xmlents_to_utf8_cb', $s);
 }
 
 # HTML -> XHTML (very simplistic -- needs some work)
@@ -488,14 +507,16 @@ GBFilter::add('body.html', 'gb_texturize_html');
 GBFilter::add('body.html', 'gb_convert_html_chars');
 GBFilter::add('body.html', 'gb_html_to_xhtml');
 GBFilter::add('body.html', 'gb_normalize_html_structure');
-GBFilter::add('body.html', 'gb_convert_htmlents_to_xmlents');
+GBFilter::add('body.html', 'gb_htmlents_to_xmlents');
+GBFilter::add('body.html', 'gb_xmlents_to_utf8');
 
 # Applied to GBExposedContent->excerpt prior to writing cache
 GBFilter::add('excerpt.html', 'gb_texturize_html');
 GBFilter::add('excerpt.html', 'gb_convert_html_chars');
 GBFilter::add('excerpt.html', 'gb_html_to_xhtml');
 GBFilter::add('excerpt.html', 'gb_normalize_html_structure');
-GBFilter::add('excerpt.html', 'gb_convert_htmlents_to_xmlents');
+GBFilter::add('excerpt.html', 'gb_htmlents_to_xmlents');
+GBFilter::add('excerpt.html', 'gb_xmlents_to_utf8');
 
 
 # -----------------------------------------------------------------------------
@@ -620,6 +641,7 @@ GBFilter::add('sanitize-comment', 'gb_html_to_xhtml');
 GBFilter::add('sanitize-comment', 'gb_force_balance_tags');
 GBFilter::add('sanitize-comment', 'gb_filter_allowed_tags');
 GBFilter::add('sanitize-comment', 'gb_normalize_html_structure');
-GBFilter::add('sanitize-comment', 'gb_convert_htmlents_to_xmlents');
+GBFilter::add('sanitize-comment', 'gb_htmlents_to_xmlents');
+GBFilter::add('sanitize-comment', 'gb_xmlents_to_utf8');
 
 ?>

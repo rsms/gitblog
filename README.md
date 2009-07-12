@@ -11,10 +11,10 @@ Post-action hooks in git are used to manage an intermediate cache which consist 
 - Themes
 - No custom file formats for content (only JSON and HTML)
 - High performance
+- Hierarchical comments
 
 ### Work in progress
 
-- Hierarchical comments
 - Remote editing (git push/pull)
 
 ### Planned

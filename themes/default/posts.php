@@ -1,10 +1,10 @@
 <h1><?= gb_title() ?></h1>
 <? foreach ($postspage->posts as $post): ?>
-	<h2><a href="<?= $post->url() ?>"><?= $post->title ?></a></h2>
+	<h2><a href="<?= h($post->url()) ?>"><?= h($post->title) ?></a></h2>
 	<div id="post-meta">
 		<h3>Details</h3>
 		<ul>
-			<li>Author: <a href="mailto:<?= $post->author->email ?>"><?= $post->author->name ?></a></li>
+			<li>Author: <a href="mailto:<?= h($post->author->email) ?>"><?= h($post->author->name) ?></a></li>
 			<li>Published: <?= $post->published ?></li>
 			<li>Modified: <?= $post->modified ?></li>
 			<li>Tags: <?= $post->tagLinks() ?></li>
@@ -15,7 +15,7 @@
 	</div>
 	<?= $post->body ?>
 	<? if ($post->excerpt): ?>
-		<p><a href="<?= $post->url() ?>#<?= $post->domID() ?>-more">Read more...</a></p>
+		<p><a href="<?= h($post->url()) ?>#<?= $post->domID() ?>-more">Read more...</a></p>
 	<? endif; ?>
 	<div class="breaker"></div>
 <? endforeach ?>

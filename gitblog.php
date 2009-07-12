@@ -82,7 +82,7 @@ class gb {
 	static public $tags_prefix = 'tags/';
 
 	/** URL prefix for categories */
-	static public $categories_prefix = 'categories/';
+	static public $categories_prefix = 'category/';
 
 	/** URL prefix for the feed */
 	static public $feed_prefix = 'feed';
@@ -154,12 +154,15 @@ class gb {
 		return self::vlog($priority, $vargs);
 	}
 	
-	static function vlog($priority, $vargs, $btoffset=1) {
+	static function vlog($priority, $vargs, $btoffset=1, $prefix=null) {
 		if ($priority > self::$log_filter)
 			return true;
-		$bt = debug_backtrace();
-		$bt = $bt[$btoffset];
-		$msg = '['.gb_relpath(GB_SITE_DIR, $bt['file']).':'.$bt['line'].'] ';
+		if ($prefix === null) {
+			$bt = debug_backtrace();
+			$bt = $bt[$btoffset];
+			$prefix = '['.gb_relpath(GB_SITE_DIR, $bt['file']).':'.$bt['line'].'] ';
+		}
+		$msg = $prefix;
 		if(count($vargs) > 1) {
 			$fmt = array_shift($vargs);
 			$msg .= vsprintf($fmt, $vargs);
@@ -246,6 +249,36 @@ class gb {
 			return false;
 		}
 	}
+	
+	# --------------------------------------------------------------------------
+	# Error handling
+	
+	static public $orig_err_handler = null;
+	static public $orig_err_html = null;
+	
+	static function catch_errors($handler=null, $filter=null) {
+		if (self::$orig_err_handler !== null)
+			return; # already catching
+		if ($handler === null)
+			$handler = array('gb', 'catch_error');
+		self::$orig_err_html = ini_set('html_errors', '0');
+		if ($filter === null)
+			$filter = E_ALL & ~E_NOTICE;
+		self::$orig_err_handler = set_error_handler($handler, $filter);
+	}
+
+	static function end_catch_errors() {
+		if (self::$orig_err_handler)
+			set_error_handler(self::$orig_err_handler);
+		ini_set('html_errors', self::$orig_err_html);
+		self::$orig_err_handler = null;
+	}
+	
+	# int $errno , string $errstr [, string $errfile [, int $errline [, array $errcontext ]]]
+	static function catch_error($errno, $errstr, $errfile=null, $errline=-1, $errcontext=null) {
+		try { self::vlog(LOG_WARNING, array($errstr), 2); } catch (Exception $e) {}
+		throw new PHPException($errstr, $errno, $errfile, $errline);
+	}
 }
 
 if (file_exists(GB_SITE_DIR.'/gb-config.php'))
@@ -274,8 +307,33 @@ ini_set('unserialize_callback_func', '__autoload');
 # xxx macports git
 $_ENV['PATH'] .= ':/opt/local/bin';
 
+
 #------------------------------------------------------------------------------
 # Utilities
+
+class PHPException extends RuntimeException {
+	function __construct($msg=null, $errno=0, $file=null, $line=-1, $cause=null) {
+		if ($msg instanceof Exception) {
+			if (is_string($errno) && $file == null && $line == -1 && $cause == null) {
+				$this->cause = $msg;
+				$msg = $errno;
+				$errno = 0;
+			}
+			else {
+				$line = $msg->getLine();
+				$file = $msg->getFile();
+				$errno = $msg->getCode();
+				$msg = $msg->getMessage();
+				if (isset($msg->errorInfo))
+					$this->errorInfo = $msg->errorInfo;
+			}
+		}
+		parent::__construct($msg, $errno);
+		if ($file != null)  $this->file = $file;
+		if ($line != -1)    $this->line = $line;
+		if ($cause != null) $this->cause = $cause;
+	}
+}
 
 class GBURL {
 	public $scheme;
@@ -399,6 +457,11 @@ function gb_normalize_git_name($name) {
 function gb_strtoisotime($time) {
 	$d = new DateTime($time);
 	return $d->format('c');
+}
+
+function gb_format_duration($seconds, $format='%H:%M:%S.') {
+	$i = intval($seconds);
+	return gmstrftime($format, $i).sprintf('%03d', round($seconds*1000.0)-($i*1000));
 }
 
 function gb_hash($data) {
@@ -1128,6 +1191,158 @@ class GBExposedContent extends GBContent {
 	static function findByCacheName($cachename) {
 		return @unserialize(file_get_contents(GB_SITE_DIR.'/.git/info/gitblog/'.$cachename));
 	}
+	
+	static function findByTags($tags, $pageno=0) {
+		return self::findByMetaIndex($tags, 'tag-to-objs', $pageno);
+	}
+	
+	static function findByCategories($cats, $pageno=0) {
+		return self::findByMetaIndex($cats, 'category-to-objs', $pageno);
+	}
+	
+	static function findByMetaIndex($tags, $indexname, $pageno) {
+		$index = GBObjectIndex::loadNamed($indexname);
+		$objs = self::_findByMetaIndex($tags, $index);
+		if (!$objs)
+			return false;
+		$page = GBPagedObjects::split($objs, $pageno);
+		if ($page !== false) {
+			if ($pageno === null) {
+				# no pageno specified returns a list of all pages
+				foreach ($page as $p)
+					$p->posts = new GBLazyObjectsIterator($p->posts);
+			}
+			else {
+				# specific, single page
+				$page->posts = new GBLazyObjectsIterator($page->posts);
+			}
+		}
+		return $page;
+	}
+	
+	static function _findByMetaIndex($tags, $index, $op='and') {
+		$objs = array();
+		
+		# no tags, no objects
+		if (!$tags)
+			return $objs;
+		
+		# single tag is a simple operation
+		if (count($tags) === 1)
+			return isset($index[$tags[0]]) ? $index[$tags[0]] : $objs;
+		
+		# multiple AND
+		if ($op === 'and')
+			return self::_findByMetaIndexAND($tags, $index);
+		else
+			throw new InvalidArgumentException('currently the only supported operation is "and"');
+	}
+	
+	static function _findByMetaIndexAND($tags, $index) {
+		$cachenames = array();
+		$intersection = array_intersect(array_keys($index), $tags);
+		$rindex = array();
+		$seen = array();
+		$iteration = 0;
+		
+		foreach ($intersection as $tag) {
+			$found = 0;
+			foreach ($index[$tag] as $objcachename) {
+				if (!isset($rindex[$objcachename])) {
+					if ($iteration)
+						break;
+					$rindex[$objcachename] = array($tag);
+				}
+				else
+					$rindex[$objcachename][] = $tag;
+				$found++;
+			}
+			if ($found === 0)
+				break;
+			$iteration++;
+		}
+		
+		# only keep cachenames which matched at least all $tags
+		$len = count($tags);
+		foreach ($rindex as $cachename => $matched_tags)
+			if (count($matched_tags) >= $len)
+				$cachenames[] = $cachename;
+		
+		return $cachenames;
+	}
+}
+
+
+class GBLazyObjectsIterator implements Iterator {
+	public $a;
+	
+	function __construct($cachenames, $condensed=true) {
+		$this->a = array_flip($cachenames);
+		$this->condensed = $condensed;
+	}
+	
+	public function rewind() {
+		reset($this->a);
+	}
+
+	public function current() {
+		$v = current($this->a);
+		if (!is_object($v)) {
+			$v = GBExposedContent::findByCacheName(key($this->a));
+			if ($this->condensed)
+				$v = $v->condensedVersion();
+			$this->a[key($this->a)] = $v;
+		}
+		return $v;
+	}
+
+	public function key() {
+		return key($this->a);
+	}
+
+	public function next() {
+		return next($this->a);
+	}
+
+	public function valid() {
+		return current($this->a) !== false;
+	}
+}
+
+
+class GBPagedObjects {
+	public $posts;
+	public $nextpage = -1;
+	public $prevpage = -1;
+	public $numpages = 0;
+	
+	function __construct($posts, $nextpage=-1, $prevpage=-1, $numpages=0) {
+		$this->posts    = $posts;
+		$this->nextpage = $nextpage;
+		$this->prevpage = $prevpage;
+		$this->numpages = $numpages;
+	}
+	
+	static function split($posts, $onlypageno=null, $pagesize=null) {
+		$pages = array_chunk($posts, $pagesize === null ? gb::$posts_pagesize : $pagesize);
+		$numpages = count($pages);
+		
+		if ($onlypageno !== null && $onlypageno > $numpages)
+			return false;
+		
+		foreach ($pages as $pageno => $page) {
+			if ($onlypageno !== null && $onlypageno !== $pageno)
+				continue;
+			$page = new self($page, -1, $pageno-1, $numpages);
+			if ($pageno < $numpages-1)
+				$page->nextpage = $pageno+1;
+			if ($onlypageno !== null)
+				return $page;
+			$pages[$pageno] = $page;
+		}
+		
+		return $pages;
+	}
 }
 
 
@@ -1466,6 +1681,23 @@ class GBComment {
 	}
 }
 
+
+class GBObjectIndex {
+	static function mkCachename($name) {
+		return $name.'.index';
+	}
+	
+	static function pathForName($name) {
+		return GB_SITE_DIR.'/.git/info/gitblog/'.self::mkCachename($name);
+	}
+	
+	static function loadNamed($name) {
+		gb::catch_errors();
+		return unserialize(file_get_contents(self::pathForName($name)));
+	}
+}
+
+
 # -----------------------------------------------------------------------------
 # Users
 
@@ -1769,14 +2001,18 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		if (strpos($gb_urlpath, gb::$tags_prefix) === 0) {
 			# tag(s)
 			$tags = array_map('urldecode', explode(',', substr($gb_urlpath, strlen(gb::$tags_prefix))));
-			$posts = GitBlog::postsByTags($tags);
+			$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
+			$postspage = GBExposedContent::findByTags($tags, $pageno);
 			gb::$is_tags = true;
+			gb::$is_404 = $postspage === false;
 		}
 		elseif (strpos($gb_urlpath, gb::$categories_prefix) === 0) {
 			# category(ies)
 			$cats = array_map('urldecode', explode(',', substr($gb_urlpath, strlen(gb::$categories_prefix))));
-			$posts = GitBlog::postsByCategories($cats);
+			$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
+			$postspage = GBExposedContent::findByCategories($cats, $pageno);
 			gb::$is_categories = true;
+			gb::$is_404 = $postspage === false;
 		}
 		elseif (strpos($gb_urlpath, gb::$feed_prefix) === 0) {
 			# feed
@@ -1819,6 +2055,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
 		$postspage = GitBlog::postsPageByPageno($pageno);
 		gb::$is_posts = true;
+		gb::$is_404 = $postspage === false;
 	}
 	
 	# from here on, the caller will have to do the rest

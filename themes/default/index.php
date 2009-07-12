@@ -29,7 +29,7 @@ if (gb::$is_404)
 		elseif (gb::$is_post || gb::$is_page) {
 			require 'post.php';
 		}
-		elseif (gb::$is_posts) {
+		elseif (gb::$is_posts || gb::$is_tags || gb::$is_categories) {
 			require 'posts.php';
 		}
 		

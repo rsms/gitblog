@@ -40,8 +40,6 @@ class WPComment extends GBComment {
 class WordpressImporter {
 	public $doc;
 	public $objectCount;
-	protected $origErrhandler;
-	protected $origErrhtml;
 	
 	function __construct() {
 		$this->importedObjectsCount = 0;
@@ -83,7 +81,7 @@ class WordpressImporter {
 	function import(DOMDocument $doc, $commitChannels=true) {
 		$this->doc = $doc;
 		$count = 0;
-		$this->beginCatchPHPErrors();
+		gb::catch_errors();
 		$exception = null;
 		$timer = microtime(1);
 		
@@ -99,14 +97,14 @@ class WordpressImporter {
 			$exception = $e;
 		}
 		
-		$this->endCatchPHPErrors();
+		gb::end_catch_errors();
 		if ($exception !== null)
 			throw $exception;
 		
 		$timer = microtime(1)-$timer;
 		
 		$this->report('Imported '.counted($count, 'channel', 'channels', 'zero', 'one')
-			. ' in '.$this->fmttimelength($timer));
+			. ' in '.gb_format_duration($timer));
 	}
 	
 	function importChannel(DOMNode $channel, $commit) {
@@ -162,7 +160,7 @@ class WordpressImporter {
 				. ')';
 		
 			$this->report($message.' from channel "'.h($channel_name).'"'
-				. ' in '.$this->fmttimelength($timer));
+				. ' in '.gb_format_duration($timer));
 			
 			if ($commit) {
 				$this->report('Creating commit...');
@@ -183,11 +181,6 @@ class WordpressImporter {
 			GitBlog::reset(); # rollback prepared commit
 			throw $e;
 		}
-	}
-	
-	function fmttimelength($f) {
-		$i = intval($f);
-		return gmstrftime('%H:%M:%S.', $i).sprintf('%03d', round($f*1000.0)-($i*1000));
 	}
 	
 	function postProcessExposedContent(GBExposedContent $obj) {
@@ -282,24 +275,6 @@ class WordpressImporter {
 			$this->reportError($e->getMessage());
 			return false;
 		}
-	}
-	
-	function beginCatchPHPErrors() {
-		$this->origErrhtml = ini_set('html_errors', '0');
-		if ($this->origErrhandler === null)
-			$this->origErrhandler = set_error_handler(array($this, '_catchPHPError'), E_ALL & ~E_NOTICE);
-	}
-
-	function endCatchPHPErrors() {
-		if ($this->origErrhandler)
-			set_error_handler($this->origErrhandler);
-		ini_set('html_errors', $this->origErrhtml);
-		$this->origErrhandler = null;
-	}
-	
-	# int $errno , string $errstr [, string $errfile [, int $errline [, array $errcontext ]]]
-	function _catchPHPError($errno, $errstr, $errfile=null, $errline=0, $errcontext=null) {
-		throw new RuntimeException($errstr, $errno);
 	}
 	
 	function createItemObject(DOMNode $item) {

@@ -23,8 +23,11 @@ class GBRebuilder {
 		foreach (glob(GB_DIR.'/rebuilders/*.php') as $path) {
 			$n = basename($path);
 			if (preg_match('/^[a-z_][0-9a-z_]*\.php$/i', $n)) {
+				$libname = substr($n, 0, -4);
+				gb::log(LOG_INFO, 'loading rebuilder library "%s" from %s', 
+					$libname, substr($path, strlen(GB_DIR)+1));
 				include_once $path;
-				$initname = 'init_rebuilder_'.substr($n, 0, -4);
+				$initname = 'init_rebuilder_'.$libname;
 				$initname(self::$rebuilders);
 			}
 		}
@@ -35,6 +38,7 @@ class GBRebuilder {
 	 */
 	static function rebuild($forceFullRebuild=false) {
 		gb::log(LOG_NOTICE, 'rebuilding cache'.($forceFullRebuild ? ' (forcing full rebuild)':''));
+		$time_started = microtime(1);
 		
 		# Load rebuilders if needed
 		if (empty(self::$rebuilders))
@@ -67,6 +71,9 @@ class GBRebuilder {
 		# Let rebuilders finalize
 		foreach ($rebuilders as $rebuilder)
 			$rebuilder->finalize();
+		
+		gb::log(LOG_NOTICE, 'cache updated -- time spent: %s', 
+			gb_format_duration(microtime(1)-$time_started));
 	}
 }
 ?>

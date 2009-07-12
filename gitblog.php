@@ -1,6 +1,6 @@
 <?
 error_reporting(E_ALL);
-$debug_time_started = microtime(true);
+$gb_time_started = microtime(true);
 
 # constants
 define('GB_VERSION', '0.1.0');

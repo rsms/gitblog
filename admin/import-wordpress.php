@@ -2,42 +2,18 @@
 ini_set('upload_max_filesize', '200M');
 ini_set('post_max_size', '200M');
 require_once '_base.php';
-
-# todo: auth
-
-/*class GBPost {
-	# GBContent:
-	public $name; # relative to root tree
-	public $id;
-	public $mimeType = null;
-	public $author = null;
-	public $modified = false; # GBDateTime
-	public $published = false; # GBDateTime
-	
-	# GBExposedContent:
-	public $slug;
-	public $meta;
-	public $title;
-	public $body;
-	public $tags = array();
-	public $categories = array();
-	public $comments;
-	public $commentsOpen = true;
-	public $pingbackOpen = true;
-	public $draft = false;
-	
-	# GBPost:
-	public $excerpt;
-}*/
+gb::authenticate();
 
 class WPPost extends GBPost {
 	public $wpid = 0;
 	public $wpparent;
 }
+
 class WPPage extends GBPage {
 	public $wpid = 0;
 	public $wpparent;
 }
+
 class WPAttachment extends GBContent {
 	public $wpid = 0;
 	public $wpparent;
@@ -45,6 +21,7 @@ class WPAttachment extends GBContent {
 	public $wpurl;
 	public $wpmeta = array();
 }
+
 class WPComment extends GBComment {
 	/*
 	$date;

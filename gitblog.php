@@ -219,6 +219,33 @@ class gb {
 		}
 		return self::$current_url;
 	}
+	
+	# --------------------------------------------------------------------------
+	# Admin authentication
+	
+	static public $auth_nonce_ttl = 86400;
+	static public $authenticated = null;
+	
+	static function authenticate($realm='gb-admin', $exit_after_request=true) {
+		$users = array();
+		$accounts = GBUserAccount::get();
+		foreach ($accounts as $email => $account) {
+			if (strpos($email, '@') !== false)
+				$users[$email] = $account->passhash;
+		}
+		$dg = new GBHTTPDigestAuth($realm, self::$auth_nonce_ttl);
+		if ($authed = $dg->authenticate($users)) {
+			self::$authenticated = GBUserAccount::get($authed);
+			return self::$authenticated;
+		}
+		else {
+			self::$authenticated = null;
+			$dg->send();
+			if ($exit_after_request)
+				exit(0);
+			return false;
+		}
+	}
 }
 
 if (file_exists(GB_SITE_DIR.'/gb-config.php'))
@@ -1473,8 +1500,9 @@ class GBUserAccount {
 		return $r;
 	}
 	
-	static function passhash($email, $passphrase) {
-		return gb_hash($email . ' ' . $passphrase);
+	static function passhash($email, $passphrase, $realm='gb-admin') {
+		# must be a1 http digest auth hash
+		return md5($email.':'.$realm.':'.$passphrase);
 	}
 	
 	static function create($email, $passphrase, $name, $admin=false) {
@@ -1511,10 +1539,12 @@ class GBUserAccount {
 		return $n;
 	}
 	
-	static function &get($email) {
+	static function &get($email=null) {
 		static $n = null;
 		if (self::$db === null)
 			self::_reload();
+		if ($email === null)
+			return self::$db;
 		$email = strtolower($email);
 		if (isset(self::$db[$email]))
 		 	return self::$db[$email];
@@ -1535,22 +1565,25 @@ class GBUserAccount {
 	function gitAuthor() {
 		return self::formatGitAuthor($this);
 	}
+	
+	function __toString() {
+		return $this->gitAuthor();
+	}
 }
 
 # -----------------------------------------------------------------------------
 # Nonce
 
-function gb_nonce_time() {
-	static $nonce_life = 86400;
-	return (int)ceil(time() / ( $nonce_life / 2 ));
+function gb_nonce_time($ttl) {
+	return (int)ceil(time() / ($ttl / 2));
 }
 
-function gb_nonce_make($context='') {
-	return gb_hash(gb_nonce_time() . $context . $_SERVER['REMOTE_ADDR']);
+function gb_nonce_make($context='', $ttl=86400) {
+	return gb_hash(gb_nonce_time($ttl) . $context . $_SERVER['REMOTE_ADDR']);
 }
 
-function gb_nonce_verify($nonce, $context='') {
-	$nts = gb_nonce_time();
+function gb_nonce_verify($nonce, $context='', $ttl=86400) {
+	$nts = gb_nonce_time($ttl);
 	# generated (0-12] hours ago
 	if ( gb_hash($nts . $context . $_SERVER['REMOTE_ADDR']) === $nonce )
 		return 1;

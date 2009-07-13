@@ -616,7 +616,7 @@ else {
 <h2>Import a Wordpress blog</h2>
 <form enctype="multipart/form-data" method="post" action="import-wordpress.php">
 	<p>
-		In your Wordpress (version &gt;=2.6) blog admin, go to tools &rarr; export and click the big button. Choose the file that was downloaded and click the "Import" button below. Yay. Let's hope this works.
+		In your Wordpress (version &gt;=2.6) blog admin, go to tools &rarr; export and click the big button. Choose the file that was downloaded and click the <q>Import</q> button below.
 	</p>
 	<p>
 		<input type="file" name="wpxml" />

@@ -1134,26 +1134,27 @@ class GBExposedContent extends GBContent {
 		return new GBCommentDB(GB_SITE_DIR.'/'.$this->commentsStageName());
 	}
 	
-	function tagLinks($template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ') {
-		return $this->collLinks('tags', $template, $nglue, $endglue);
+	function tagLinks($prefix='', $suffix='', $template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ') {
+		return $this->collLinks('tags', $prefix, $suffix, $template, $nglue, $endglue);
 	}
 	
-	function categoryLinks($template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ') {
-		return $this->collLinks('categories', $template, $nglue, $endglue);
+	function categoryLinks($prefix='', $suffix='', $template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ') {
+		return $this->collLinks('categories', $prefix, $suffix, $template, $nglue, $endglue);
 	}
 	
-	function collLinks($what, $template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ', $htmlescape=true) {
-		static $needles = array('%u', '%n');
+	function collLinks($what, $prefix='', $suffix='', $template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ', $htmlescape=true) {
+		if (!$this->$what)
+			return '';
 		$links = array();
 		$vn = $what.'_prefix';
 		$u = GB_SITE_URL . gb::$index_url . gb::$$vn;
 		foreach ($this->$what as $tag)
-			$links[] = str_replace($needles, array($u.urlencode($tag), $htmlescape ? h($tag) : $tag), $template);
-		return $nglue !== null ? sentenceize($links, null, $nglue, $endglue) : $links;
+			$links[] = strtr($template, array('%u' => $u.urlencode($tag), '%n' => h($tag)));
+		return $nglue !== null ? $prefix.sentenceize($links, null, $nglue, $endglue).$suffix : $links;
 	}
 	
 	function numberOfComments($topological=true, $sone='comment', $smany='comments', $zero='No', $one='One') {
-		return counted($this->comments ? $this->comments->countApproved($topological) : 0,
+		return counted($this->comments ? (is_int($this->comments) ? $this->comments : $this->comments->countApproved($topological)) : 0,
 			$sone, $smany, $zero, $one);
 	}
 	
@@ -1888,6 +1889,12 @@ gb::$title = array(gb::$site_title);
 function gb_title($glue=' — ', $html=true) {
 	$s = implode($glue, array_reverse(gb::$title));
 	return $html ? h($s) : $s;
+}
+
+function gb_site_title($link=true, $linkattrs='') {
+	if (!$link)
+		return h(gb::$site_title);
+	return '<a href="'.GB_SITE_URL.'"'.$linkattrs.'>'.h(gb::$site_title).'</a>';
 }
 
 function h($s) {

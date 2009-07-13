@@ -509,6 +509,7 @@ GBFilter::add('body.html', 'gb_html_to_xhtml');
 GBFilter::add('body.html', 'gb_normalize_html_structure');
 GBFilter::add('body.html', 'gb_htmlents_to_xmlents');
 GBFilter::add('body.html', 'gb_xmlents_to_utf8');
+GBFilter::add('body.html', 'gb_force_balance_tags');
 
 # Applied to GBExposedContent->excerpt prior to writing cache
 GBFilter::add('excerpt.html', 'gb_texturize_html');
@@ -517,6 +518,7 @@ GBFilter::add('excerpt.html', 'gb_html_to_xhtml');
 GBFilter::add('excerpt.html', 'gb_normalize_html_structure');
 GBFilter::add('excerpt.html', 'gb_htmlents_to_xmlents');
 GBFilter::add('excerpt.html', 'gb_xmlents_to_utf8');
+GBFilter::add('excerpt.html', 'gb_force_balance_tags');
 
 
 # -----------------------------------------------------------------------------

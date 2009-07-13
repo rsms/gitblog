@@ -34,6 +34,11 @@ if (gb::$is_404)
 		}
 		
 		?>
+		<ol id="tags">
+		<? foreach (GitBlog::tags() as $tag => $popularity): ?>
+			<li class="p<?= intval(round($popularity * 10.0)) ?>"><?= gb_tag_link($tag) ?></li>
+		<? endforeach; ?>
+		</ol>
 		<address>
 			(<? $s = (microtime(true)-$gb_time_started); printf('%.3f ms, %d rps', 1000.0 * $s, 1.0/$s) ?>)
 		</address>

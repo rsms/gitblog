@@ -252,6 +252,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		foreach (GBPostsRebuilder::$posts as $post)
 			if ($post->draft === false && $post->published->time <= $time_now)
 				$published_posts[] = $post->condensedVersion();
+		$numtotal = count($published_posts);
 		$pages = array_chunk($published_posts, gb::$posts_pagesize);
 		$numpages = count($pages);
 		$dir = GB_SITE_DIR.'/.git/info/gitblog/content-paged-posts';
@@ -283,7 +284,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 			}
 			
 			if ($need_rewrite) {
-				$page = new GBPagedObjects($page, -1, $pageno-1, $numpages);
+				$page = new GBPagedObjects($page, -1, $pageno-1, $numpages, $numtotal);
 				if ($pageno < $numpages-1)
 					$page->nextpage = $pageno+1;
 				gb_atomic_write($path, serialize($page), 0664);
@@ -361,7 +362,7 @@ class GBContentIndexRebuilder {
 	function sync() {
 		if ($this->index === null)
 			return false;
-		$data = $this->serializeIndex();
+		$data = $this->serialize();
 		if ($this->checksum !== null && $this->checksum === sha1($data))
 			return false; # no changes
 		$r = gb_atomic_write($this->path(), $data, 0664);
@@ -369,7 +370,7 @@ class GBContentIndexRebuilder {
 		return $r;
 	}
 	
-	function serializeIndex() {
+	function serialize() {
 		# subclasses can interfere to normalize or fix values prior to serialization
 		return serialize($this->index);
 	}
@@ -401,52 +402,49 @@ class GBTagToObjsIndexRebuilder extends GBContentIndexRebuilder {
 	
 	function serialize() {
 		foreach ($this->index as $k => $v)
-			$this->index[$k] = array_unique($v, SORT_REGULAR);
+			$this->index[$k] = array_unique($v);
 		return parent::serialize();
 	}
 }
 
-#class GBTagsToObjsIndexRebuilder extends GBContentIndexRebuilder {
-#	function __construct() {
-#		parent::__construct('tags-to-objs');
-#		$this->index = array('objs' => array(), 'tags' => array());
-#	}
-#	
-#	/*array(
-#		'objs' = array(
-#			int N => string cachename,
-#			..
-#		),
-#		'tags' = array(
-#			'tag1' => array(N1, N2, N3, .. ),
-#			'tag1,tag2' => array(N1, N3, .. ),
-#			..
-#		)
-#	)
-#	keys sorted a-z, lower case
-#	*/
-#	
-#	function onObject($obj) {
-#		if (!$obj->tags)
-#			return;
-#		$this->index['objs'][] = $obj;
-#		$objk = key($this->index);
-#		$tags = array_map('strtolower', array_unique($obj->tags, SORT_REGULAR));
-#		$count = count($tags);
-#		for ($i=0;$i<$count;$i++) {
-#			$k = implode(',', $tags);
-#		
-#		if (!isset($this->index['tags'][$k]))
-#			$this->index['tags'][$k] = array($objk);
-#		else
-#			$this->index['tags'][$k][] = $objk;
-#	}
-#	
-#	#function serialize() {
-#	#	$this->index = array_unique($this->index, SORT_REGULAR);
-#	#	return parent::serialize();
-#	#}
-#}
+class GBTagsByPopularityIndexRebuilder extends GBContentIndexRebuilder {
+	public $min = 0;
+	public $max = 0;
+	
+	function __construct() {
+		parent::__construct('tags-by-popularity');
+	}
+	
+	function onObject($obj) {
+		if (!$obj->tags)
+			return;
+		foreach ($obj->tags as $tag) {
+			if (!isset($this->index[$tag]))
+				$this->index[$tag] = 1;
+			else {
+				$this->index[$tag]++;
+			}	
+			$this->max = max($this->max, $this->index[$tag]);
+			$this->min = min($this->min, $this->index[$tag]);
+		}
+	}
+	
+	function serialize() {
+		# normalize
+		$max = floatval($this->max - $this->min);
+		foreach ($this->index as $k => $v)
+			$this->index[$k] = floatval($v) / $max;
+		# sort most popular -> least popular
+		arsort($this->index, SORT_NUMERIC);
+		# reset
+		$this->max = $this->min = 0;
+		# lower precision of float serialization since we do not need fine granularity.
+		$orig = ini_set('serialize_precision', '4');
+		$data = parent::serialize();
+		ini_set('serialize_precision', $orig);
+		return $data;
+	}
+}
 
 class GBCategoryToObjsIndexRebuilder extends GBContentIndexRebuilder {
 	function __construct() {
@@ -466,7 +464,7 @@ class GBCategoryToObjsIndexRebuilder extends GBContentIndexRebuilder {
 	}
 	
 	function serialize() {
-		$this->index = array_unique($this->index, SORT_REGULAR);
+		$this->index = array_unique($this->index);
 		return parent::serialize();
 	}
 }
@@ -477,7 +475,7 @@ class GBCommentsIndexRebuilder extends GBContentIndexRebuilder {
 	}
 	
 	function onObject($obj) {
-		$this->index[] = $obj->cachename();
+		$this->index[] = $obj;
 	}
 	
 	function serialize() {
@@ -498,7 +496,7 @@ function init_rebuilder_content(&$rebuilders) {
 	
 	# sub-rebuilders
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBTagToObjsIndexRebuilder';
-	#GBContentFinalizer::$objectIndexRebuilders[] = 'GBTagsToObjsIndexRebuilder';
+	GBContentFinalizer::$objectIndexRebuilders[] = 'GBTagsByPopularityIndexRebuilder';
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBCategoryToObjsIndexRebuilder';
 	GBContentFinalizer::$commentIndexRebuilders[] = 'GBCommentsIndexRebuilder';
 }

@@ -1,4 +1,4 @@
-body { font-family:sans-serif; }
+body { font-family:sans-serif; padding-right:200px; }
 #post-meta {  font-size:80%; background:#ddd; padding:10px; }
 #post-meta ul { list-style: none; padding:5px 10px;}
 .breaker { clear:both; }
@@ -10,3 +10,19 @@ li.comment { width:500px; margin:0; }
 li.comment > img.avatar { display:block; float:left; }
 li.comment > div { float:left; margin:0 0 10px 10px; width:440px; }
 li.comment p { margin:0; }
+
+/* Tags popularity contest list */
+#tags { position:absolute; right:0; top:0; width:200px; overflow:hidden; margin:0; padding:0; }
+#tags ol { margin:0; padding:0; }
+#tags li { float:left; list-style:none; padding:1px 5px; }
+#tags li.p0  { font-size:50%; }
+#tags li.p1  { font-size:65%; }
+#tags li.p2  { font-size:80%; }
+#tags li.p3  { font-size:95%; }
+#tags li.p4  { font-size:110%; }
+#tags li.p5  { font-size:125%; }
+#tags li.p6  { font-size:140%; }
+#tags li.p7  { font-size:155%; }
+#tags li.p8  { font-size:170%; }
+#tags li.p9  { font-size:185%; }
+#tags li.p10 { font-size:200%; }

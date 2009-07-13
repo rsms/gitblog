@@ -615,6 +615,10 @@ class GitBlog {
 		return $data === false ? false : unserialize($data);
 	}
 	
+	static function tags($indexname='tags-by-popularity') {
+		return GBObjectIndex::loadNamed($indexname);
+	}
+	
 	static function urlToTags($tags) {
 		return GB_SITE_URL . gb::$index_url . gb::$tags_prefix 
 			. implode(',', array_map('urlencode', $tags));
@@ -1050,7 +1054,7 @@ class GBExposedContent extends GBContent {
 		static $special_lists = array('tag'=>'tags', 'category'=>'categories');
 		foreach ($special_lists as $singular => $plural) {
 			if (isset($this->meta[$plural])) {
-				$this->$plural = array_unique(preg_split('/[, ]+/', $this->meta[$plural]));
+				$this->$plural = array_unique(preg_split('/[ \t]*,+[ \t]*/', $this->meta[$plural]));
 				unset($this->meta[$plural]);
 			}
 			elseif (isset($this->meta[$singular])) {
@@ -1315,15 +1319,18 @@ class GBPagedObjects {
 	public $nextpage = -1;
 	public $prevpage = -1;
 	public $numpages = 0;
+	public $numtotal = 0;
 	
-	function __construct($posts, $nextpage=-1, $prevpage=-1, $numpages=0) {
+	function __construct($posts, $nextpage=-1, $prevpage=-1, $numpages=0, $numtotal=0) {
 		$this->posts    = $posts;
 		$this->nextpage = $nextpage;
 		$this->prevpage = $prevpage;
 		$this->numpages = $numpages;
+		$this->numtotal = $numtotal;
 	}
 	
 	static function split($posts, $onlypageno=null, $pagesize=null) {
+		$numtotal = count($posts);
 		$pages = array_chunk($posts, $pagesize === null ? gb::$posts_pagesize : $pagesize);
 		$numpages = count($pages);
 		
@@ -1333,7 +1340,7 @@ class GBPagedObjects {
 		foreach ($pages as $pageno => $page) {
 			if ($onlypageno !== null && $onlypageno !== $pageno)
 				continue;
-			$page = new self($page, -1, $pageno-1, $numpages);
+			$page = new self($page, -1, $pageno-1, $numpages, $numtotal);
 			if ($pageno < $numpages-1)
 				$page->nextpage = $pageno+1;
 			if ($onlypageno !== null)
@@ -1683,6 +1690,8 @@ class GBComment {
 
 
 class GBObjectIndex {
+	static public $loadcache = array();
+	
 	static function mkCachename($name) {
 		return $name.'.index';
 	}
@@ -1692,8 +1701,12 @@ class GBObjectIndex {
 	}
 	
 	static function loadNamed($name) {
+		if (isset(self::$loadcache[$name]))
+			return self::$loadcache[$name];
 		gb::catch_errors();
-		return unserialize(file_get_contents(self::pathForName($name)));
+		$obj = unserialize(file_get_contents(self::pathForName($name)));
+		self::$loadcache[$name] =& $obj;
+		return $obj;
 	}
 }
 
@@ -1920,6 +1933,31 @@ function gb_comment_fields($post=null, $id_prefix='comment-') {
 		. gb_timezone_offset_field($id_prefix.'client-timezone-offset')
 		. '<input type="hidden" id="'.$id_prefix.'reply-post" name="reply-post" value="'.h($post_cachename).'" />'
 		. '<input type="hidden" id="'.$id_prefix.'reply-to" name="reply-to" value="" />';
+}
+
+function gb_tag_link($tag, $template='<a href="%u">%n</a>') {
+	$u = GB_SITE_URL . gb::$index_url . gb::$tags_prefix;
+	return strtr($template, array('%u' => $u.urlencode($tag), '%n' => h($tag)));
+}
+
+function sorted($iterable, $reverse_or_sortfunc=null, $sort_flags=SORT_REGULAR) {
+	if ($reverse_or_sortfunc === null || $reverse_or_sortfunc === false)
+		asort($iterable, $sort_flags);
+	elseif ($reverse_or_sortfunc === true)
+		arsort($iterable, $sort_flags);
+	else
+		uasort($iterable, $reverse_or_sortfunc);
+	return $iterable;
+}
+
+function ksorted($iterable, $reverse_or_sortfunc=null, $sort_flags=SORT_REGULAR) {
+	if ($reverse_or_sortfunc === null || $reverse_or_sortfunc === false)
+		ksort($iterable, $sort_flags);
+	elseif ($reverse_or_sortfunc === true)
+		krsort($iterable, $sort_flags);
+	else
+		uksort($iterable, $reverse_or_sortfunc);
+	return $iterable;
 }
 
 /**

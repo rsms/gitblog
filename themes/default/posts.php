@@ -19,9 +19,14 @@
 	<? endif; ?>
 	<div class="breaker"></div>
 <? endforeach ?>
-<? if ($postspage->nextpage != -1): ?>
-	<a href="?page=<?= $postspage->nextpage ?>">« Older posts</a>
-<? endif; ?>
-<? if ($postspage->prevpage != -1): ?>
-	<a href="?page=<?= $postspage->prevpage ?>">Newer posts »</a>
+
+<? if ($postspage->nextpage != -1 || $postspage->prevpage != -1): ?>
+	<hr/>
+	<? if ($postspage->nextpage != -1): ?>
+		<a href="?page=<?= $postspage->nextpage ?>">« Older posts</a>
+	<? endif; ?>
+	(total <?= $postspage->numtotal ?> posts on <?= $postspage->numpages ?> pages)
+	<? if ($postspage->prevpage != -1): ?>
+		<a href="?page=<?= $postspage->prevpage ?>">Newer posts »</a>
+	<? endif; ?>
 <? endif; ?>

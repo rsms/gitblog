@@ -56,7 +56,7 @@ Now, let's commit the changes, pusing them live:
 
 Reload your web browser and... voila!
 
- > **Warnings when committing?** If you see `error: Could not access 'HEAD@{1}'` on stderr when committing, do not worry. This is an issue that currently do not affect gitblog, but we're looking into what causes it.
+> **Warnings when committing?** If you see `error: Could not access 'HEAD@{1}'` on stderr when committing, do not worry. This is an issue that currently do not affect gitblog, but we're looking into what causes it.
 
 If you have a Wordpress blog you would like to import, there is a built-in tool which does it for you! Just visit `/my-blog/gitblog/admin/import-wordpress.php` and follow the simple instructions.
 

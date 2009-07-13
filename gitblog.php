@@ -452,6 +452,15 @@ function gb_normalize_git_name($name) {
 	return ($name && $name{0} === '"') ? gb_utf8_unescape(substr($name, 1, -1)) : $name;
 }
 
+function gb_parse_author($gitauthor) {
+	$gitauthor = trim($gitauthor);
+	$p = strpos($gitauthor, '<');
+	if ($p === 0)
+		return (object)array('name' => '', 'email' => trim($gitauthor, '<>'));
+	elseif ($p === false)
+		return (object)array('name' => $gitauthor, 'email' => '');
+	return (object)array('name' => rtrim(substr($gitauthor, 0, $p)), 'email' => trim(substr($gitauthor, $p+1), '<>'));
+}
 
 /** Normalize $time (any format strtotime can handle) to a ISO timestamp. */
 function gb_strtoisotime($time) {
@@ -954,11 +963,6 @@ class GBContent {
 		return gb_filenoext($this->name);
 	}
 	
-	static function getCached($name) {
-		$path = GB_SITE_DIR.'/.git/info/gitblog/'.gb_filenoext($name);
-		return @unserialize(file_get_contents($path));
-	}
-	
 	function writeCache() {
 		$path = GB_SITE_DIR.'/.git/info/gitblog/'.$this->cachename();
 		$dirname = dirname($path);
@@ -1070,6 +1074,12 @@ class GBExposedContent extends GBContent {
 				$this->$singular = $this->meta[$singular];
 				unset($this->meta[$singular]);
 			}
+		}
+		
+		# transfer author meta tag
+		if (isset($this->meta['author'])) {
+			$this->author = gb_parse_author($this->meta['author']);
+			unset($this->meta['author']);
 		}
 		
 		# use meta for title if absent
@@ -1361,7 +1371,7 @@ class GBPage extends GBExposedContent {
 		return 'content/pages/'.$slug;
 	}
 	
-	static function getCached($slug) {
+	static function find($slug) {
 		$path = GB_SITE_DIR.'/.git/info/gitblog/'.self::mkCachename($slug);
 		return @unserialize(file_get_contents($path));
 	}
@@ -1410,7 +1420,7 @@ class GBPost extends GBExposedContent {
 		return self::mkCachename($this->published, $this->slug);
 	}
 	
-	static function getCached($published, $slug) {
+	static function find($published, $slug) {
 		$path = GB_SITE_DIR.'/.git/info/gitblog/'.self::mkCachename($published, $slug);
 		return @unserialize(file_get_contents($path));
 	}
@@ -1500,7 +1510,7 @@ class GBComments extends GBContent implements IteratorAggregate {
 		return $this->cachenamePrefix.'.comments';
 	}
 	
-	static function getCached($cachenamePrefix) {
+	static function find($cachenamePrefix) {
 		$path = GB_SITE_DIR.'/.git/info/gitblog/'.$cachenamePrefix.'.comments';
 		return @unserialize(file_get_contents($path));
 	}

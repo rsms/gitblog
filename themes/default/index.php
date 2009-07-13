@@ -25,7 +25,7 @@ if (gb::$is_404)
 			<div class="wrapper">
 				<h1><?= gb_site_title() ?></h1>
 				<ul>
-					<li><a href="/about">About</a></li>
+					<li><a href="<?= GB_SITE_URL ?>about">About</a></li>
 						<li><a href="<?= GB_SITE_URL ?>" class="current">Recent entries</a></li>
 				</ul>
 			</div>

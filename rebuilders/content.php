@@ -24,7 +24,7 @@ class GBContentRebuilder extends GBRebuilder {
 	}
 	
 	function _onComment($name, $id, $cachenamePrefix) {
-		$obj = GBComments::getCached($cachenamePrefix);
+		$obj = GBComments::find($cachenamePrefix);
 		if ($this->deferReloadIfNeeded($obj, 'GBComments', $name, $id, $cachenamePrefix))
 			GBContentFinalizer::$dirtyComments[$id] = $obj;
 		GBContentFinalizer::$comments[substr($name, 0, -9)] = $obj;
@@ -79,7 +79,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 			$obj = $this->_onComment($name, $id, GBPost::mkCachename($date, $slug));
 		}
 		else {
-			$obj = $this->_onObject(GBPost::getCached($date, $slug), 'GBPost', $name, $id, $slug);
+			$obj = $this->_onObject(GBPost::find($date, $slug), 'GBPost', $name, $id, $slug);
 			self::$posts[] = $obj;
 		}
 		
@@ -110,7 +110,7 @@ class GBPagesRebuilder extends GBContentRebuilder {
 		if ($fnext === 'comments')
 			$obj = $this->_onComment($name, $id, GBPage::mkCachename($slug));
 		else
-			$obj = $this->_onObject(GBPage::getCached($slug), 'GBPage', $name, $id, $slug);
+			$obj = $this->_onObject(GBPage::find($slug), 'GBPage', $name, $id, $slug);
 		
 		return true;
 	}

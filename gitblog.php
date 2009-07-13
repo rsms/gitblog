@@ -1816,15 +1816,20 @@ class GBUserAccount {
 		return $n;
 	}
 	
-	static function formatGitAuthor($account) {
-		if (!$account) {
-			trigger_error('invalid account');
-			return '';
-		}
+	static function formatGitAuthor($account, $fallback=null) {
+		if (!$account)
+			throw new InvalidArgumentException('first argument is empty');
 		$s = '';
 		if ($account->name)
 			$s = $account->name . ' ';
-		return $s . '<'.$account->email.'>';
+		if ($account->email)
+			$s .= '<'.$account->email.'>';
+		if (!$s) {
+			if ($fallback === null)
+				throw new InvalidArgumentException('neither name nor email is set');
+			$s = $fallback;
+		}
+		return $s;
 	}
 	
 	function gitAuthor() {

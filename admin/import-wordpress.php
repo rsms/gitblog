@@ -40,9 +40,12 @@ class WPComment extends GBComment {
 class WordpressImporter {
 	public $doc;
 	public $objectCount;
+	public $defaultAuthorEmail;
 	
 	function __construct() {
 		$this->importedObjectsCount = 0;
+		#$this->defaultAuthorEmail = GBUserAccount::getAdmin() ? GBUserAccount::getAdmin()->email : '';
+		$this->defaultAuthorEmail = '';
 	}
 	
 	function writemsg($timestr, $msgstr, $cssclass='') {
@@ -230,6 +233,8 @@ class WordpressImporter {
 			'pingback' => $obj->pingbackOpen ? 'yes' : 'no',
 			'wp-id' => $obj->wpid
 		));
+		if ($obj->author && $obj->author->name)
+			$meta['author'] = GBUserAccount::formatGitAuthor($obj->author);
 		if ($obj instanceof WPPage)
 			$meta['order'] = $obj->order;
 		if ($obj->tags)
@@ -395,7 +400,7 @@ class WordpressImporter {
 			elseif ($name === 'dc:creator') {
 				$obj->author = (object)array(
 					'name' => $n->nodeValue,
-					'email' => GBUserAccount::getAdmin()->email
+					'email' => $this->defaultAuthorEmail;
 				);
 			}
 			elseif ($is_exposed && $name === 'wp:comment') {

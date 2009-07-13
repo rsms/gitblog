@@ -1,18 +1,108 @@
-body { font-family:sans-serif; padding-right:200px; }
-#post-meta {  font-size:80%; background:#ddd; padding:10px; }
-#post-meta ul { list-style: none; padding:5px 10px;}
+* { margin:0; padding:0; }
+body {
+	font-family:'helvetica neue',helvetica,arial,sans-serif;
+	background-color:#fff;
+	color:#333;
+}
+body,p,li,td { font-size:13px; }
+p { margin:15px 0; line-height:1.618; }
+hr { border:none; height:1px; background-color:#ddd; }
+img { border:none; vertical-align:bottom; }
+
+a { text-decoration:none; border-bottom:1px solid #ddd; }
+a:link, a:active { color:#316d96; border-bottom-color:#d9ebf8; }
+a:visited { color:#7e5494; border-bottom-color:#f1ddfb; }
+a:link:hover, a:active:hover { color:#006be4; background:#e2f4ff; }
+a:visited:hover { color:#af00cf; background:#f4e6ff; }
+a > img { margin-bottom:-1px; } /* hide the bottom border implied by the "a" tag */
+
+/* Universal helpers */
 .breaker { clear:both; }
+.wrapper { clear:both; margin:0 auto; width:900px; }
+
+/* Header */
+#header { background:#666; height:30px; position:fixed; top:0; left:0; width:100%; border-bottom:1px solid #444; }
+	#header a { border:none; }
+	#header h1 { height:30px; padding-top:6px; font-size:14px; float:left; text-shadow:#999 0px 1px 0px; }
+		#header h1 a:link, #header h1 a:visited { color:#222; }
+		#header h1 a:link:hover, #header h1 a:visited:hover { background:none; color:#000; }
+	#header ul { float:right; list-style:none; margin-top:11px; }
+		#header ul li { float:left; font-size:14px; }
+			#header ul li a {
+				margin-left:4px;
+				display:block; line-height:20px; padding:0 10px; height:20px;
+				color:#111;
+				text-shadow:#888 0px 1px 0px;
+				font-size:11px;
+				font-weight:normal;
+				font-family:"lucida grande",tahoma,sans-serif;
+			}
+			#header ul li a:hover, #header ul li a.current, #header ul li#download a.current {
+				-moz-border-radius-topleft:      3px;
+				-khtml-border-top-left-radius:   3px;
+				-webkit-border-top-left-radius:  3px;
+				border-top-left-radius:          3px;
+				-moz-border-radius-topright:     3px;
+				-khtml-border-top-right-radius:  3px;
+				-webkit-border-top-right-radius: 3px;
+				border-top-right-radius:         3px;
+			}
+			#header ul li a:hover {
+				color:#fff;
+				background-color: #333;
+				text-shadow:#111 0px 1px 0px;
+			}
+			#header ul li a.current, #header ul li#download a.current {
+				color: #222;
+				background-color: #fff;
+				text-shadow:none;
+			}
+
+/* Main content */
+#main { padding-top:30px; /* the height of #header */ }
+
+h1 a, h2 a, h3 a, h4 a { border:none; }
+h1 a:link, h2 a:link, h3 a:link, h4 a:link, h1 a:visited, h2 a:visited, h3 a:visited, h4 a:visited { color:inherit; }
+h1 { font-size:2.2em; }
+h2 { font-size:16px; }
+.post h1 { font-family:georgia; font-weight:normal; }
+
+/* Posts */
+div.post { border-bottom:1px solid #ddd; margin-top:20px; }
+	div.post p.meta {
+		font-family:"lucida grande","tahoma",sans-serif;
+		font-size:11px;
+		margin:2px 0;
+		color:#999;
+	}
+		div.post p.meta a:link {  }
+	div.post div.details { float:right; font-size:80%; background:#ddd; padding:10px; }
+		div.post div.details ul { list-style: none; padding:5px 10px;}
+	div.post div.body { margin-bottom:30px; }
+	div.post div.body p { max-width:500px; }
+	div.post div.body blockquote {
+		max-width:485px;
+		padding-left:10px;
+		border-left:5px solid #ccc;
+		font-style:italic;
+		color:#555;
+	}
 
 /* Comments */
-#comments { border-top:1px solid #ccc; }
-#comments ul { list-style:none; margin:0; padding:0 30px; }
+div.comments { background-color:#daeff7; border-top:1px solid #c4dee8; }
+div.comments ul { list-style:none; margin:0; padding:0 30px; }
+div.comments div.wrapper { padding-top:10px; padding-bottom:10px; }
 li.comment { width:500px; margin:0; }
 li.comment > img.avatar { display:block; float:left; }
 li.comment > div { float:left; margin:0 0 10px 10px; width:440px; }
 li.comment p { margin:0; }
 
-/* Tags popularity contest list */
-#tags { position:absolute; right:0; top:0; width:200px; overflow:hidden; margin:0; padding:0; }
+/* Footer */
+body > address { padding:10px 0; color:#ccc; }
+body > address a:link { color:#ccc; }
+
+/* Tags popularity contest list (disabled by default in index.php) */
+/*#tags { position:absolute; right:0; top:0; width:200px; overflow:hidden; margin:0; padding:0; }
 #tags ol { margin:0; padding:0; }
 #tags li { float:left; list-style:none; padding:1px 5px; }
 #tags li.p0  { font-size:50%; }
@@ -25,4 +115,4 @@ li.comment p { margin:0; }
 #tags li.p7  { font-size:155%; }
 #tags li.p8  { font-size:170%; }
 #tags li.p9  { font-size:185%; }
-#tags li.p10 { font-size:200%; }
+#tags li.p10 { font-size:200%; }*/

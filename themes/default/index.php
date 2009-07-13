@@ -21,6 +21,16 @@ if (gb::$is_404)
 	</head>
 	<? flush() ?>
 	<body>
+		<div id="header">
+			<div class="wrapper">
+				<h1><?= gb_site_title() ?></h1>
+				<ul>
+					<li><a href="/about">About</a></li>
+						<li><a href="<?= GB_SITE_URL ?>" class="current">Recent entries</a></li>
+				</ul>
+			</div>
+		</div>
+		<div id="main">
 		<?
 		
 		if (gb::$is_404) {
@@ -34,13 +44,19 @@ if (gb::$is_404)
 		}
 		
 		?>
+		<?/* Example of a tag cloud:
 		<ol id="tags">
 		<? foreach (GitBlog::tags() as $tag => $popularity): ?>
 			<li class="p<?= intval(round($popularity * 10.0)) ?>"><?= gb_tag_link($tag) ?></li>
 		<? endforeach; ?>
 		</ol>
+		*/?>
+		</div>
 		<address>
-			(<? $s = (microtime(true)-$gb_time_started); printf('%.3f ms, %d rps', 1000.0 * $s, 1.0/$s) ?>)
+			<div class="wrapper">
+				<? printf('%.1f ms', 1000.0 * (microtime(true)-$gb_time_started)) ?>
+				was no match for <a href="">Gitblog <?= GB_VERSION ?></a>
+			</div>
 		</address>
 	</body>
 </html>

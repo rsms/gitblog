@@ -222,10 +222,10 @@ function gb_xmlents_to_utf8($s) {
 		'_gb_xmlents_to_utf8_cb', $s);
 }
 
-# HTML -> XHTML (very simplistic -- needs some work)
+# HTML -> XHTML
 function gb_html_to_xhtml($s) {
-	static $map = array('<br>'=>'<br />','<hr>'=>'<hr />');
-	return strtr($s, $map);
+	$s = preg_replace("/<(img|hr|meta|link|br|base|frame|input)([^>]*[^>\/]|)>/mi", "<$1$2 />", $s);
+	return $s;
 }
 
 function gb_normalize_html_structure_clean_pre($matches) {

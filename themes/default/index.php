@@ -62,7 +62,7 @@ if (gb::$is_404)
 		<address>
 			<div class="wrapper">
 				<? printf('%.1f ms', 1000.0 * (microtime(true)-$gb_time_started)) ?>
-				was no match for <a href="">Gitblog <?= gb::$version ?></a>
+				was no match for <a href="http://gitblog.se/">Gitblog <?= gb::$version ?></a>
 			</div>
 		</address>
 	</body>

@@ -4,7 +4,7 @@
 		<div class="post">
 			<h1><a href="<?= h($post->url()) ?>"><?= h($post->title) ?></a></h1>
 			<p class="meta">
-				<?= $post->published->utcformat('%B %e, %Y') ?>
+				<?= $post->published->age() ?>
 				by <?= h($post->author->name) . $post->tagLinks(', tagged ') . $post->categoryLinks(', categorized as ')  ?>
 				<?#= $post->tagLinks('tagged ') . $post->categoryLinks(', categorized as ') ?>
 				<?= $post->comments ? ' — <em>'.$post->numberOfComments().'</em>' : '' ?>

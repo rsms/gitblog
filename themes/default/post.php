@@ -3,7 +3,7 @@
 		<div class="post">
 			<h1><?= $post->title ?></h1>
 			<p class="meta">
-				<?= $post->published->utcformat('%B %e, %Y') ?>
+				<?= $post->published->age() ?>
 				by <?= h($post->author->name) . $post->tagLinks(', tagged ') . $post->categoryLinks(', categorized as ')  ?>
 				<?= $post->comments ? '('.$post->numberOfComments().')' : '' ?>
 			</p>
@@ -17,12 +17,14 @@
 	<div class="breaker"></div>
 </div>
 <? flush() ?>
-<div class="comments">
+<div id="comments">
 	<div class="wrapper">
 	<? if ($post->comments): ?>
 		<h3><?= $post->numberOfComments() ?></h3>
 		<ul>
-		<? $prevlevel = 0; foreach($post->comments as $level => $comment):
+		<?
+			$prevlevel = 0;
+			foreach($post->comments as $level => $comment):
 				if ($level > $prevlevel)
 					echo '<ul>';
 				elseif ($level < $prevlevel)
@@ -32,23 +34,18 @@
 			<li class="comment" id="comment-<?= $comment->id ?>">
 				<img class="avatar" 
 					src="http://www.gravatar.com/avatar.php?gravatar_id=<?= md5($comment->email) ?>&amp;size=48" />
-				<div>
-					<?= $comment->nameLink() ?> says:
+				<div class="message-wrapper">
+					<? if ($post->commentsOpen): ?>
+					<div class="reply-link">
+						<a href="javascript:reply('<?= $comment->id ?>');" title="Reply to this comment"><span>&#x21A9;</span></a>
+					</div>
+					<? endif; ?>
+					<a href="#comment-<?= $comment->id ?>"><?= $comment->date->age() ?></a> <?= $comment->nameLink() ?> said:
 					<div class="message">
 						<?= $comment->body ?>
 					</div>
-					<a href="#comment-<?= $comment->id ?>"><?= counted(intval((time() - $comment->date->time)/86400), 'day', 'days', '0') ?> ago</a>
-					<? if ($post->commentsOpen || $level): ?>
-						<small>
-						<? if ($level): ?>
-							<a href="#comment-<?= substr($comment->id, 0, strrpos($comment->id, '.')) ?>">&uarr;</a>
-						<? endif; ?>
-						<? if ($post->commentsOpen): ?>
-							 <a href="javascript:reply('<?= $comment->id ?>');">&#x21A9;</a>
-						<? endif; ?>
-						</small>
-					<? endif; ?>
 				</div>
+				<div class="breaker"></div>
 			</li>
 			<li class="breaker"></li>
 		<? endforeach; echo str_repeat('</ul>', $prevlevel); ?>
@@ -71,16 +68,17 @@
 		<form id="comment-form" action="<?= gb::$site_url ?>gitblog/helpers/post-comment.php" method="POST">
 			<?= gb_comment_fields() ?>
 			<p>
-				<textarea id="comment-reply-message" name="reply-message"></textarea>
+				<textarea id="comment-reply-message" name="reply-message" rows="3"></textarea>
 			</p>
 			<p>
-				<?= gb_comment_author_field('email', 'Email') ?>
-				<?= gb_comment_author_field('name', 'Name') ?>
-				<?= gb_comment_author_field('url', 'Website (optional)') ?>
+				<?= gb_comment_author_field('email', 'Email') 
+					. gb_comment_author_field('name', 'Name')
+				 	. gb_comment_author_field('url', 'Website (optional)') ?>
 			</p>
-			<p>
+			<p class="buttons">
 				<input type="submit" value="Add comment" />
 			</p>
+			<div class="breaker"></div>
 		</form>
 		<script type="text/javascript">
 			//<![CDATA[
@@ -156,13 +154,15 @@
 							break;
 						}
 					}
-			
+					
+					form.className = "inline-reply";
 					reply_to_comment.appendChild(form);
 					title.style.display = 'none';
 			
-					document.location.hash = "comment-"+reply_to.value;
+					//document.location.hash = "comment-"+reply_to.value;
 				}
 				else {
+					form.className = "";
 					if (form_parent != null)
 						form_parent.appendChild(form);
 					title.style.display = '';

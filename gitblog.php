@@ -357,28 +357,40 @@ class GBURL {
 		}
 	}
 	
-	function __toString($query=true, $path=true, $host=true, $port=true) {
-		$s = $this->scheme . '://';
+	function __toString($scheme=true, $host=true, $port=true, $path=true, $query=true) {
+		$s = '';
 		
-		if ($host === true)
-			$s .= $this->host;
-		elseif ($host !== false)
-			$s .= $host;
+		if ($scheme !== false) {
+			if ($scheme === true)
+				$s = $this->scheme . '://';
+			else
+				$s = $scheme . '://';
+		}
 		
-		if ($port === true && $this->port !== null && ($this->secure === true && $this->port !== 443) || ($this->secure === false && $this->port !== 80))
-			$s .= ':' . $this->port;
-		elseif ($port !== true && $port !== false)
-			$s .= ':' . $port;
+		if ($host !== false) {
+			if ($host === true)
+				$s .= $this->host;
+			else
+				$s .= $host;
+			
+			if ($port === true && $this->port !== null && ($this->secure === true && $this->port !== 443) 
+			|| ($this->secure === false && $this->port !== 80))
+				$s .= ':' . $this->port;
+			elseif ($port !== true && $port !== false)
+				$s .= ':' . $port;
+		}
 		
-		if ($path === true)
-			$s .= $this->path;
-		elseif ($path !== false)
-			$s .= $path;
-		
-		if ($query === true && $this->query)
-			$s .= '?'.$this->query;
-		elseif ($port !== true && $query !== false && $query)
-			$s .= '?'.$query;
+		if ($path !== false) {
+			if ($path === true)
+				$s .= $this->path;
+			else
+				$s .= $path;
+			
+			if ($query === true && $this->query)
+				$s .= '?'.$this->query;
+			elseif ($query !== true && $query !== false && $query)
+				$s .= '?'.$query;
+		}
 		
 		return $s;
 	}

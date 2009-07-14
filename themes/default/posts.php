@@ -20,10 +20,7 @@
 		<hr />
 	<? endforeach ?>
 	</div>
-	<div class="sidebar">
-		<h2>About</h2>
-		<?= GBPage::find('about_intro')->body ?>
-	</div>
+	<? include 'sidebar.php' ?>
 	<div class="breaker"></div>
 </div>
 <div id="paged-footer">

@@ -1,15 +1,20 @@
 <div class="wrapper">
-	<div class="post single">
-		<h1><?= $post->title ?></h1>
-		<p class="meta">
-			<?= $post->published->utcformat('%B %e, %Y') ?>
-			by <?= h($post->author->name) . $post->tagLinks(', tagged ') . $post->categoryLinks(', categorized as ')  ?>
-			<?= $post->comments ? '('.$post->numberOfComments().')' : '' ?>
-		</p>
-		<div class="body">
-			<?= $post->body ?>
+	<div class="posts single">
+		<div class="post">
+			<h1><?= $post->title ?></h1>
+			<p class="meta">
+				<?= $post->published->utcformat('%B %e, %Y') ?>
+				by <?= h($post->author->name) . $post->tagLinks(', tagged ') . $post->categoryLinks(', categorized as ')  ?>
+				<?= $post->comments ? '('.$post->numberOfComments().')' : '' ?>
+			</p>
+			<div class="body">
+				<?= $post->body ?>
+			</div>
 		</div>
+		<div class="breaker"></div>
 	</div>
+	<? include 'sidebar.php' ?>
+	<div class="breaker"></div>
 </div>
 <? flush() ?>
 <div class="comments">

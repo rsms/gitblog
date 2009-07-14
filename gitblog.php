@@ -928,6 +928,43 @@ class GBDateTime {
 			. self::formatTimezoneOffset($this->offset, $tzformat);
 	}
 	
+	function age($abs_threshold=31536000, $abs_format='%B %e, %Y', $suffix=' ago', $compared_to=null) {
+		if ($compared_to === null)
+			$diff = time() - $this->time;
+		elseif (is_int($compared_to))
+			$diff = $compared_to - $this->time;
+		else
+			$diff = $compared_to->time - $this->time;
+		
+		if ($diff >= $abs_threshold)
+			return $this->utcformat($abs_format);
+		
+		if ($diff < 50)
+			return $diff.' '.($diff === 1 ? 'second' : 'seconds').$suffix;
+		elseif ($diff < 3000) {
+			$diff = (int)round($diff / 60);
+			return $diff.' '.($diff === 1 ? 'minute' : 'minutes').$suffix;
+		}
+		elseif ($diff < 83600) {
+			$diff = (int)round($diff / 3600);
+			return $diff.' '.($diff === 1 ? 'hour' : 'hours').$suffix;
+		}
+		elseif ($diff < 604800) {
+			$diff = (int)round($diff / 86400);
+			return $diff.' '.($diff === 1 ? 'day' : 'days').$suffix;
+		}
+		elseif ($diff < 2628000) {
+			$diff = (int)round($diff / 604800);
+			return $diff.' '.($diff === 1 ? 'week' : 'weeks').$suffix;
+		}
+		elseif ($diff < 31536000) {
+			$diff = (int)round($diff / 2628000);
+			return $diff.' '.($diff === 1 ? 'month' : 'months').$suffix;
+		}
+		$diff = (int)round($diff / 31536000);
+		return $diff.' '.($diff === 1 ? 'year' : 'years').$suffix;
+	}
+	
 	/**
 	 * The offset for timezones west of UTC is always negative, and for those
 	 * east of UTC is always positive.
@@ -1931,12 +1968,12 @@ function gb_nonce_verify($nonce, $context='', $ttl=86400) {
 class gb_author_cookie {
 	static public $cookie;
 	
-	static function set($email=null, $name=null, $uri=null, $cookiename='gb-author') {
+	static function set($email=null, $name=null, $url=null, $cookiename='gb-author') {
 		if (self::$cookie === null)
 			self::$cookie = array();
 		if ($email !== null) self::$cookie['email'] = $email;
 		if ($name !== null) self::$cookie['name'] = $name;
-		if ($uri !== null) self::$cookie['uri'] = $uri;
+		if ($url !== null) self::$cookie['url'] = $url;
 		$cookie = rawurlencode(serialize(self::$cookie));
 		$cookieurl = new GBURL(gb::$site_url);
 		setrawcookie($cookiename, $cookie, time()+(3600*24*365), $cookieurl->path, $cookieurl->host, $cookieurl->secure);
@@ -1996,12 +2033,14 @@ function gb_timezone_offset_field($id='client-timezone-offset') {
 
 function gb_comment_author_field($what, $default_value='', $id_prefix='comment-', $attrs='') {
 	$value = gb_author_cookie::get($what);
-	if (!$value)
+	if (!$value) {
 		$value = $default_value;
+		$attrs .= ' class="default" ';
+	}
 	return '<input type="text" id="'.$id_prefix.'author-'.$what.'" name="author-'
 		.$what.'" value="'.h($value).'"'
-		.' onfocus="if(this.value==unescape(\''.rawurlencode($default_value).'\'))this.value=\'\';"'
-		.' onblur="if(this.value==\'\')this.value=unescape(\''.rawurlencode($default_value).'\');"'
+		.' onfocus="if(this.value==unescape(\''.rawurlencode($default_value).'\')){this.value=\'\';this.className=\'\';}"'
+		.' onblur="if(this.value==\'\'){this.value=unescape(\''.rawurlencode($default_value).'\');this.className=\'default\';}"'
 		.' '.$attrs.' />';
 }
 

@@ -559,7 +559,7 @@ GBFilter::add('post-reload-GBExposedContent.html', 'gb_filter_post_reload_conten
 # GBComments filters
 
 function gb_filter_post_reload_comments(GBComments $comments) {
-	foreach ($comments->comments as $comment)
+	foreach ($comments as $comment)
 		GBFilter::apply('post-reload-comment', $comment);
 	return $comments;
 }

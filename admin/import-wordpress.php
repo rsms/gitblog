@@ -400,7 +400,7 @@ class WordpressImporter {
 			elseif ($name === 'dc:creator') {
 				$obj->author = (object)array(
 					'name' => $n->nodeValue,
-					'email' => $this->defaultAuthorEmail;
+					'email' => $this->defaultAuthorEmail
 				);
 			}
 			elseif ($is_exposed && $name === 'wp:comment') {

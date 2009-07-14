@@ -1179,8 +1179,13 @@ class GBExposedContent extends GBContent {
 	}
 	
 	function __sleep() {
-		return array_merge(parent::__sleep(), array(
-			'slug','meta','title','body','tags','categories','comments'));
+		static $members = array(
+			'slug','meta','title','body',
+			'tags','categories',
+			'comments',
+			'commentsOpen','pingbackOpen',
+			'draft');
+		return array_merge(parent::__sleep(), $members);
 	}
 	
 	static function parseMetaHeaders($lines, &$out) {
@@ -1374,6 +1379,10 @@ class GBPage extends GBExposedContent {
 	static function find($slug) {
 		$path = GB_SITE_DIR.'/.git/info/gitblog/'.self::mkCachename($slug);
 		return @unserialize(file_get_contents($path));
+	}
+	
+	static function urlTo($slug) {
+		return GB_SITE_URL . gb::$index_url . gb::$pages_prefix . $slug;
 	}
 }
 

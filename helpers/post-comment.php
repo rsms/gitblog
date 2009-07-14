@@ -79,7 +79,7 @@ foreach ($required_fields as $field) {
 }
 if ($fields_missing)
 	exit2('missing parameter(s): '.implode(', ', $fields_missing));
-elseif (!strlen($input['reply-message']) < 2)
+elseif (strlen($input['reply-message']) < 2)
 	exit2('you have to say more than a single character my friend.');
 
 # sanitize $input['reply-post']

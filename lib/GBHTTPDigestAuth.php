@@ -6,7 +6,7 @@ class GBHTTPDigestAuth {
 	
 	function __construct($realm='auth', $ttl=300, $url=null) {
 		$this->realm = $realm;
-		$this->url = $url !== null ? $url : GB_SITE_URL;
+		$this->url = $url !== null ? $url : gb::$site_url;
 		$this->ttl = $ttl;
 	}
 	

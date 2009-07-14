@@ -216,7 +216,7 @@ class WordpressImporter {
 	}
 	
 	function writeExposedContent(GBExposedContent $obj) {
-		$dstpath = GB_SITE_DIR.'/'.$obj->name;
+		$dstpath = gb::$site_dir.'/'.$obj->name;
 		$this->dump($dstpath);
 		
 		# assure destination dir is prepared
@@ -265,7 +265,7 @@ class WordpressImporter {
 	}
 	
 	function writeAttachment(WPAttachment $obj) {
-		$dstpath = GB_SITE_DIR.'/'.$obj->name;
+		$dstpath = gb::$site_dir.'/'.$obj->name;
 		
 		$dstpathdir = dirname($dstpath);
 		if (!is_dir($dstpathdir))
@@ -597,7 +597,7 @@ if (isset($_FILES['wpxml'])) {
 			Yay! I've imported <?= counted($importer->importedObjectsCount, 'object','objects','zero','one') ?>.
 		</p>
 		<p class="donelink">
-			<a href="<?= GB_SITE_URL ?>">Have a look at your blog &rarr;</a>
+			<a href="<?= gb::$site_url ?>">Have a look at your blog &rarr;</a>
 		</p>
 		<?
 	}

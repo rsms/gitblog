@@ -3,7 +3,7 @@ require_once '_base.php';
 
 # do not render this page unless there is no repo
 if ($integrity !== 2) {
-	header("Location: ".GB_SITE_URL."gitblog/admin/");
+	header("Location: ".gb::$site_url."gitblog/admin/");
 	exit(0);
 }
 
@@ -27,8 +27,8 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# create gb-config.php
 	if (!$errors) {
-		$config_path = GB_SITE_DIR."/gb-config.php";
-		$s = file_get_contents(GB_DIR.'/skeleton/gb-config.php');
+		$config_path = gb::$site_dir."/gb-config.php";
+		$s = file_get_contents(gb::$dir.'/skeleton/gb-config.php');
 		# title
 		$s = preg_replace('/(gb::\$site_title[\t ]*=[\t ]*)\'[^\']*\';/', 
 			'${1}'.var_export($_POST['title'],1).";", $s, 1);
@@ -76,7 +76,7 @@ if (isset($_POST['submit'])) {
 	if (!$errors) {
 		$add_sample_content = isset($_POST['add-sample-content']) && $_POST['add-sample-content'] === 'true';
 		if (!GitBlog::init($add_sample_content))
-			$errors[] = 'Failed to create and initialize repository at '.var_export(GB_SITE_DIR,1);
+			$errors[] = 'Failed to create and initialize repository at '.var_export(gb::$site_dir,1);
 	}
 	
 	# -------------------------------------------------------------------------
@@ -104,7 +104,7 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# send the client along
 	if (!$errors) {
-		header('Location: '.GB_SITE_URL);
+		header('Location: '.gb::$site_url);
 		exit(0);
 	}
 }
@@ -119,10 +119,10 @@ if (isset($_POST['submit'])) {
 # prepare for rendering
 
 gb::$title[] = 'Setup';
-$is_writable = is_writable(GB_SITE_DIR);
+$is_writable = is_writable(gb::$site_dir);
 
 if (!$is_writable) {
-	$errors[] = '<b>Ooops.</b> The directory <code>'.h(GB_SITE_DIR).'</code> is not writable.
+	$errors[] = '<b>Ooops.</b> The directory <code>'.h(gb::$site_dir).'</code> is not writable.
 		Gitblog need to create a few files in this directory.
 		<br/><br/>
 		Please make this directory (highlighted above) writable and then reload this page.';

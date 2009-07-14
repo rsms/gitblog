@@ -68,7 +68,7 @@
 	<? if ($post->commentsOpen): ?>
 		<div id="reply"></div>
 		<h3 id="reply-title">Add a comment</h3>
-		<form id="comment-form" action="<?= GB_SITE_URL ?>gitblog/helpers/post-comment.php" method="POST">
+		<form id="comment-form" action="<?= gb::$site_url ?>gitblog/helpers/post-comment.php" method="POST">
 			<?= gb_comment_fields() ?>
 			<p>
 				<textarea id="comment-reply-message" name="reply-message"></textarea>

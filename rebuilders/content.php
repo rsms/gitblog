@@ -255,8 +255,8 @@ class GBContentFinalizer extends GBContentRebuilder {
 		$numtotal = count($published_posts);
 		$pages = array_chunk($published_posts, gb::$posts_pagesize);
 		$numpages = count($pages);
-		$dir = GB_SITE_DIR.'/.git/info/gitblog/content-paged-posts';
-		$dirPrefixLen = strlen(GB_SITE_DIR.'/.git/info/gitblog/');
+		$dir = gb::$site_dir.'/.git/info/gitblog/content-paged-posts';
+		$dirPrefixLen = strlen(gb::$site_dir.'/.git/info/gitblog/');
 		
 		if (!is_dir($dir)) {
 			mkdir($dir, 0775, true);
@@ -302,8 +302,8 @@ class GBContentFinalizer extends GBContentRebuilder {
 			$cachenames[$obj->cachename()] = 1;
 		
 		# remove unused objects from stage cache (todo: this can be very expensive with much content)
-		$prefix_len = strlen(GB_SITE_DIR.'/.git/info/gitblog/');
-		$existing_paths = glob(GB_SITE_DIR.
+		$prefix_len = strlen(gb::$site_dir.'/.git/info/gitblog/');
+		$existing_paths = glob(gb::$site_dir.
 			'/.git/info/gitblog/content/{posts/*/*,pages/{*,*/*,*/*/*,*/*/*/*,*/*/*/*/*,*/*/*/*/*/*}}',
 			GLOB_BRACE|GLOB_NOSORT|GLOB_MARK);
 		foreach ($existing_paths as $path) {

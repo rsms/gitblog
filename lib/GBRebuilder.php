@@ -17,15 +17,15 @@ class GBRebuilder {
 	
 	static public $rebuilders = array();
 	
-	/** Load rebuilders from GB_DIR/rebuilders */
+	/** Load rebuilders from gb::$dir/rebuilders */
 	static function loadRebuilders() {
 		self::$rebuilders = array();
-		foreach (glob(GB_DIR.'/rebuilders/*.php') as $path) {
+		foreach (glob(gb::$dir.'/rebuilders/*.php') as $path) {
 			$n = basename($path);
 			if (preg_match('/^[a-z_][0-9a-z_]*\.php$/i', $n)) {
 				$libname = substr($n, 0, -4);
 				gb::log(LOG_INFO, 'loading rebuilder library "%s" from %s', 
-					$libname, substr($path, strlen(GB_DIR)+1));
+					$libname, substr($path, strlen(gb::$dir)+1));
 				include_once $path;
 				$initname = 'init_rebuilder_'.$libname;
 				$initname(self::$rebuilders);

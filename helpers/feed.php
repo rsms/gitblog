@@ -9,18 +9,18 @@ echo '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
       xmlns:thr="http://purl.org/syndication/thread/1.0"
       xmlns:gb="http://gitblog.se/ns/atom/1.0"
       xml:lang="en"
-      xml:base="<?= h(GB_SITE_URL) ?>">
+      xml:base="<?= h(gb::$site_url) ?>">
 	<id><?= h(gb::url()) ?></id>
 	<title><?= h(gb::$site_title) ?></title>
-	<link rel="alternate" type="text/html" href="<?= h(GB_SITE_URL) ?>" />
+	<link rel="alternate" type="text/html" href="<?= h(gb::$site_url) ?>" />
 	<updated><?= date('c', $updated_time) ?></updated>
-	<generator uri="http://gitblog.se/" version="<?= GB_VERSION ?>">Gitblog</generator>
+	<generator uri="http://gitblog.se/" version="<?= gb::$version ?>">Gitblog</generator>
 <? foreach ($postspage->posts as $post): ?>
 	<entry>
 		<title type="html"><?= h($post->title) ?></title>
 		<author>
 			<name><?= h($post->author->name) ?></name>
-			<uri><?= h(GB_SITE_URL) ?></uri>
+			<uri><?= h(gb::$site_url) ?></uri>
 		</author>
 		<link rel="alternate" type="text/html" href="<?= h($post->url()) ?>" />
 		<id><?= h($post->url()) ?></id>

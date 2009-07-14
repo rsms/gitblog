@@ -16,7 +16,7 @@ if (gb::$is_404)
 	<head>
 		<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8"/>
 		<title><?= gb_title() ?></title>
-		<link href="<?= GB_THEME_URL ?>style.css" type="text/css" rel="stylesheet" media="screen" />
+		<link href="<?= gb::$theme_url ?>style.css" type="text/css" rel="stylesheet" media="screen" />
 		<link href="<?= h(gb::url_to('feed')) ?>" rel="alternate" title="Atom feed" type="application/atom+xml" />
 	</head>
 	<? flush() ?>
@@ -26,7 +26,7 @@ if (gb::$is_404)
 				<h1><?= gb_site_title() ?></h1>
 				<ul>
 					<li><a href="<?= GBPage::urlTo('about') ?>">About</a></li>
-						<li><a href="<?= GB_SITE_URL ?>" class="current">Recent entries</a></li>
+						<li><a href="<?= gb::$site_url ?>" class="current">Recent entries</a></li>
 				</ul>
 			</div>
 		</div>
@@ -62,7 +62,7 @@ if (gb::$is_404)
 		<address>
 			<div class="wrapper">
 				<? printf('%.1f ms', 1000.0 * (microtime(true)-$gb_time_started)) ?>
-				was no match for <a href="">Gitblog <?= GB_VERSION ?></a>
+				was no match for <a href="">Gitblog <?= gb::$version ?></a>
 			</div>
 		</address>
 	</body>

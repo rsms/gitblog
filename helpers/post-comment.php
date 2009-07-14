@@ -134,6 +134,7 @@ if ($comment) {
 		
 		# duplicate?
 		if ($index === false) {
+			gb::log(LOG_NOTICE, 'skipped duplicate comment from '.var_export($comment->email,1));
 			if (isset($input['gb-referrer'])) {
 				header('Status: 304 Not Modified');
 				header('Location: '.$input['gb-referrer'].'#skipped-duplicate-reply');
@@ -143,6 +144,9 @@ if ($comment) {
 				exit2("duplicate comment\n", '200 OK');
 			}
 		}
+		
+		gb::log(LOG_NOTICE, 'added comment from '.var_export($comment->email,1)
+			.' to '.$post->cachename());
 		
 		# done
 		if (isset($input['gb-referrer'])) {
@@ -159,10 +163,16 @@ if ($comment) {
 	}
 	catch (Exception $e) {
 		if ($e instanceof GitError && strpos($e->getMessage(), 'nothing to commit') !== false) {
+			gb::log(LOG_NOTICE, 'skipped duplicate comment from '.var_export($comment->email,1));
 			header('Status: 304 Not Modified');
 			header('Location: '.$input['gb-referrer'].'#skipped-duplicate-reply');
 			exit(0);
 		}
+		
+		gb::log(LOG_ERROR, 'failed to add comment '.var_export($comment->body,1)
+			.' from '.var_export($comment->name,1).' <'.var_export($comment->email,1).'>'
+			.' to '.$post->cachename());
+		
 		header('Content-Type: text/plain; charset=utf-8');
 		header('Status: 500 Internal Server Error');
 		echo '$input => ';var_export($input);echo "\n";

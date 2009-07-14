@@ -16,6 +16,11 @@ a:link:hover, a:active:hover { color:#006be4; background:#e2f4ff; border-bottom-
 a:visited:hover { color:#af00cf; background:#f4e6ff; border-bottom-color:#e5cbf0; }
 a > img { margin-bottom:-1px; } /* hide the bottom border implied by the "a" tag */
 
+h1 a, h2 a, h3 a, h4 a { border:none; }
+h1 a:link, h2 a:link, h3 a:link, h4 a:link, h1 a:visited, h2 a:visited, h3 a:visited, h4 a:visited { color:inherit; }
+h1 { font-size:22px; }
+h2 { font-size:16px; }
+
 /* Universal helpers */
 .breaker { clear:both; }
 .wrapper { clear:both; margin:0 auto; width:900px; }
@@ -69,12 +74,6 @@ a > img { margin-bottom:-1px; } /* hide the bottom border implied by the "a" tag
 
 /* Main content */
 #main { padding-top:30px; /* the height of #header */ }
-
-h1 a, h2 a, h3 a, h4 a { border:none; }
-h1 a:link, h2 a:link, h3 a:link, h4 a:link, h1 a:visited, h2 a:visited, h3 a:visited, h4 a:visited { color:inherit; }
-h1 { font-size:2.2em; }
-h2 { font-size:16px; }
-.post h1 { font-family:georgia; font-weight:normal; }
 
 /* Sidebar */
 div.sidebar { width:359px; margin-left:20px; padding:20px 0 0 20px; float:left; border-left:1px solid #eee; }

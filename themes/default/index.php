@@ -34,7 +34,14 @@ if (gb::$is_404)
 		<?
 		
 		if (gb::$is_404) {
-			echo '<h1>404 Not Found</h1>';
+			?>
+			<div id="error404">
+				<div class="wrapper">
+					<h1>404 Not Found</h1>
+					The page <b><?= h(gb::url()->__toString(false)) ?></b> does not exist.
+				</div>
+			</div>
+			<?
 		}
 		elseif (gb::$is_post || gb::$is_page) {
 			require 'post.php';

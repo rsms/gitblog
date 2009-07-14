@@ -155,3 +155,7 @@ body > address a:link { color:#ccc; }
 #tags li.p8   a:link, #tags li.p8   a:visited { color:#777; }
 #tags li.p9   a:link, #tags li.p9   a:visited { color:#777; }
 #tags li.p10  a:link, #tags li.p10  a:visited { color:#666; }
+
+/* Error 404 not found */
+#error404 { margin:100px; text-align:center; }
+	#error404 h1 { margin-bottom:30px; }

@@ -630,7 +630,8 @@ function gb_filter_pre_comment(GBComment $comment) {
 }
 
 function gb_uri_to_html_link($text) {
-	$text = preg_replace('/([a-zA-Z][a-zA-Z0-9\.+-]*:[^>< \t\n\r]*[^>< \t\n\r\.,])/', '<a href="$1">$1</a>', $text);
+	static $pattern = '/^(|[^"\'a-zA-Z])([a-zA-Z][a-zA-Z0-9\.+-]*:[^>< \t\n\r]*[^>< \t\n\r\.,])/';
+	$text = preg_replace($pattern, '$1<a href="$2">$2</a>', $text);
 	return $text;
 }
 

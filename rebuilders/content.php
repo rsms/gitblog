@@ -202,10 +202,10 @@ class GBContentFinalizer extends GBContentRebuilder {
 		usort(GBPostsRebuilder::$posts, 'gb_sortfunc_cobj_date_published_r');
 		
 		# garbage collect stage cache
-		$collected = $this->gcStageCache();
+		$gc_count = $this->gcStageCache();
 		
 		# build posts pages
-		$this->buildPagedPosts($collected);
+		$this->buildPagedPosts($gc_count);
 		
 		# build indexes (sub-rebuilders)
 		usort(self::$objects, 'gb_sortfunc_cobj_date_published_r');
@@ -246,7 +246,8 @@ class GBContentFinalizer extends GBContentRebuilder {
 		foreach (self::$comments as $obj)
 			$cachenames[$obj->cachename()] = 1;
 		
-		$collected = array();
+		# count of collected objects
+		$count = 0;
 		
 		# remove unused objects from stage cache (todo: this can be very expensive with much content)
 		$prefix_len = strlen(gb::$site_dir.'/.git/info/gitblog/');
@@ -258,16 +259,16 @@ class GBContentFinalizer extends GBContentRebuilder {
 				continue;
 			$cachename = substr($path, $prefix_len);
 			if (!isset($cachenames[$cachename])) {
-				gb::log(LOG_NOTICE, 'removing unused cache "%s" (cachename: "%s")', $path, $cachename);
+				gb::log(LOG_NOTICE, 'removing unused cache .git/info/gitblog/%s', $cachename);
 				unlink($path);
-				$collected[] = $cachename;
+				$count++;
 			}
 		}
 		
-		return $collected;
+		return $count;
 	}
 	
-	function buildPagedPosts($collected) {
+	function buildPagedPosts($gc_count) {
 		$published_posts = array();
 		$time_now = time();
 		
@@ -280,7 +281,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		$numpages = count($pages);
 		$dir = gb::$site_dir.'/.git/info/gitblog/content-paged-posts';
 		$dirPrefixLen = strlen(gb::$site_dir.'/.git/info/gitblog/');
-		$force_rebuild = $this->forceFullRebuild || $collected;
+		$force_rebuild = $this->forceFullRebuild || $gc_count > 0;
 		$newfound_detected = false; # see below
 		
 		if (!is_dir($dir)) {

@@ -19,6 +19,11 @@
 		<div class="breaker"></div>
 		<hr />
 	<? endforeach ?>
+	<? if (!$postspage->posts): ?>
+		<p>
+			There is no published content here at the moment. Check back later my friend.
+		</p>
+	<? endif; ?>
 	</div>
 	<? include 'sidebar.php' ?>
 	<div class="breaker"></div>

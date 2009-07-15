@@ -25,8 +25,10 @@ if (gb::$is_404)
 			<div class="wrapper">
 				<h1><?= gb_site_title() ?></h1>
 				<ul>
-					<li><a href="<?= GBPage::urlTo('about') ?>">About</a></li>
-						<li><a href="<?= gb::$site_url ?>" class="current">Recent entries</a></li>
+					<? $c=null; foreach (GBObjectIndex::loadNamed('pages') as $slug => $page): if ($page->hidden) continue; ?>
+						<li><a href="<?= h($page->url()) ?>" <? if ($page->isCurrent()){ $c=1; echo 'class="current"'; } ?>><?= h($page->title) ?></a></li>
+					<? endforeach; ?>
+					<li><a href="<?= gb::$site_url ?>" <? if (!$c) echo 'class="current"' ?>>Recent entries</a></li>
 				</ul>
 			</div>
 		</div>

@@ -395,8 +395,9 @@ class GBContentIndexRebuilder {
 		return serialize($this->index);
 	}
 	
-	function onObject($object) {
-		# subclasses need to override this and handle $object
+	function onObject($obj) {
+		# subclasses should to override this
+		$this->index[] = $obj;
 	}
 	
 	function finalize() {
@@ -494,15 +495,45 @@ class GBCommentsIndexRebuilder extends GBContentIndexRebuilder {
 		parent::__construct('comments-by-date-desc');
 	}
 	
-	function onObject($obj) {
-		$this->index[] = $obj;
-	}
-	
 	function serialize() {
 		usort($this->index, 'gb_sortfunc_cobj_date_published_r');
 		# only keep cachenames
 		foreach($this->index as $k => $obj)
 			$this->index[$k] = $obj->cachename();
+		return parent::serialize();
+	}
+}
+
+function _gb_page_sortfunc($a, $b) {
+	if ($a->order === $b->order)
+		return strcasecmp($a->slug, $b->slug);
+	if ($a->order === null)
+		return 1; # B
+	if ($b->order === null)
+		return -1; # A
+	return $a->order - $b->order;
+}
+
+class GBPagesIndexRebuilder extends GBContentIndexRebuilder {
+	function __construct() {
+		parent::__construct('pages');
+	}
+	
+	function onObject($obj) {
+		if (!($obj instanceof GBPage))
+			return;
+		$this->index[] = $obj;
+	}
+	
+	function serialize() {
+		# sort on ASC($order), strcasecmp($slug)
+		usort($this->index, '_gb_page_sortfunc');
+		# key the index with slug and save condensed versions
+		$v = $this->index;
+		$this->index = array();
+		foreach ($v as $obj)
+			$this->index[$obj->slug] = $obj->condensedVersion();
+		# ...
 		return parent::serialize();
 	}
 }
@@ -518,6 +549,7 @@ function init_rebuilder_content(&$rebuilders) {
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBTagToObjsIndexRebuilder';
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBTagsByPopularityIndexRebuilder';
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBCategoryToObjsIndexRebuilder';
+	GBContentFinalizer::$objectIndexRebuilders[] = 'GBPagesIndexRebuilder';
 	GBContentFinalizer::$commentIndexRebuilders[] = 'GBCommentsIndexRebuilder';
 }
 ?>

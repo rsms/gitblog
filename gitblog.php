@@ -57,8 +57,12 @@ class gb {
 	static public $dir;
 	static public $site_dir;
 	static public $site_url;
+	static public $site_path;
 	static public $theme_dir;
 	static public $theme_url;
+	static public $content_cache_fnext = '.content';
+	static public $comments_cache_fnext = '.comments';
+	static public $index_cache_fnext = '.index';
 	
 	/**
 	 * The strftime pattern used to build posts cachename.
@@ -290,8 +294,9 @@ if (isset(gb::$site_url)) {
 else {
 	# URL to the base of the site.
 	# Must end with a slash ("/").
+	gb::$site_path = ($u === '/' ? $u : $u.'/');
 	gb::$site_url = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://')
-		.$_SERVER['SERVER_NAME'] . ($u === '/' ? $u : $u.'/');
+		.$_SERVER['SERVER_NAME'] . gb::$site_path;
 }
 
 # only set the following when called externally
@@ -682,12 +687,12 @@ class GitBlog {
 	
 	static function pathToPost($path, $strptime=null) {
 		$st = ($strptime !== null) ? $strptime : strptime($path, gb::$posts_prefix);
-		$cachename = gmstrftime(gb::$posts_cn_pattern, gb_mkutctime($st)).$st['unparsed'];
+		$cachename = gmstrftime(gb::$posts_cn_pattern, gb_mkutctime($st)).$st['unparsed'].gb::$content_cache_fnext;
 		return self::pathToCachedContent('posts', $cachename);
 	}
 	
 	static function pageBySlug($slug) {
-		$path = self::pathToCachedContent('pages', $slug);
+		$path = self::pathToCachedContent('pages', $slug.gb::$content_cache_fnext);
 		$data = @file_get_contents($path);
 		return $data === false ? false : unserialize($data);
 	}
@@ -1075,7 +1080,7 @@ class GBContent {
 	}
 	
 	function cachename() {
-		return gb_filenoext($this->name);
+		return gb_filenoext($this->name).gb::$content_cache_fnext;
 	}
 	
 	function writeCache() {
@@ -1087,8 +1092,8 @@ class GBContent {
 			$parts = array_merge(array('gitblog'),explode('/',trim(dirname($this->cachename()),'/')));
 			foreach ($parts as $part) {
 				$p .= '/'.$part;
-				@mkdir($p, 0775, true);
-				chmod($p, 0775);
+				@mkdir($p, 0775);
+				@chmod($p, 0775);
 			}
 		}
 		return gb_atomic_write($path, serialize($this), 0664);
@@ -1188,6 +1193,29 @@ class GBExposedContent extends GBContent {
 			unset($this->meta['author']);
 		}
 		
+		# Page-specific meta tags. todo: do this in the GBPage subclass in some nice way
+		if ($this instanceof GBPage) {
+			# transfer order meta tag
+			static $order_aliases = array('order', 'sort', 'priority');
+			foreach ($order_aliases as $singular) {
+				if (isset($this->meta[$singular])) {
+					$this->order = $this->meta[$singular];
+					unset($this->meta[$singular]);
+				}
+			}
+			
+			# transfer hidden meta tag
+			static $hidden_aliases = array('hidden', 'hide', 'invisible');
+			foreach ($hidden_aliases as $singular) {
+				if (isset($this->meta[$singular])) {
+					$s = $this->meta[$singular];
+					$this->hidden = ($s === '' || gb_strbool($s));
+					unset($this->meta[$singular]);
+				}
+			}
+			
+		}
+		
 		# use meta for title if absent
 		if ($this->title === null)
 			$this->title = $this->slug;
@@ -1243,7 +1271,7 @@ class GBExposedContent extends GBContent {
 	}
 	
 	function commentsStageName() {
-		return gb_filenoext($this->name).'.comments';
+		return gb_filenoext($this->name).'.comments'; # not gb::$comments_cache_fnext
 	}
 	
 	function getCommentsDB() {
@@ -1486,10 +1514,34 @@ class GBPagedObjects {
 
 
 class GBPage extends GBExposedContent {
-	public $order = 0; # order in menu, etc.
+	public $order = null; # order in menu, etc.
+	public $hidden = false; # hidden from menu, but still accessible (i.e. not the same thing as $draft)
+	
+	/**
+	 * Return a, possibly cloned, version of this page without a body and with
+	 * comment count instead of actual comments.
+	*/
+	function condensedVersion() {
+		$c = clone $this;
+		# excerpt member turns into a boolean "is ->body an excerpt?"
+		$c->body = strlen($c->body);
+		
+		# comments member turns into an integer "number of comments"
+		$c->comments = $c->comments ? $c->comments->countApproved() : 0;
+		
+		return $c;
+	}
+	
+	function isCurrent() {
+		if (!gb::$is_page)
+			return false;
+		$url = gb::url();
+		return (strcasecmp(rtrim(substr($url->path, 
+			strlen(gb::$site_path.gb::$index_url.gb::$pages_prefix)),'/'), $this->slug) === 0);
+	}
 	
 	static function mkCachename($slug) {
-		return 'content/pages/'.$slug;
+		return 'content/pages/'.$slug.gb::$content_cache_fnext;
 	}
 	
 	static function find($slug) {
@@ -1499,6 +1551,10 @@ class GBPage extends GBExposedContent {
 	
 	static function urlTo($slug) {
 		return gb::$site_url . gb::$index_url . gb::$pages_prefix . $slug;
+	}
+	
+	function __sleep() {
+		return array_merge(parent::__sleep(), array('order', 'hidden'));
 	}
 }
 
@@ -1538,7 +1594,7 @@ class GBPost extends GBExposedContent {
 	
 	static function mkCachename($published, $slug) {
 		# Note: the path prefix is a dependency for GBContentFinalizer::finalize
-		return 'content/posts/'.$published->utcformat(gb::$posts_cn_pattern).$slug;
+		return 'content/posts/'.$published->utcformat(gb::$posts_cn_pattern).$slug.gb::$content_cache_fnext;
 	}
 	
 	function cachename() {
@@ -1671,11 +1727,11 @@ class GBComments extends GBContent implements IteratorAggregate {
 	function cachename() {
 		if (!$this->cachenamePrefix)
 			throw new UnexpectedValueException('cachenamePrefix is empty or null');
-		return $this->cachenamePrefix.'.comments';
+		return $this->cachenamePrefix.gb::$comments_cache_fnext;
 	}
 	
 	static function find($cachenamePrefix) {
-		$path = gb::$site_dir.'/.git/info/gitblog/'.$cachenamePrefix.'.comments';
+		$path = gb::$site_dir.'/.git/info/gitblog/'.$cachenamePrefix.gb::$comments_cache_fnext;
 		return @unserialize(file_get_contents($path));
 	}
 	

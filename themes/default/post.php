@@ -40,7 +40,9 @@
 						<a href="javascript:reply('<?= $comment->id ?>');" title="Reply to this comment"><span>&#x21A9;</span></a>
 					</div>
 					<? endif; ?>
-					<a href="#comment-<?= $comment->id ?>"><?= $comment->date->age() ?></a> <?= $comment->nameLink() ?> said:
+					<div class="author">
+						<a href="#comment-<?= $comment->id ?>"><?= $comment->date->age() ?></a> <?= $comment->nameLink() ?> said
+					</div>
 					<div class="message">
 						<?= $comment->body ?>
 					</div>

@@ -149,6 +149,7 @@ div.post { margin-top:20px; width:500px; }
         }
         li.comment div.reply-link a:hover { background-image:url(reply-over.png); }
         li.comment div.reply-link span { display:none; }
+    li.comment div.author { font-weight:bold; }
     li.comment div.message > p { margin:0.6em 0 0 0; }
     li.comment div.message > p:first-child { margin:0; }
     li.comment > form { margin:10px 10px 10px 68px; }

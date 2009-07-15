@@ -1,6 +1,6 @@
 <div class="sidebar">
 	<h2>About</h2>
-	<?= GBPage::find('about_intro')->body ?>
+	<?= @GBPage::find('about-intro')->body ?>
 	<hr />
 	<h2>Popular tags</h2>
 	<ol id="tags">

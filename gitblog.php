@@ -17,9 +17,13 @@ class gb {
 	/** URL prefix for the feed */
 	static public $feed_prefix = 'feed';
 
-	/** URL prefix (strftime pattern) */
-	static public $posts_prefix = '%Y/%m/%d/';
-
+	/**
+	 * URL prefix (strftime pattern).
+	 * Need to specify at least year and month. Day, time and so on is optional.
+	 * Changing this parameter does not affect the cache.
+	 */
+	static public $posts_prefix = '%Y/%m/';
+	
 	/** URL prefix for pages */
 	static public $pages_prefix = '';
 
@@ -55,6 +59,25 @@ class gb {
 	static public $site_url;
 	static public $theme_dir;
 	static public $theme_url;
+	
+	/**
+	 * The strftime pattern used to build posts cachename.
+	 * 
+	 * The granularity of this date is the "bottleneck", or "limiter", for
+	 * $posts_prefix. If you specify "%Y", $posts_prefix can define patterns with
+	 * granularity ranging from year to second. But if you set this parameter to
+	 * "%Y/%m/%d-" the minimum granularity of $posts_prefix goes up to day, which
+	 * means that this: $posts_prefix = '%Y/%m/' will not work, as day is 
+	 * missing. However this: $posts_prefix = '%y-%m-%e/' and
+	 * $posts_prefix = '%y/%m/%e/%H/%M/' works fine, as they both have a 
+	 * granularity of one day or more.
+	 * 
+	 * It's recommended not to alter this value. The only viable case where
+	 * altering this is if you are posting many many posts every day, thus adding
+	 * day ($posts_cn_pattern = '%Y/%m/%d-') would give a slight file system
+	 * performance improvement on most file systems.
+	 */
+	static public $posts_cn_pattern = '%Y/%m-';
 	
 	# --------------------------------------------------------------------------
 	# The following are used at runtime.
@@ -520,6 +543,11 @@ function gb_strtoisotime($time) {
 	return $d->format('c');
 }
 
+function gb_mkutctime($st) {
+	return gmmktime($st['tm_hour'], $st['tm_min'], $st['tm_sec'],
+		$st['tm_mon']+1, ($st['tm_mday'] === 0) ? 1 : $st['tm_mday'], 1900+$st['tm_year']);
+}
+
 function gb_format_duration($seconds, $format='%H:%M:%S.') {
 	$i = intval($seconds);
 	return gmstrftime($format, $i).sprintf('%03d', round($seconds*1000.0)-($i*1000));
@@ -652,9 +680,7 @@ class GitBlog {
 	
 	static function pathToPost($path, $strptime=null) {
 		$st = ($strptime !== null) ? $strptime : strptime($path, gb::$posts_prefix);
-		$date = gmmktime($st['tm_hour'], $st['tm_min'], $st['tm_sec'], 
-			$st['tm_mon']+1, $st['tm_mday'], 1900+$st['tm_year']);
-		$cachename = gmstrftime('%Y/%m-%d-', $date).$st['unparsed'];
+		$cachename = gmstrftime(gb::$posts_cn_pattern, gb_mkutctime($st)).$st['unparsed'];
 		return self::pathToCachedContent('posts', $cachename);
 	}
 	
@@ -983,15 +1009,13 @@ class GBDateTime {
 	}
 	
 	function __sleep() {
-		$this->d = gmstrftime('%FT%H:%M:%SZ', $this->time);
-		return array('d', 'offset');
+		#$this->d = gmstrftime('%FT%TZ', $this->time);
+		return array('time', 'offset');
 	}
 	
 	function __wakeup() {
-		$st = strptime($this->d, '%FT%H:%M:%SZ');
-		$this->time = gmmktime($st['tm_hour'], $st['tm_min'], $st['tm_sec'], 
-			$st['tm_mon']+1, $st['tm_mday'], 1900+$st['tm_year']);
-		unset($this->d);
+		#$this->time = gb_mkutctime(strptime($this->d, '%FT%TZ'));
+		#unset($this->d);
 	}
 	
 	function reintrepretTimezone($tzoffset) {
@@ -1006,7 +1030,7 @@ class GBDateTime {
 		if ($t['hour'] !== false)
 			$ds = sprintf('%02d:%02d:%02d', $t['hour'],$t['minute'],$t['second']);
 		else
-			$ds = $this->utcformat('%H:%M:%S');
+			$ds = $this->utcformat('%T');
 		$tzoffset = 0;
 		if (isset($t['zone'])) {
 			$tzoffset = -($t['zone']*60);
@@ -1081,13 +1105,7 @@ class GBContent {
 		
 		# first one is when the content was created
 		$initial = $commits[count($commits)-1];
-		if ($this->published === false) {
-			$this->published = $initial->authorDate;
-		}
-		else {
-			#	merge time
-			$this->published = $this->published->mergeString($initial->authorDate->origformat('%H:%M:%S'));
-		}
+		$this->published = $initial->authorDate;
 		
 		if (!$this->author) {
 			$this->author = (object)array(
@@ -1134,11 +1152,8 @@ class GBExposedContent extends GBContent {
 		$this->meta = array();
 		
 		# extract base date from name
-		if (!$commits) {
-			$prefix = 'content/'.($this instanceof GBPost ? 'posts/' : 'pages/');
-			$date = str_replace(array('.','_','/'), '-', substr($this->name, strpos($this->name, $prefix)+strlen($prefix), 10));
-			$this->published = new GBDateTime($date.'T00:00:00Z');
-		}
+		if (!$commits && $this instanceof GBPost)
+			GBPage::parsePostName($this->name, $this->published, $this->slug);
 		
 		if ($bodystart > 0)
 			self::parseMetaHeaders(substr($data, 0, $bodystart), $this->meta);
@@ -1511,7 +1526,7 @@ class GBPost extends GBExposedContent {
 	
 	static function mkCachename($published, $slug) {
 		# Note: the path prefix is a dependency for GBContentFinalizer::finalize
-		return 'content/posts/'.$published->utcformat('%Y/%m-%d-').$slug;
+		return 'content/posts/'.$published->utcformat(gb::$posts_cn_pattern).$slug;
 	}
 	
 	function cachename() {
@@ -1525,6 +1540,43 @@ class GBPost extends GBExposedContent {
 	
 	function __sleep() {
 		return array_merge(parent::__sleep(), array('excerpt'));
+	}
+	
+	/**
+	 * content/posts/2008-08-29-reading-a-book.html
+	 *  date: GBDateTime with granularity restricted by gb::$posts_cn_pattern
+	 *  slug: "reading-a-book"
+	 *  fnext: "html"
+	 */
+	static function parsePostName($pathspec, &$date, &$slug, &$fnext) {
+		# cut away prefix "content/posts/"
+		$name = substr($pathspec, 14);
+		
+		# split filename from filename extension
+		$lastdot = strrpos($name, '.', strrpos($name, '/'));
+		if ($lastdot !== false) {
+			$fnext = substr($name, $lastdot+1);
+			$name = substr($name, 0, $lastdot);
+		}
+		else {
+			$fnext = null;
+		}
+		
+		# parse date and slug
+		static $subchars = array('.','_','/');
+		$name = str_replace($subchars, '-', $name);
+		$st = strptime($name, '%Y-%m-%d');
+		if ($st === false) {
+			$st = strptime($name, '%Y-%m');
+			if ($st === false) {
+				$st = strptime($name, '%Y');
+				if ($st === false)
+					throw new UnexpectedValueException('unable to parse date from '.var_export($pathspec,1));
+			}
+		}
+		$date = gmstrftime('%FT%T+00:00', gb_mkutctime($st));
+		$slug = ltrim($st['unparsed'], '-');
+		$date = new GBDateTime($date.'T00:00:00Z');
 	}
 }
 

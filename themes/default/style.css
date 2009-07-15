@@ -5,9 +5,10 @@ body {
 	color:#333;
 }
 body,p,li,td { font-size:13px; }
-p { margin:1em 0 1.5em 0; line-height:1.5; }
+p, ul, ol { margin:1em 0 1.5em 0; line-height:1.5; }
 hr { border:none; height:1px; background-color:#ddd; }
 img { border:none; vertical-align:bottom; }
+ul, ol { padding-left:1.618em; }
 
 a { text-decoration:none; border-bottom:1px solid #ddd; }
 a:link, a:active { color:#316d96; border-bottom-color:#d9ebf8; }
@@ -27,8 +28,8 @@ h2 { font-size:16px; }
 
 /* Header */
 #header {
-	background-color:#666;
-	background-image:url('header-bg.png');
+	background-color:#95C798;
+	border-bottom:5px solid #DDE3AF;
 	background-repeat:repeat-x;
 	background-position:0 0;
 	height:30px;
@@ -37,19 +38,18 @@ h2 { font-size:16px; }
 	width:100%;
 }
 	#header a { border:none; }
-	#header h1 { height:30px; padding-top:6px; font-size:14px; float:left; text-shadow:#888 0px 1px 0px; }
-		#header h1 a:link, #header h1 a:visited { color:#222; }
+	#header h1 { height:30px; padding-top:7px; font-size:14px; float:left; text-shadow:#b0ddb2 0px 1px 0px; }
+		#header h1 a:link, #header h1 a:visited { color:#2B271F; }
 		#header h1 a:link:hover, #header h1 a:visited:hover { background:none; color:#000; }
-	#header ul { float:right; list-style:none; margin-top:10px; }
+	#header ul { float:right; list-style:none; margin-top:5px; }
 		#header ul li { float:left; font-size:14px; }
 			#header ul li a {
 				margin-left:4px;
-				display:block; line-height:20px; padding:0 10px; height:20px;
-				color:#111;
-				text-shadow:#888 0px 1px 0px;
-				font-size:11px;
-				font-weight:normal;
-				font-family:"lucida grande",tahoma,sans-serif;
+				display:block; line-height:25px; padding:0 10px; height:25px;
+				color:#2B271F;
+				font-size:12px;
+				font-weight:bold;
+				text-shadow:#b0ddb2 0px 1px 0px;
 			}
 			#header ul li a:hover, #header ul li a.current, #header ul li#download a.current {
 				-moz-border-radius-topleft:      3px;
@@ -62,18 +62,18 @@ h2 { font-size:16px; }
 				border-top-right-radius:         3px;
 			}
 			#header ul li a:hover {
-				color:#fff;
-				background-color: #333;
-				text-shadow:#111 0px 1px 0px;
+				color:#DDE3AF;
+				background-color: #2B271F;
+				text-shadow:#000 0px -1px 0px;
 			}
 			#header ul li a.current, #header ul li#download a.current {
-				color: #222;
-				background-color: #fff;
-				text-shadow:none;
+				color: #2B271F;
+				background-color: #DDE3AF;
+				text-shadow:#f4f8d9 0px 1px 0px;
 			}
 
 /* Main content */
-#main { padding-top:30px; /* the height of #header */ }
+#main { padding-top:35px; /* the height of #header */ }
 
 /* Sidebar */
 div.sidebar { width:359px; margin-left:20px; padding:20px 0 0 20px; float:left; border-left:1px solid #eee; }
@@ -81,7 +81,8 @@ div.sidebar { width:359px; margin-left:20px; padding:20px 0 0 20px; float:left; 
 
 /* Posts */
 div.posts { width:500px; float:left; }
-	div.posts > hr { background-color:#fffa6c; height:3px; margin:4em 0 1em -100%; }
+  /*div.posts h1 { font-family:georgia,serif; font-style:italic; font-weight:normal; } not sure about this one... */
+	div.posts > hr { background-color:#ddd; height:2px; margin:4em 0 1em -9999em; }
 
 /* Post */
 div.post { margin-top:20px; width:500px; }
@@ -96,12 +97,13 @@ div.post { margin-top:20px; width:500px; }
 		div.post p.meta a:link:hover, div.post p.meta a:active:hover { color:#006be4; border-bottom-color:#c7e4f7; }
 		div.post p.meta a:visited:hover { color:#af00cf; border-bottom-color:#e5cbf0; }
 	div.post div.body { margin-bottom:30px; }
-	div.post div.body hr { margin:1em 0 1em -100%; }
+	div.post div.body hr { margin:1em 0 1em -9999em; }
 	div.post div.body blockquote {
 		padding-left:10px;
 		border-left:5px solid #ccc;
 		font-style:italic;
-		color:#555;
+		color:#666;
+		font-family:georgia;
 	}
 
 /* Paged posts footer */
@@ -119,9 +121,9 @@ div.post { margin-top:20px; width:500px; }
   border-top:1px solid #c4dee8;
   border-bottom:1px solid #c4dee8;
 }
-  #comments div.wrapper { margin:1em auto 2em auto; }
+  #comments div.wrapper { padding:1em 0 2em 0; }
   #comments ul { list-style:none; margin:0; padding:0 0 0 30px; }
-  #comments h3 { margin-bottom:1em; }
+  #comments h3 { margin-bottom:1em; color:#0e334a; text-shadow:#fff 0px 1px 0px; }
   #comments > div.wrapper > ul { padding:0; } /* first level is not indented */
   li.comment {
     width:500px;

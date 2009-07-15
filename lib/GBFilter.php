@@ -629,6 +629,11 @@ function gb_filter_pre_comment(GBComment $comment) {
 	return $comment;
 }
 
+function gb_uri_to_html_link($text) {
+	$text = preg_replace('/([a-zA-Z][a-zA-Z0-9\.+-]*:[^>< \t\n\r]*[^>< \t\n\r\.,])/', '<a href="$1">$1</a>', $text);
+	return $text;
+}
+
 # Applied to GBComment after being posted, but before being saved to stage
 GBFilter::add('pre-comment', 'gb_filter_pre_comment');
 
@@ -641,6 +646,7 @@ GBFilter::add('sanitize-comment', 'gb_texturize_html');
 GBFilter::add('sanitize-comment', 'gb_convert_html_chars');
 GBFilter::add('sanitize-comment', 'gb_html_to_xhtml');
 GBFilter::add('sanitize-comment', 'gb_force_balance_tags');
+GBFilter::add('sanitize-comment', 'gb_uri_to_html_link');
 GBFilter::add('sanitize-comment', 'gb_filter_allowed_tags');
 GBFilter::add('sanitize-comment', 'gb_normalize_html_structure');
 GBFilter::add('sanitize-comment', 'gb_htmlents_to_xmlents');

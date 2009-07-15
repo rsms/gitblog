@@ -11,7 +11,7 @@ class GBContentRebuilder extends GBRebuilder {
 		{
 			# defer loading of uncached blobs until call to finalize()
 			$obj = ($arg3 !== null) ? new $cls($name, $id, $arg3) : new $cls($name, $id);
-			GBContentFinalizer::$newfound[$obj->id] = $obj;
+			GBContentFinalizer::$newfound[$id] = $obj;
 			return true;
 		}
 		return false;
@@ -305,8 +305,8 @@ class GBContentFinalizer extends GBContentRebuilder {
 			# see if any object in this page is newfound
 			if ($need_rewrite === false) {
 				foreach ($page as $obj) {
-					if (isset(GBContentRebuilder::$newfound[$obj->id])) {
-						gb::log(LOG_INFO, 'newfound object: '.$obj->cachename());
+					if (isset(self::$newfound[$obj->id])) {
+						gb::log(LOG_NOTICE, 'newfound object: '.$obj->cachename());
 						$need_rewrite = true;
 						# when this is set to true, all following pages will need to be rebuilt (and will).
 						$newfound_detected = true;
@@ -325,13 +325,13 @@ class GBContentFinalizer extends GBContentRebuilder {
 					}
 				}
 			}
-			
 			if ($need_rewrite) {
 				$page = new GBPagedObjects($page, -1, $pageno-1, $numpages, $numtotal);
 				if ($pageno < $numpages-1)
 					$page->nextpage = $pageno+1;
 				gb_atomic_write($path, serialize($page), 0664);
-				gb::log(LOG_NOTICE, 'wrote %s', substr($path, $dirPrefixLen));
+				gb::log(LOG_NOTICE, 'wrote paged posts page %d of %d to %s',
+					$pageno+1, $numpages, substr($path, $dirPrefixLen));
 			}
 		}
 	}

@@ -1250,6 +1250,16 @@ class GBExposedContent extends GBContent {
 		return new GBCommentDB(gb::$site_dir.'/'.$this->commentsStageName());
 	}
 	
+	function commentsLink($prefix='', $suffix='', $template='<a href="%u" class="numcomments" title="%t">%n</a>') {
+		if (!$this->comments)
+		 	return '';
+		return strtr($template, array(
+			'%u' => h($this->url()).'#comments',
+			'%n' => $this->comments,
+			'%t' => $this->numberOfComments()
+		));
+	}
+	
 	function tagLinks($prefix='', $suffix='', $template='<a href="%u">%n</a>', $nglue=', ', $endglue=' and ') {
 		return $this->collLinks('tags', $prefix, $suffix, $template, $nglue, $endglue);
 	}

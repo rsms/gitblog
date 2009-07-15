@@ -96,6 +96,19 @@ div.post { margin-top:20px; width:500px; }
 		div.post p.meta a:visited { color:#bca6c8; border-bottom-color:#f8effc; }
 		div.post p.meta a:link:hover, div.post p.meta a:active:hover { color:#006be4; border-bottom-color:#c7e4f7; }
 		div.post p.meta a:visited:hover { color:#af00cf; border-bottom-color:#e5cbf0; }
+		  div.post a.numcomments {
+		    border:none;
+		    display:block;
+		    float:right;
+		    background-image:url(comment-hint.png);
+		    background-repeat:no-repeat;
+		    background-position:right center;
+		    padding-right:19px;
+		    margin-top:5px;
+		    height:18px;
+		    line-height:18px;
+		  }
+		  div.post a.numcomments:link, div.post a.numcomments:visited { color:#777; }
 	div.post div.body { margin-bottom:30px; }
 	div.post div.body hr { margin:1em 0 1em -9999em; }
 	div.post div.body blockquote {
@@ -125,6 +138,7 @@ div.post { margin-top:20px; width:500px; }
   #comments ul { list-style:none; margin:0; padding:0 0 0 30px; }
   #comments h3 { margin-bottom:1em; color:#0e334a; text-shadow:#fff 0px 1px 0px; }
   #comments > div.wrapper > ul { padding:0; } /* first level is not indented */
+  /* Comment */
   li.comment {
     width:500px;
     margin:0 0 5px 0;

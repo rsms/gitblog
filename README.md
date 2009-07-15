@@ -4,6 +4,8 @@ A git-based blog/cms platform for PHP, meant as a replacement for Wordpress.
 
 Post-action hooks in git are used to manage an intermediate cache which consist only of structured data (no formatting), allowing dynamic presentation. This is one of the biggest differences tech-wise in comparison to Jekyll and similar tools.
 
+Licensed under MIT means free to use for everyone. See LICENSE for more information.
+
 ## Features
 
 - Fully git-based -- no mysql or similar involved

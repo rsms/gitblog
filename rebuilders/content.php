@@ -5,21 +5,28 @@ class GBContentRebuilder extends GBRebuilder {
 	function deferReloadIfNeeded(&$obj, $cls, $name, $id, $arg3=null) {
 		# check for missing or outdated cache
 		if ( $this->forceFullRebuild
-			or ($obj === false) 
-			or (!($obj instanceof $cls)) 
-			or ($obj->id != $id) )
+			|| ($obj === false) 
+			|| (!($obj instanceof $cls)) 
+			|| ($obj->id != $id) )
 		{
 			# defer loading of uncached blobs until call to finalize()
 			$obj = ($arg3 !== null) ? new $cls($name, $id, $arg3) : new $cls($name, $id);
+			GBContentFinalizer::$newfound[$obj->id] = $obj;
 			return true;
 		}
 		return false;
 	}
 	
 	function _onObject($obj, $cls, $name, $id, $arg3=null) {
-		if ($this->deferReloadIfNeeded($obj, $cls, $name, $id, $arg3))
+		if (isset(GBContentFinalizer::$objects[$id])) {
+			GBContentFinalizer::$duplicates[] = $obj;
+			gb::log(LOG_WARNING, 'skipping duplicate post '.$name);
+			return null;
+		}
+		if ($this->deferReloadIfNeeded($obj, $cls, $name, $id, $arg3)) {
 			GBContentFinalizer::$dirtyObjects[$id] = $obj;
-		GBContentFinalizer::$objects[] = $obj;
+		}
+		GBContentFinalizer::$objects[$id] = $obj;
 		return $obj;
 	}
 	
@@ -35,33 +42,13 @@ class GBContentRebuilder extends GBRebuilder {
 
 class GBPostsRebuilder extends GBContentRebuilder {
 	static public $posts = array();
-	
-	/**
-	 * content/posts/2008-08-29-reading-a-book.html
-	 *  date: 2008-08-29 (timestamp)
-	 *  slug: "reading-a-book"
-	 *  fnext: "html"
-	 */
-	function parsePostName($name, &$date, &$slug, &$fnext) {
-		$date = str_replace(array('.','_','/'), '-', substr($name, 14, 10));
-		$date = new GBDateTime($date.'T00:00:00Z');
-		$lastdot = strrpos($name, '.', strrpos($name, '/'));
-		if ($lastdot > 25) {
-			$slug = substr($name, 25, $lastdot-25);
-			$fnext = substr($name, $lastdot+1);
-		}
-		else {
-			$slug = substr($name, 25);
-			$fnext = null;
-		}
-	}
 		
 	/** Handle object */
 	function onObject($name, $id) {
 		if (substr($name, 0, 14) !== 'content/posts/')
 			return false;
 		
-		$this->parsePostName($name, $date, $slug, $fnext);
+		GBPost::parsePostName($name, $date, $slug, $fnext);
 		
 		# date missing means malformed pathname
 		if ($date === false) {
@@ -80,12 +67,13 @@ class GBPostsRebuilder extends GBContentRebuilder {
 		}
 		else {
 			$obj = $this->_onObject(GBPost::find($date, $slug), 'GBPost', $name, $id, $slug);
+			if (!$obj)
+				return false;
 			self::$posts[] = $obj;
 		}
 		
 		if ($obj->published === null)
 			$obj->published = $date;
-		
 		return true;
 	}
 }
@@ -125,10 +113,13 @@ class GBPagesRebuilder extends GBContentRebuilder {
  * content objects is simpler this way.
  */
 class GBContentFinalizer extends GBContentRebuilder {
-	static public $objects;       # [GBContent, ..]
-	static public $dirtyObjects;  # [id   => GBContent, ..]
+	static public $objects;       # [id   => GBExposedContent, ..]
+	static public $dirtyObjects;  # [id   => GBExposedContent, ..]
 	static public $comments;      # [name => GBComments, ..]
 	static public $dirtyComments; # [id   => GBComments, ..]
+	
+	static public $newfound;      # [id   => GBExposedContent, ..]
+	static public $duplicates;    # [id   => GBExposedContent, ..]
 	
 	static public $objectIndexRebuilders = array();
 	static public $commentIndexRebuilders = array();
@@ -139,6 +130,8 @@ class GBContentFinalizer extends GBContentRebuilder {
 		self::$dirtyObjects = array();
 		self::$comments = array();
 		self::$dirtyComments = array();
+		self::$newfound = array();
+		self::$duplicates = array();
 	}
 	
 	/** Batch-reload objects */
@@ -168,20 +161,18 @@ class GBContentFinalizer extends GBContentRebuilder {
 			$hend = strpos($out, "\n", $p);
 			$h = explode(' ', substr($out, $p, $hend-$p));
 			
-			$missing = ($h[1] === 'missing');
 			$size = 0;
 			$data = null;
 			$dstart = $hend + 1;
 			
-			if (!$missing) {
-				$obj = $objects[$h[0]];
-				$size = intval($h[2]);
-				$data = substr($out, $dstart, $size);
-				$obj->reload($data, isset($commitsbyname[$obj->name]) ? $commitsbyname[$obj->name] : array());
-			}
-			else {
-				trigger_error('missing blob '.$obj->id.' '.var_export($obj->name,1).' in repo stage');
-			}
+			if ($h[1] === 'missing')
+				throw new UnexpectedValueException(
+					'missing blob '.$obj->id.' '.var_export($obj->name,1).' in repo stage');
+			
+			$obj = $objects[$h[0]];
+			$size = intval($h[2]);
+			$data = substr($out, $dstart, $size);
+			$obj->reload($data, isset($commitsbyname[$obj->name]) ? $commitsbyname[$obj->name] : array());
 			
 			$p = $dstart + $size + 1;
 		}
@@ -210,11 +201,11 @@ class GBContentFinalizer extends GBContentRebuilder {
 		# sort objects on published, desc. with a granularity of one second
 		usort(GBPostsRebuilder::$posts, 'gb_sortfunc_cobj_date_published_r');
 		
-		# build posts pages
-		$this->_buildPagedPosts();
-		
 		# garbage collect stage cache
-		$this->_gcStageCache();
+		$collected = $this->gcStageCache();
+		
+		# build posts pages
+		$this->buildPagedPosts($collected);
 		
 		# build indexes (sub-rebuilders)
 		usort(self::$objects, 'gb_sortfunc_cobj_date_published_r');
@@ -246,60 +237,16 @@ class GBContentFinalizer extends GBContentRebuilder {
 		}
 	}
 	
-	function _buildPagedPosts() {
-		$published_posts = array();
-		$time_now = time();
-		foreach (GBPostsRebuilder::$posts as $post)
-			if ($post->draft === false && $post->published->time <= $time_now)
-				$published_posts[] = $post->condensedVersion();
-		$numtotal = count($published_posts);
-		$pages = array_chunk($published_posts, gb::$posts_pagesize);
-		$numpages = count($pages);
-		$dir = gb::$site_dir.'/.git/info/gitblog/content-paged-posts';
-		$dirPrefixLen = strlen(gb::$site_dir.'/.git/info/gitblog/');
-		
-		if (!is_dir($dir)) {
-			mkdir($dir, 0775, true);
-			chmod($dir, 0775);
-			chmod(dirname($dir), 0775);
-		}
-		
-		# no content at all? -- create empty page
-		$is_empty = !$pages;
-		if ($is_empty)
-			$pages = array(array());
-		
-		foreach ($pages as $pageno => $page) {
-			$path = $dir.'/'.sprintf('%011d', $pageno);
-			$need_rewrite = $is_empty || $this->forceFullRebuild || (!file_exists($path));
-			
-			# check if any objects on this page are dirty
-			if (!$need_rewrite && GBContentFinalizer::$dirtyObjects) {
-				foreach ($page as $post) {
-					if (isset(GBContentFinalizer::$dirtyObjects[$post->id])) {
-						$need_rewrite = true;
-						break;
-					}
-				}
-			}
-			
-			if ($need_rewrite) {
-				$page = new GBPagedObjects($page, -1, $pageno-1, $numpages, $numtotal);
-				if ($pageno < $numpages-1)
-					$page->nextpage = $pageno+1;
-				gb_atomic_write($path, serialize($page), 0664);
-				gb::log(LOG_NOTICE, 'wrote %s', substr($path, $dirPrefixLen));
-			}
-		}
-	}
-	
-	function _gcStageCache() {
+	# only collects GBExposedContent stuff + comments
+	function gcStageCache() {
 		# Build cachenames
 		$cachenames = array();
 		foreach (self::$objects as $obj)
 			$cachenames[$obj->cachename()] = 1;
 		foreach (self::$comments as $obj)
 			$cachenames[$obj->cachename()] = 1;
+		
+		$collected = array();
 		
 		# remove unused objects from stage cache (todo: this can be very expensive with much content)
 		$prefix_len = strlen(gb::$site_dir.'/.git/info/gitblog/');
@@ -313,6 +260,78 @@ class GBContentFinalizer extends GBContentRebuilder {
 			if (!isset($cachenames[$cachename])) {
 				gb::log(LOG_NOTICE, 'removing unused cache "%s" (cachename: "%s")', $path, $cachename);
 				unlink($path);
+				$collected[] = $cachename;
+			}
+		}
+		
+		return $collected;
+	}
+	
+	function buildPagedPosts($collected) {
+		$published_posts = array();
+		$time_now = time();
+		
+		foreach (GBPostsRebuilder::$posts as $post)
+			if ($post->draft === false && $post->published->time <= $time_now)
+				$published_posts[] = $post->condensedVersion();
+		
+		$numtotal = count($published_posts);
+		$pages = array_chunk($published_posts, gb::$posts_pagesize);
+		$numpages = count($pages);
+		$dir = gb::$site_dir.'/.git/info/gitblog/content-paged-posts';
+		$dirPrefixLen = strlen(gb::$site_dir.'/.git/info/gitblog/');
+		$force_rebuild = $this->forceFullRebuild || $collected;
+		$newfound_detected = false; # see below
+		
+		if (!is_dir($dir)) {
+			mkdir($dir, 0775, true);
+			chmod($dir, 0775);
+			chmod(dirname($dir), 0775);
+		}
+		
+		# no content at all? -- create empty page
+		$is_empty = !$pages;
+		if ($is_empty) {
+			$force_rebuild = true;
+			$pages = array(array());
+		}
+		
+		foreach ($pages as $pageno => $page) {
+			$path = $dir.'/'.sprintf('%011d', $pageno);
+			$need_rewrite = $newfound_detected === true
+				|| $force_rebuild === true 
+				|| file_exists($path) === false;
+			
+			# see if any object in this page is newfound
+			if ($need_rewrite === false) {
+				foreach ($page as $obj) {
+					if (isset(GBContentRebuilder::$newfound[$obj->id])) {
+						gb::log(LOG_INFO, 'newfound object: '.$obj->cachename());
+						$need_rewrite = true;
+						# when this is set to true, all following pages will need to be rebuilt (and will).
+						$newfound_detected = true;
+						break;
+					}
+				}
+			}
+			
+			# check if any objects on this page are dirty
+			if (!$need_rewrite && GBContentFinalizer::$dirtyObjects) {
+				foreach ($page as $post) {
+					if (isset(GBContentFinalizer::$dirtyObjects[$post->id])) {
+						$need_rewrite = true;
+						gb::log(LOG_INFO, 'dirty object: '.$obj->cachename());
+						break;
+					}
+				}
+			}
+			
+			if ($need_rewrite) {
+				$page = new GBPagedObjects($page, -1, $pageno-1, $numpages, $numtotal);
+				if ($pageno < $numpages-1)
+					$page->nextpage = $pageno+1;
+				gb_atomic_write($path, serialize($page), 0664);
+				gb::log(LOG_NOTICE, 'wrote %s', substr($path, $dirPrefixLen));
 			}
 		}
 	}

@@ -126,7 +126,7 @@ class gb {
 		if ($prefix === null) {
 			$bt = debug_backtrace();
 			$bt = $bt[$btoffset];
-			$prefix = '['.gb_relpath(gb::$site_dir, $bt['file']).':'.$bt['line'].'] ';
+			$prefix = '['.(isset($bt['file']) ? gb_relpath(gb::$site_dir, $bt['file']).':'.$bt['line'] : '?').'] ';
 		}
 		$msg = $prefix;
 		if(count($vargs) > 1) {
@@ -242,6 +242,8 @@ class gb {
 	
 	# int $errno , string $errstr [, string $errfile [, int $errline [, array $errcontext ]]]
 	static function catch_error($errno, $errstr, $errfile=null, $errline=-1, $errcontext=null) {
+		if(error_reporting() === 0)
+			return;
 		try { self::vlog(LOG_WARNING, array($errstr), 2); } catch (Exception $e) {}
 		throw new PHPException($errstr, $errno, $errfile, $errline);
 	}

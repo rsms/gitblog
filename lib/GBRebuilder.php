@@ -56,15 +56,21 @@ class GBRebuilder {
 			# Iterate objects
 			$ls = explode("\n", $ls);
 			foreach ($ls as $line) {
-				# <mode> SP <object> SP <stage no> TAB <name>
-				if (!$line)
-					continue;
-				$line = explode(' ', $line, 3);
-				$id = $line[1];
-				$name = gb_normalize_git_name(substr($line[2], strpos($line[2], "\t")+1));
+				try {
+					# <mode> SP <object> SP <stage no> TAB <name>
+					if (!$line)
+						continue;
+					$line = explode(' ', $line, 3);
+					$id = $line[1];
+					$name = gb_normalize_git_name(substr($line[2], strpos($line[2], "\t")+1));
 			
-				foreach ($rebuilders as $rebuilder)
-					$rebuilder->onObject($name, $id);
+					foreach ($rebuilders as $rebuilder)
+						$rebuilder->onObject($name, $id);
+				}
+				catch (RuntimeException $e) {
+					gb::log(LOG_ERR, 'failed to rebuild object %s %s: %s',
+						var_export($name,1), $e->getMessage(), $e->getTraceAsString());
+				}
 			}
 		}
 		

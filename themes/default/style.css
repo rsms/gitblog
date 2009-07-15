@@ -24,7 +24,7 @@ h2 { font-size:16px; }
 
 /* Universal helpers */
 .breaker { clear:both; }
-.wrapper { clear:both; margin:0 auto; width:900px; }
+.wrapper { clear:both; margin:0 auto; width:800px; }
 
 /* Header */
 #header {
@@ -76,8 +76,8 @@ h2 { font-size:16px; }
 #main { padding-top:35px; /* the height of #header */ }
 
 /* Sidebar */
-div.sidebar { width:359px; margin-left:20px; padding:20px 0 0 20px; float:left; border-left:1px solid #eee; }
-	div.sidebar > hr { margin:1em 0 1em -20px; background-color:#eee; }
+#sidebar { width:259px; margin-left:20px; padding:20px 0 0 20px; float:left; border-left:1px solid #eee; }
+	#sidebar > hr { margin:1em 0 1em -20px; background-color:#eee; }
 
 /* Posts */
 div.posts { width:500px; float:left; }

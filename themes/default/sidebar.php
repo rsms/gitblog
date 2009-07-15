@@ -1,4 +1,4 @@
-<div class="sidebar">
+<div id="sidebar">
 	<h2>About</h2>
 	<?= @GBPage::find('about-intro')->body ?>
 	<hr />

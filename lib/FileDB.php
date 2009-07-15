@@ -71,9 +71,12 @@ class FileDB {
 			throw $ex;
 	}
 	
-	function rollback() {
-		if ($this->txFp === false)
-			throw new LogicException('transaction is not active');
+	function rollback($strict=true) {
+		if ($this->txFp === false) {
+			if ($strict)
+				throw new LogicException('transaction is not active');
+			return false;
+		}
 		return $this->txEnd();
 	}
 	

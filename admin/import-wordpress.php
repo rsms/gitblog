@@ -42,6 +42,11 @@ class WordpressImporter {
 	public $objectCount;
 	public $defaultAuthorEmail;
 	
+	public $includeAttachments = true;
+	public $includeComments = true;
+	
+	public $debug = false;
+	
 	function __construct() {
 		$this->importedObjectsCount = 0;
 		#$this->defaultAuthorEmail = GBUserAccount::getAdmin() ? GBUserAccount::getAdmin()->email : '';
@@ -77,7 +82,6 @@ class WordpressImporter {
 	}
 	
 	function dump($obj, $name=null) {
-		return;
 		return $this->writemsg(h($name !== null ? $name : gettype($obj)), '<pre>'.h(var_export($obj,1)).'</pre>');
 	}
 	
@@ -145,7 +149,8 @@ class WordpressImporter {
 					if ($this->writeAttachment($obj))
 						$count_attachments++;
 				}
-				$this->dump($obj);
+				if ($this->debug)
+					$this->dump($obj);
 			}
 		
 			$timer = microtime(1)-$timer;
@@ -217,7 +222,8 @@ class WordpressImporter {
 	
 	function writeExposedContent(GBExposedContent $obj) {
 		$dstpath = gb::$site_dir.'/'.$obj->name;
-		$this->dump($dstpath);
+		if ($this->debug)
+			$this->dump($dstpath);
 		
 		# assure destination dir is prepared
 		$dstpathdir = dirname($dstpath);
@@ -261,7 +267,34 @@ class WordpressImporter {
 		# add to commit cache
 		GitBlog::add($obj->name);
 		
+		# write comments
+		if ($this->includeComments)
+			$this->writeComments($obj);
+		
 		return true;
+	}
+	
+	function writeComments(GBExposedContent $obj) {
+		if (!$obj->comments)
+			return;
+		
+		# sort
+		ksort($obj->comments);
+		
+		# init comments db
+		$cdb = $obj->getCommentsDB();
+		$cdb->autocommitToRepo = false;
+		$cdb->begin(true);
+		try {
+			foreach ($obj->comments as $comment)
+				$cdb->append($comment);
+		}
+		catch (Exception $e) {
+			$cdb->rollback();
+			throw $e;
+		}
+		$cdb->commit();
+		GitBlog::add($cdb->file);
 	}
 	
 	function writeAttachment(WPAttachment $obj) {
@@ -299,6 +332,9 @@ class WordpressImporter {
 			$this->report('discarded unknown item <code>%s<code>', h($this->doc->saveXML($item)));
 			return null;
 		}
+		
+		if (!$this->includeAttachments && $obj instanceof WPAttachment)
+			return null;
 		
 		$is_exposed = !($obj instanceof WPAttachment);
 		$obj->mimeType = 'text/html';
@@ -406,7 +442,8 @@ class WordpressImporter {
 			elseif ($is_exposed && $name === 'wp:comment') {
 				if ($obj->comments === null)
 					$obj->comments = array();
-				$obj->comments[] = $this->parseComment($n);
+				$comment = $this->parseComment($n, $wpid);
+				$obj->comments[$wpid] = $comment;
 			}
 			elseif ($is_exposed && substr($name, 0, 3) === 'wp:' && trim($n->nodeValue)) {
 				$obj->meta[str_replace(array(':','_'),'-',$name)] = $n->nodeValue;
@@ -430,7 +467,7 @@ class WordpressImporter {
 			return $utc;
 	}
 	
-	function parseComment(DOMNode $comment) {
+	function parseComment(DOMNode $comment, &$wpid) {
 		static $map = array(
 			'author' => 'name',
 			'author_email' => 'email',
@@ -441,7 +478,9 @@ class WordpressImporter {
 		$datelocal = 0;
 		$datelocalstr = 0;
 		$dateutc = 0;
-		$c = new WPComment();
+		$c = new GBComment();
+		$wpid = 0;
+		
 		foreach ($comment->childNodes as $n) {
 			if ($n->nodeType !== XML_ELEMENT_NODE)
 				continue;
@@ -449,7 +488,6 @@ class WordpressImporter {
 			$k = substr($name, 11);
 			if ($k === 'date_gmt') {
 				$dateutc = new GBDateTime($n->nodeValue);
-				$c->wpdateutc = new GBDateTime($n->nodeValue.' UTC');
 			}
 			elseif ($k === 'date') {
 				$datelocal = new GBDateTime($n->nodeValue);
@@ -459,7 +497,7 @@ class WordpressImporter {
 				$c->approved = (bool)$n->nodeValue;
 			}
 			elseif ($k === 'id') {
-				$c->wpid = (int)$n->nodeValue;
+				$wpid = (int)$n->nodeValue;
 			}
 			elseif ($k === 'type') {
 				$c->type = ($n->nodeValue === 'pingback') ? 
@@ -477,7 +515,7 @@ class WordpressImporter {
 		# date
 		$c->date = $this->_mkdatetime($datelocal, $dateutc, $datelocalstr, 0);
 		
-		# fix message
+		# fix pingback message
 		#if ($c->type === GBComment::TYPE_PINGBACK)
 		#	$c->body = html_entity_decode($c->body, ENT_COMPAT, 'UTF-8');
 		
@@ -536,14 +574,19 @@ class WordpressImporter {
 set_time_limit(0);
 
 gb::$title[] = 'Import Wordpress';
-include '_header.php';
 
 if (isset($_FILES['wpxml'])) {
 	if ($_FILES['wpxml']['error'])
-		exit(gb::log(LOG_ERR, 'file upload failed with unknown error</div></body></html>'));
-	$importer = new WordpressImporter();
-	?>
-	<style type="text/css" media="screen">
+		$errors[] = 'file upload failed with unknown error (maybe you forgot to select the file?).';
+	
+	if (!$errors) {
+		$importer = new WordpressImporter();
+		$importer->includeAttachments = @gb_strbool($_POST['include-attachments']);
+		$importer->includeComments = @gb_strbool($_POST['include-comments']);
+	}
+	
+	include_once '_header.php';
+	?><style type="text/css">
 		div.msg {
 			border-top:1px solid #ddd;
 		}
@@ -586,50 +629,119 @@ if (isset($_FILES['wpxml'])) {
 			text-align:left;
 			font-size:50%;
 		}
-	</style>
-	<h2>Importing <?= h(basename($_FILES['wpxml']['name'])) ?></h2>
-	<?
+	</style><?
 	
-	try {
-		$importer->import(DOMDocument::load($_FILES['wpxml']['tmp_name']));
-		?>
-		<p class="done">
-			Yay! I've imported <?= counted($importer->importedObjectsCount, 'object','objects','zero','one') ?>.
-		</p>
-		<p class="donelink">
-			<a href="<?= gb::$site_url ?>">Have a look at your blog &rarr;</a>
-		</p>
-		<?
+	if (!$errors) {
+		echo '<h2>Importing '. h(basename($_FILES['wpxml']['name'])) .'</h2>';
+		try {
+			$importer->import(DOMDocument::load($_FILES['wpxml']['tmp_name']));
+			?>
+			<p class="done">
+				Yay! I've imported <?= counted($importer->importedObjectsCount, 'object','objects','zero','one') ?>.
+			</p>
+			<p class="donelink">
+				<a href="<?= gb::$site_url ?>">Have a look at your blog &rarr;</a>
+			</p>
+			<?
+		}
+		catch (Exception $e) {
+			?>
+			<p class="failure">
+				Import failed: <em><?= h($e->getMessage()) ?></em>
+			</p>
+			<p>
+				<pre><?= h(strval($e)) ?></pre>
+			</p>
+			<?
+		}
+		echo '<script type="text/javascript" charset="utf-8">setTimeout(\'window.scrollBy(0,999999);\',50)</script>';
 	}
-	catch (Exception $e) {
-		?>
-		<p class="failure">
-			Import failed: <em><?= h($e->getMessage()) ?></em>
-		</p>
-		<p>
-			<pre><?= h(strval($e)) ?></pre>
-		</p>
-		<?
-	}
-	
-	?>
-	<script type="text/javascript" charset="utf-8">setTimeout('window.scrollBy(0,999999);',50)</script>
-	<?
 }
-else {
+if (!isset($_FILES['wpxml']) || $errors) {
+	include_once '_header.php';
 ?>
+<style type="text/css">
+	ol.steps { padding-left:3em; }
+	ol.steps li {   font-size:1.6em; font-weight:bold;   color:#ff7368; width:500px; border-top:1px solid #eee; }
+	ol.steps li p { font-size:13px;  font-weight:normal; color:#333; }
+	input.submit {
+		background:#0cc771;  width:100px; height:25px; font-size:16px; font-weight:bold;
+		color:#00331a;
+		text-shadow:#9ce0b3 0px 1px 0px;
+		border:none;
+		-moz-border-radius:     12px;
+		-khtml-border-radius:   12px;
+		-webkit-border-radius:  12px;
+		border-radius:          12px;
+		margin:0 1em;
+	}
+	input.submit:hover { background:#1ad47e; }
+	input.submit:active { background:#07ac60; }
+	label { display:block; margin:.5em 0; }
+	label small { display:block; margin:.5em 0 1em 22px; color:#999; font-size:10px; 
+		font-family:"lucida grande", tahoma,sans-serif; }
+	input[type=checkbox] { margin-right:5px; }
+	form { margin-bottom:5em; }
+	#disclaimer { float:right; width:300px; margin-right:2em; color:#888; }
+</style>
 <h2>Import a Wordpress blog</h2>
-<form enctype="multipart/form-data" method="post" action="import-wordpress.php">
+<div id="disclaimer">
+	<h3>Compatibility and in-case-of-emergency</h3>
 	<p>
-		In your Wordpress (version &gt;=2.6) blog admin, go to tools &rarr; export and click the big button. Choose the file that was downloaded and click the <q>Import</q> button below.
+		Currently this has only been tested with Wordpress 2.6 and 2.7 — importing older versions might work (worst case scenario: you'll get an error message). But older versions should work, as the WordPress eXtended RSS or WXR file was introduced in 2006 and have remained more or less the same since then.
 	</p>
 	<p>
-		<input type="file" name="wpxml" />
+		Due to the nature of Gitblog, the import is done in one transaction per "RSS channel". This means that if an error occurs, you abort the process or something else causes the import process to end prematurely, nothing will be imported into the live stage but will be left in your working stage. Use the regular <tt>git status</tt> to get a list of what was added or modified.
 	</p>
+</div>
+<div id="the-important-part">
 	<p>
-		<input type="submit" value="Import" />
+		This tool lets you import one or more Wordpress blogs.
 	</p>
-</form>
+	<form enctype="multipart/form-data" method="post" action="import-wordpress.php">
+		<ol class="steps">
+			<li><p>
+				In your Wordpress blog admin, go to "Tools" &rarr; 
+				<a href="http://codex.wordpress.org/Tools_Export_SubPanel">"Export"</a>
+				and click the big button "Download Export File".
+			</p></li>
+			<li><p>
+				Find the downloaded file (named something like "wordpress.2009-07-15.xml"):<br/>
+				<input type="file" name="wpxml" class="wpxml" />
+			</p></li>
+			<li>
+				<p>
+					<b>Optional...options:</b>
+				</p>
+				<p>
+					<label>
+						<input type="checkbox" name="include-attachments" value="true" checked="checked" />
+						Download attachments
+						<small>
+							If you uncheck this, no attachment files will be downloaded but links to attachments (i.e. embedded images) in posts and pages will remain. Unchecking this might be a good idea if your Wordpress blog does no longer exist as there is then no point in trying to download non-existing files :P
+						</small>
+					</label>
+					<label>
+						<input type="checkbox" name="include-comments" value="true" checked="checked" />
+						Include comments
+						<small>
+							Uncheck this if you do not wish to have comments imported. It's a good idea if you're a prick and people said bad things about you. This is your chance to a clean slate! Seriously, you can easily remove all or some comments afterwards so we recommend you to keep this option checked.
+						</small>
+					</label>
+				</p>
+			</li>
+			<li>
+				<p>
+					<b>Click this pretty button to initiate the import:</b>
+					<input type="submit" value="Import" class="submit" />
+				</p>
+				<p>
+					<em>You will get live feedback during the import process. Watch this space.</em>
+				</p>
+			</li>
+		</ol>
+	</form>
+</div>
 <?
 } # end if posted file
 include '_footer.php' ?>

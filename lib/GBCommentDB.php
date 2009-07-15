@@ -41,8 +41,8 @@ class GBCommentDB extends JSONDB {
 		}
 	}
 	
-	function rollback() {
-		parent::rollback();
+	function rollback($strict=true) {
+		parent::rollback($strict);
 		$this->lastComment = false;
 	}
 	

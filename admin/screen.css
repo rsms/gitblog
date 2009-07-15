@@ -5,8 +5,9 @@ body {
 	color:#333;
 }
 body, p, li, td, div { font-size:13px; }
-p { margin:15px 0; }
-hr { border:none; height:1px; background-color:#ddd; }
+p, ol, ul { margin:15px 0; }
+ol, ul { padding-left:2em; }
+hr { border:none; height:1px; background-color:#ddd; margin:1em 0; }
 div.breaker { clear:both; }
 
 #head { background-color:#ff9; padding:10px 20px; }

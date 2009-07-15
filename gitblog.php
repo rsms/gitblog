@@ -1588,9 +1588,11 @@ class GBComments extends GBContent implements IteratorAggregate {
 	public $comments = array();
 	public $cachenamePrefix;
 	
-	function __construct($name=null, $id=null, $cachenamePrefix=null) {
+	function __construct($name=null, $id=null, $cachenamePrefix=null, $comments=null) {
 		parent::__construct($name, $id);
 		$this->cachenamePrefix = $cachenamePrefix;
+		if ($comments !== null)
+			$this->comments = $comments;
 	}
 	
 	function reload($data, $commits) {

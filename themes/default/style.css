@@ -136,8 +136,8 @@ div.post { margin-top:20px; width:500px; }
 		border-radius:          5px;
   }
     li.comment img.avatar { float:left; width:48px; height:48px; margin:10px 0 10px 10px; }
-    li.comment div.message-wrapper { float:left; padding-left:10px; width:432px; padding:10px 0 10px 10px; }
-      li.comment div.reply-link { float:right; margin-right:10px; }
+    li.comment div.message-wrapper { float:left; padding-left:10px; width:422px; padding:10px; }
+      li.comment div.reply-link { float:right; }
         li.comment div.reply-link a {
           background-image:url(reply.png);
           background-repeat:no-repeat;

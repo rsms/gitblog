@@ -303,8 +303,8 @@ else {
 if (!gb::$is_internal_call) {
 	
 	# gb::$theme_dir
-	if (isset(gb::$theme_dir)) {
-		gb::$theme_dir = gb::$theme_dir;
+	if (isset($gb_theme_dir)) {
+		gb::$theme_dir = $gb_theme_dir;
 	}
 	else {
 		$bt = debug_backtrace();
@@ -360,6 +360,7 @@ if (gb::$site_title === null) {
 # Setup autoload
 
 ini_set('include_path', ini_get('include_path') . ':' . gb::$dir . '/lib');
+#.(gb::$theme_dir ? ':'.gb::$theme_dir : ''));
 
 /** @ignore */
 function __autoload($c) {

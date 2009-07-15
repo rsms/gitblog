@@ -2,6 +2,7 @@
 require '../gitblog.php';
 ini_set('html_errors', '0');
 
+set_error_handler(array('gb', 'catch_error'), E_ALL & ~E_NOTICE);
 GitBlog::verifyConfig();
 
 if (!isset($_SERVER['HTTP_X_GB_SHARED_SECRET']) || $_SERVER['HTTP_X_GB_SHARED_SECRET'] !== gb::$secret) {

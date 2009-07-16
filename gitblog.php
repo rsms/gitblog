@@ -31,7 +31,7 @@ class gb {
 	static public $posts_pagesize = 10;
 	
 	/** URL to gitblog index _relative_ to gb::$site_url */
-	static public $index_url = 'index.php/';
+	static public $index_prefix = 'index.php/';
 	
 	/**
 	 * Log messages of priority >=$log_filter will be sent to syslog.
@@ -54,12 +54,28 @@ class gb {
 	# Constants
 	
 	static public $version = '0.1.0';
+	
+	/** Absolute path to the gitblog directory */
 	static public $dir;
+	
+	
+	/** Absolute path to the site root */
 	static public $site_dir;
+	
+	/** Absolute URL to the site root, not including gb::$index_prefix */
 	static public $site_url;
+	
+	/** Absolute URL path (i.e. starts with a slash) to the site root */
 	static public $site_path;
+	
+	
+	/** Absolute path to current theme. Available when running a theme. */
 	static public $theme_dir;
+	
+	/** Absolute URL to current theme. Available when running a theme. */
 	static public $theme_url;
+	
+	
 	static public $content_cache_fnext = '.content';
 	static public $comments_cache_fnext = '.comments';
 	static public $index_cache_fnext = '.index';
@@ -165,7 +181,7 @@ class gb {
 	
 	static function url_to($part) {
 		$v = $part.'_prefix';
-		return gb::$site_url.self::$index_url.self::$$v;
+		return gb::$site_url.self::$index_prefix.self::$$v;
 	}
 	
 	static function url() {
@@ -360,7 +376,6 @@ if (gb::$site_title === null) {
 # Setup autoload
 
 ini_set('include_path', ini_get('include_path') . ':' . gb::$dir . '/lib');
-#.(gb::$theme_dir ? ':'.gb::$theme_dir : ''));
 
 /** @ignore */
 function __autoload($c) {
@@ -715,22 +730,22 @@ class GitBlog {
 	}
 	
 	static function urlToTags($tags) {
-		return gb::$site_url . gb::$index_url . gb::$tags_prefix 
+		return gb::$site_url . gb::$index_prefix . gb::$tags_prefix 
 			. implode(',', array_map('urlencode', $tags));
 	}
 	
 	static function urlToTag($tag) {
-		return gb::$site_url . gb::$index_url . gb::$tags_prefix 
+		return gb::$site_url . gb::$index_prefix . gb::$tags_prefix 
 			. urlencode($tag);
 	}
 	
 	static function urlToCategories($categories) {
-		return gb::$site_url . gb::$index_url . gb::$categories_prefix 
+		return gb::$site_url . gb::$index_prefix . gb::$categories_prefix 
 			. implode(',', array_map('urlencode', $categories));
 	}
 	
 	static function urlToCategory($category) {
-		return gb::$site_url . gb::$index_url . gb::$categories_prefix 
+		return gb::$site_url . gb::$index_prefix . gb::$categories_prefix 
 			. urlencode($category);
 	}
 	
@@ -1268,7 +1283,7 @@ class GBExposedContent extends GBContent {
 	}
 	
 	function url() {
-		return gb::$site_url . gb::$index_url . $this->urlpath();
+		return gb::$site_url . gb::$index_prefix . $this->urlpath();
 	}
 	
 	function commentsStageName() {
@@ -1302,7 +1317,7 @@ class GBExposedContent extends GBContent {
 			return '';
 		$links = array();
 		$vn = $what.'_prefix';
-		$u = gb::$site_url . gb::$index_url . gb::$$vn;
+		$u = gb::$site_url . gb::$index_prefix . gb::$$vn;
 		foreach ($this->$what as $tag)
 			$links[] = strtr($template, array('%u' => $u.urlencode($tag), '%n' => h($tag)));
 		return $nglue !== null ? $prefix.sentenceize($links, null, $nglue, $endglue).$suffix : $links;
@@ -1538,7 +1553,7 @@ class GBPage extends GBExposedContent {
 			return false;
 		$url = gb::url();
 		return (strcasecmp(rtrim(substr($url->path, 
-			strlen(gb::$site_path.gb::$index_url.gb::$pages_prefix)),'/'), $this->slug) === 0);
+			strlen(gb::$site_path.gb::$index_prefix.gb::$pages_prefix)),'/'), $this->slug) === 0);
 	}
 	
 	static function mkCachename($slug) {
@@ -1551,7 +1566,7 @@ class GBPage extends GBExposedContent {
 	}
 	
 	static function urlTo($slug) {
-		return gb::$site_url . gb::$index_url . gb::$pages_prefix . $slug;
+		return gb::$site_url . gb::$index_prefix . gb::$pages_prefix . $slug;
 	}
 	
 	function __sleep() {
@@ -2181,7 +2196,7 @@ function gb_comment_fields($post=null, $id_prefix='comment-') {
 }
 
 function gb_tag_link($tag, $template='<a href="%u">%n</a>') {
-	$u = gb::$site_url . gb::$index_url . gb::$tags_prefix;
+	$u = gb::$site_url . gb::$index_prefix . gb::$tags_prefix;
 	return strtr($template, array('%u' => $u.urlencode($tag), '%n' => h($tag)));
 }
 

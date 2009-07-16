@@ -24,7 +24,7 @@
 		</p>
 	<? endif; ?>
 	</div>
-	<? include 'sidebar.php' ?>
+	<? include gb::$theme_dir.'/sidebar.php' ?>
 	<div class="breaker"></div>
 </div>
 <div id="paged-footer">

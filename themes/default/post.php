@@ -13,7 +13,7 @@
 		</div>
 		<div class="breaker"></div>
 	</div>
-	<? include 'sidebar.php' ?>
+	<? include gb::$theme_dir.'/sidebar.php' ?>
 	<div class="breaker"></div>
 </div>
 <? flush() ?>

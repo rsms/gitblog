@@ -1,11 +1,6 @@
 <?
 $gb_handle_request = true;
-require 'gitblog/gitblog.php';
-
-if (gb::$is_feed) {
-	require 'feed.php';
-	exit(0);
-}
+require './gitblog/gitblog.php';
 
 header('Content-Type: application/xhtml+xml; charset=utf-8');
 if (gb::$is_404)
@@ -46,10 +41,10 @@ if (gb::$is_404)
 			<?
 		}
 		elseif (gb::$is_post || gb::$is_page) {
-			require 'post.php';
+			require gb::$theme_dir.'/post.php';
 		}
 		elseif (gb::$is_posts || gb::$is_tags || gb::$is_categories) {
-			require 'posts.php';
+			require gb::$theme_dir.'/posts.php';
 		}
 		
 		?>

@@ -1161,7 +1161,7 @@ class GBExposedContent extends GBContent {
 		
 		# extract base date from name
 		if (!$commits && $this instanceof GBPost)
-			GBPage::parsePostName($this->name, $this->published, $this->slug);
+			GBPost::parsePostName($this->name, $this->published, $this->slug);
 		
 		if ($bodystart > 0)
 			self::parseMetaHeaders(substr($data, 0, $bodystart), $this->meta);

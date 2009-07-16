@@ -3,7 +3,8 @@ cd $(dirname "$0")
 SECRET=$(grep 'gb::$secret' ../../gb-config.php | cut -d' ' -f 3 | sed "s/[;']//g")
 RSP=$(git --git-dir=.. --work-tree=../.. log -p --full-index -1 \
 | curl \
-	-H 'x-gb-shared-secret: '$SECRET \
+	-H 'X-gb-shared-secret: '$SECRET \
+	-H 'Expect:' \
 	--connect-timeout 5 \
 	--max-time 30 \
 	--silent --show-error \

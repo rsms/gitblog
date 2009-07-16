@@ -48,13 +48,6 @@ if (gb::$is_404)
 		}
 		
 		?>
-		<?/* Example of a tag cloud:
-		<ol id="tags">
-		<? foreach (GitBlog::tags() as $tag => $popularity): ?>
-			<li class="p<?= intval(round($popularity * 10.0)) ?>"><?= gb_tag_link($tag) ?></li>
-		<? endforeach; ?>
-		</ol>
-		*/?>
 		</div>
 		<address>
 			<div class="wrapper">

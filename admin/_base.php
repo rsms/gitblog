@@ -3,7 +3,7 @@ require '../gitblog.php';
 
 define('GITBLOG_ADMIN_URL', gb::$site_url.'/gitblog/admin/');
 
-$integrity = GitBlog::verifyIntegrity();
+$integrity = gb::verifyIntegrity();
 $errors = array();
 
 if ($integrity === 2 && strpos($_SERVER['SCRIPT_NAME'], '/admin/setup.php') === false) {

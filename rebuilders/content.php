@@ -150,7 +150,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		$commitsbyname = $commits[2];
 		
 		# Load blobs
-		$out = GitBlog::exec("cat-file --batch", implode("\n", $ids));
+		$out = gb::exec("cat-file --batch", implode("\n", $ids));
 		$p = 0;
 		$numobjects = count($objects);
 		
@@ -330,7 +330,8 @@ class GBContentFinalizer extends GBContentRebuilder {
 				$page = new GBPagedObjects($page, -1, $pageno-1, $numpages, $numtotal);
 				if ($pageno < $numpages-1)
 					$page->nextpage = $pageno+1;
-				gb_atomic_write($path, serialize($page), 0664);
+				file_put_contents($path, serialize($page), LOCK_EX);
+				chmod($path, 0664);
 				gb::log(LOG_NOTICE, 'wrote paged posts page %d of %d to %s',
 					$pageno+1, $numpages, substr($path, $dirPrefixLen));
 			}
@@ -385,9 +386,11 @@ class GBContentIndexRebuilder {
 		$data = $this->serialize();
 		if ($this->checksum !== null && $this->checksum === sha1($data))
 			return false; # no changes
-		$r = gb_atomic_write($this->path(), $data, 0664);
+		
+		$bw = file_put_contents($this->path(), $data, LOCK_EX);
+		chmod($this->path(), 0664);
 		gb::log(LOG_NOTICE, 'wrote %s', $this->cachename());
-		return $r;
+		return $bw;
 	}
 	
 	function serialize() {

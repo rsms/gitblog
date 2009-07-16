@@ -10,7 +10,7 @@ RSP=$(git --git-dir=.. --work-tree=../.. log -p --full-index -1 \
 	--silent --show-error \
 	--data-binary @- \
 	-k \
-	$(cat ../info/gitblog-site-state|cut -d' ' -f1)'gitblog/hooks/post-patch.php')
+	$(cat ../info/gitblog-site-url)'gitblog/hooks/post-patch.php')
 echo "$RSP"
 if (echo "$RSP" | grep -q -E '^error'); then
 	exit 1

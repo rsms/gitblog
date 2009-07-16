@@ -503,22 +503,13 @@ GBFilter::add('sanitize-title', 'gb_sanitize_title');
 GBFilter::add('sanitize-url', 'gb_sanitize_url');
 
 # Applied to HTML content prior to writing cache
-GBFilter::add('body.html', 'gb_texturize_html');
-GBFilter::add('body.html', 'gb_convert_html_chars');
-GBFilter::add('body.html', 'gb_html_to_xhtml');
-GBFilter::add('body.html', 'gb_normalize_html_structure');
-GBFilter::add('body.html', 'gb_htmlents_to_xmlents');
-GBFilter::add('body.html', 'gb_xmlents_to_utf8');
-GBFilter::add('body.html', 'gb_force_balance_tags');
-
-# Applied to GBExposedContent->excerpt prior to writing cache
-GBFilter::add('excerpt.html', 'gb_texturize_html');
-GBFilter::add('excerpt.html', 'gb_convert_html_chars');
-GBFilter::add('excerpt.html', 'gb_html_to_xhtml');
-GBFilter::add('excerpt.html', 'gb_normalize_html_structure');
-GBFilter::add('excerpt.html', 'gb_htmlents_to_xmlents');
-GBFilter::add('excerpt.html', 'gb_xmlents_to_utf8');
-GBFilter::add('excerpt.html', 'gb_force_balance_tags');
+GBFilter::add('body.html', 'gb_texturize_html', 10);
+GBFilter::add('body.html', 'gb_convert_html_chars', 20);
+GBFilter::add('body.html', 'gb_html_to_xhtml', 30);
+GBFilter::add('body.html', 'gb_normalize_html_structure', 40);
+GBFilter::add('body.html', 'gb_htmlents_to_xmlents', 50);
+GBFilter::add('body.html', 'gb_xmlents_to_utf8', 60);
+GBFilter::add('body.html', 'gb_force_balance_tags', 70);
 
 
 # -----------------------------------------------------------------------------
@@ -546,8 +537,8 @@ function gb_filter_post_reload_content_html(GBExposedContent $c) {
 		}
 		$c->body = GBFilter::apply('body.html', $c->body);
 	}
-	if ($c instanceof GBPost && $c->excerpt)
-		$c->excerpt = GBFilter::apply('excerpt.html', $c->excerpt);
+	if (isset($c->excerpt))
+		$c->excerpt = GBFilter::apply('body.html', $c->excerpt);
 	return $c;
 }
 
@@ -643,14 +634,14 @@ GBFilter::add('post-reload-comments', 'gb_filter_post_reload_comments');
 GBFilter::add('post-reload-comment', 'gb_filter_post_reload_comment');
 
 # Applied to GBComment::$body prior to writing the comments' cache.
-GBFilter::add('sanitize-comment', 'gb_texturize_html');
-GBFilter::add('sanitize-comment', 'gb_convert_html_chars');
-GBFilter::add('sanitize-comment', 'gb_html_to_xhtml');
-GBFilter::add('sanitize-comment', 'gb_force_balance_tags');
-GBFilter::add('sanitize-comment', 'gb_uri_to_html_link');
-GBFilter::add('sanitize-comment', 'gb_filter_allowed_tags');
-GBFilter::add('sanitize-comment', 'gb_normalize_html_structure');
-GBFilter::add('sanitize-comment', 'gb_htmlents_to_xmlents');
-GBFilter::add('sanitize-comment', 'gb_xmlents_to_utf8');
+GBFilter::add('sanitize-comment', 'gb_texturize_html', 10);
+GBFilter::add('sanitize-comment', 'gb_convert_html_chars', 20);
+GBFilter::add('sanitize-comment', 'gb_html_to_xhtml', 30);
+GBFilter::add('sanitize-comment', 'gb_force_balance_tags', 40);
+GBFilter::add('sanitize-comment', 'gb_uri_to_html_link', 50);
+GBFilter::add('sanitize-comment', 'gb_filter_allowed_tags', 60);
+GBFilter::add('sanitize-comment', 'gb_normalize_html_structure', 70);
+GBFilter::add('sanitize-comment', 'gb_htmlents_to_xmlents', 80);
+GBFilter::add('sanitize-comment', 'gb_xmlents_to_utf8', 90);
 
 ?>

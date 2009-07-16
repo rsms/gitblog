@@ -40,6 +40,9 @@ class GBRebuilder {
 		gb::log(LOG_NOTICE, 'rebuilding cache'.($forceFullRebuild ? ' (forcing full rebuild)':''));
 		$time_started = microtime(1);
 		
+		# Load rebuild plugins
+		gb::load_plugins('rebuild');
+		
 		# Load rebuilders if needed
 		if (empty(self::$rebuilders))
 			self::loadRebuilders();
@@ -49,8 +52,11 @@ class GBRebuilder {
 		foreach (self::$rebuilders as $cls)
 			$rebuilders[] = new $cls($forceFullRebuild);
 		
+		# Load rebuild plugins (2nd offer)
+		gb::load_plugins('rebuild');
+		
 		# Query ls-tree
-		$ls = rtrim(GitBlog::exec('ls-files --stage'));
+		$ls = rtrim(gb::exec('ls-files --stage'));
 		
 		if ($ls) {
 			# Iterate objects

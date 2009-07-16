@@ -123,7 +123,7 @@ class WordpressImporter {
 		$count_attachments = 0;
 		$timer = microtime(1);
 		
-		GitBlog::reset(); # rollback any previously prepared commit
+		gb::reset(); # rollback any previously prepared commit
 		
 		try {
 			foreach ($channel->getElementsByTagName('item') as $item) {
@@ -173,7 +173,7 @@ class WordpressImporter {
 			if ($commit) {
 				$this->report('Creating commit...');
 				try {
-					GitBlog::commit($message.' from Wordpress blog '.$channel_name,
+					gb::commit($message.' from Wordpress blog '.$channel_name,
 						GBUserAccount::getAdmin()->gitAuthor());
 					$this->report('Committed to git repository');
 				}
@@ -186,7 +186,7 @@ class WordpressImporter {
 			}
 		}
 		catch (Exception $e) {
-			GitBlog::reset(); # rollback prepared commit
+			gb::reset(); # rollback prepared commit
 			throw $e;
 		}
 	}
@@ -265,7 +265,7 @@ class WordpressImporter {
 		gb_atomic_write($dstpath, $data, 0664);
 		
 		# add to commit cache
-		GitBlog::add($obj->name);
+		gb::add($obj->name);
 		
 		# write comments
 		if ($this->includeComments)
@@ -294,7 +294,7 @@ class WordpressImporter {
 			throw $e;
 		}
 		$cdb->commit();
-		GitBlog::add($cdb->file);
+		gb::add($cdb->file);
 	}
 	
 	function writeAttachment(WPAttachment $obj) {

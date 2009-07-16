@@ -60,7 +60,7 @@ class GitCommit {
 			$cmd .= implode(' ', array_map('escapeshellarg', $kwargs['names']));
 		
 		#var_dump($cmd);
-		$out = GitBlog::exec($cmd);
+		$out = gb::exec($cmd);
 		#var_dump($out);
 		
 		$a = 0;

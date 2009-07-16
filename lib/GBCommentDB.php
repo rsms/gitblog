@@ -28,14 +28,14 @@ class GBCommentDB extends JSONDB {
 		parent::commit();
 		# commit to repo
 		if ($this->autocommitToRepo) {
-			GitBlog::add($this->file);
+			gb::add($this->file);
 			try {
 				$author = $this->lastComment ? $this->lastComment->gitAuthor() : GBUserAccount::getAdmin()->gitAuthor();
-				GitBlog::commit('comment', $author);
+				gb::commit('comment', $author);
 				$this->lastComment = false;
 			}
 			catch (GitError $e) {
-				GitBlog::reset($this->file);
+				gb::reset($this->file);
 				throw $e;
 			}
 		}

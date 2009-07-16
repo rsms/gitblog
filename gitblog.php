@@ -116,9 +116,13 @@ class gb {
 	/** True if some part of gitblog (inside the gitblog directory) is the initial invoker */
 	static public $is_internal_call = false;
 	
+	/** Contains the site.json structure or null if not loaded */
+	static public $site_state = null;
+	
 	# --------------------------------------------------------------------------
 	# Logging
 	static public $log_open = false;
+	static public $log_cb = null;
 	
 	/**
 	 * Send a message to syslog.
@@ -159,6 +163,10 @@ class gb {
 		if (!self::$log_open && !self::openlog() && $priority < LOG_WARNING) {
 			trigger_error($msg, E_USER_ERROR);
 			return $msg;
+		}
+		if (self::$log_cb) {
+			$fnc = self::$log_cb;
+			$fnc($priority, $msg);
 		}
 		return syslog($priority, $msg) ? $msg : false;
 	}
@@ -266,6 +274,368 @@ class gb {
 			return;
 		try { self::vlog(LOG_WARNING, array($errstr), 2); } catch (Exception $e) {}
 		throw new PHPException($errstr, $errno, $errfile, $errline);
+	}
+	
+	# --------------------------------------------------------------------------
+	# Plugins
+	
+	static public $plugins_loaded = array();
+	
+	static function load_plugins($context) {
+		if (self::$site_state === null)
+			gb::verifyIntegrity();
+		
+		# bail out if no plugins
+		if (!isset(self::$site_state['plugins']))
+			return false;
+		$plugins = self::$site_state['plugins'];
+		if (!isset($plugins[$context]))
+			return false;
+		$plugins = $plugins[$context];
+		
+		# loaded list
+		if (isset(self::$plugins_loaded[$context]))
+			$loaded =& self::$plugins_loaded[$context];
+		else {
+			$loaded = array();
+			self::$plugins_loaded[$context] =& $loaded;
+		}
+		
+		# load plugins
+		foreach ($plugins as $path) {
+			# expand gitblog plugins
+			if ($path{0} !== '/')
+				$path = gb::$dir . '/plugins/'.$context.'/'.$path;
+			
+			# skip already loaded plugins
+			$loaded_but_not_inited = false;
+			if (isset($loaded[$path]) && ($loaded_but_not_inited = $loaded[$path]))
+				continue;
+			
+			# load
+			if (!$loaded_but_not_inited)
+				require $path;
+			
+			# call plugin_init
+			$name = str_replace(array('-', '.'), '_', substr(basename($path), 0, -4)); # assume .php
+			$init_func_name = $name.'_init';
+			$loaded[$path] = $init_func_name($context);
+		}
+	}
+	
+	# --------------------------------------------------------------------------
+	# GitBlog
+	
+	static public $rebuilders = array();
+	static public $gitQueryCount = 0;
+	
+	/** Execute a git command */
+	static function exec($cmd, $input=null) {
+		# build cmd
+		$cmd = 'git --git-dir='.escapeshellarg(gb::$site_dir.'/.git')
+			.' --work-tree='.escapeshellarg(gb::$site_dir)
+			.' '.$cmd;
+		#var_dump($cmd);
+		$r = self::shell($cmd, $input, gb::$site_dir);
+		self::$gitQueryCount++;
+		# fail?
+		if ($r === null)
+			return null;
+		# check for errors
+		if ($r[0] != 0) {
+			$msg = trim($r[1]."\n".$r[2]);
+			if (strpos($r[2], 'Not a git repository') !== false)
+				throw new GitUninitializedRepoError($msg);
+			else
+				throw new GitError($msg);
+		}
+		return $r[1];
+	}
+	
+	/** Execute a command inside a shell */
+	static function shell($cmd, $input=null, $cwd=null, $env=null) {
+		#var_dump($cmd);
+		# start process
+		$ps = gb_popen($cmd, $cwd, $env === null ? $_ENV : $env);
+		if (!$ps)
+			return null;
+		# stdin
+		if ($input)
+			fwrite($ps['pipes'][0], $input);
+		fclose($ps['pipes'][0]);
+		# stdout
+		$output = stream_get_contents($ps['pipes'][1]);
+		fclose($ps['pipes'][1]);
+		# stderr
+		$errors = stream_get_contents($ps['pipes'][2]);
+		fclose($ps['pipes'][2]);
+		# wait and return
+		return array(proc_close($ps['handle']), $output, $errors);
+	}
+	
+	static function pathToTheme($file='') {
+		return gb::$site_dir.'/theme/'.$file;
+	}
+	
+	static function pathToCachedContent($dirname, $slug) {
+		return gb::$site_dir.'/.git/info/gitblog/content/'.$dirname.'/'.$slug;
+	}
+	
+	static function pathToPostsPage($pageno) {
+		return gb::$site_dir.sprintf('/.git/info/gitblog/content-paged-posts/%011d', $pageno);
+	}
+	
+	static function pathToPost($path, $strptime=null) {
+		$st = ($strptime !== null) ? $strptime : strptime($path, gb::$posts_prefix);
+		$cachename = gmstrftime(gb::$posts_cn_pattern, gb_mkutctime($st)).$st['unparsed'].gb::$content_cache_fnext;
+		return self::pathToCachedContent('posts', $cachename);
+	}
+	
+	static function pageBySlug($slug) {
+		$path = self::pathToCachedContent('pages', $slug.gb::$content_cache_fnext);
+		$data = @file_get_contents($path);
+		return $data === false ? false : unserialize($data);
+	}
+	
+	static function postBySlug($slug, $strptime=null) {
+		$path = self::pathToPost($slug, $strptime);
+		$data = @file_get_contents($path);
+		return $data === false ? false : unserialize($data);
+	}
+	
+	static function postsPageByPageno($pageno) {
+		$path = self::pathToPostsPage($pageno);
+		$data = @file_get_contents($path);
+		return $data === false ? false : unserialize($data);
+	}
+	
+	static function tags($indexname='tags-by-popularity') {
+		return GBObjectIndex::loadNamed($indexname);
+	}
+	
+	static function urlToTags($tags) {
+		return gb::$site_url . gb::$index_prefix . gb::$tags_prefix 
+			. implode(',', array_map('urlencode', $tags));
+	}
+	
+	static function urlToTag($tag) {
+		return gb::$site_url . gb::$index_prefix . gb::$tags_prefix 
+			. urlencode($tag);
+	}
+	
+	static function urlToCategories($categories) {
+		return gb::$site_url . gb::$index_prefix . gb::$categories_prefix 
+			. implode(',', array_map('urlencode', $categories));
+	}
+	
+	static function urlToCategory($category) {
+		return gb::$site_url . gb::$index_prefix . gb::$categories_prefix 
+			. urlencode($category);
+	}
+	
+	static function init($add_sample_content=true, $shared='true', $theme='default') {
+		$mkdirmode = $shared === 'all' ? 0777 : 0775;
+		$shared = $shared ? "--shared=$shared" : '';
+		
+		# sanity check
+		$themedir = gb::$dir.'/themes/'.$theme;
+		if (!is_dir($themedir))
+			throw new InvalidArgumentException(
+				'no theme named '.$theme.' ('.$themedir.'not found or not a directory)');
+		
+		# create directories and chmod
+		if (!is_dir(gb::$site_dir.'/.git') && !mkdir(gb::$site_dir.'/.git', $mkdirmode, true))
+			return false;
+		chmod(gb::$site_dir, $mkdirmode);
+		chmod(gb::$site_dir.'/.git', $mkdirmode);
+		
+		# git init
+		self::exec('init --quiet '.$shared);
+		
+		# Create empty standard directories
+		mkdir(gb::$site_dir.'/content/posts', $mkdirmode, true);
+		mkdir(gb::$site_dir.'/content/pages', $mkdirmode);
+		chmod(gb::$site_dir.'/content', $mkdirmode);
+		chmod(gb::$site_dir.'/content/posts', $mkdirmode);
+		chmod(gb::$site_dir.'/content/pages', $mkdirmode);
+		
+		# Copy post-commit hook
+		copy(gb::$dir.'/skeleton/hooks/post-commit', gb::$site_dir.'/.git/hooks/post-commit');
+		chmod(gb::$site_dir.'/.git/hooks/post-commit', 0774);
+		
+		# Copy .gitignore
+		copy(gb::$dir.'/skeleton/gitignore', gb::$site_dir.'/.gitignore');
+		chmod(gb::$site_dir.'/.gitignore', 0664);
+		self::add('.gitignore');
+		
+		# Copy theme
+		$lnname = gb::$site_dir.'/index.php';
+		$lntarget = gb_relpath($lnname, $themedir.'/index.php');
+		symlink($lntarget, $lnname);
+		self::add('index.php');
+		
+		# Add gb-config.php (might been added already, might be missing and/or
+		# might be ignored by custom .gitignore -- doesn't really matter)
+		self::add('gb-config.php', false);
+		
+		# Add sample content
+		if ($add_sample_content) {
+			# Copy example "about" page
+			copy(gb::$dir.'/skeleton/content/pages/about.html', gb::$site_dir.'/content/pages/about.html');
+			chmod(gb::$site_dir.'/content/pages/about.html', 0664);
+			self::add('content/pages/about.html');
+		
+			# Copy example "hello world" post
+			$today = time();
+			$s = file_get_contents(gb::$dir.'/skeleton/content/posts/0000-00-00-hello-world.html');
+			$name = 'content/posts/'.date('Y/m-d').'-hello-world.html';
+			$path = gb::$site_dir.'/'.$name;
+			@mkdir(dirname($path), 0775, true);
+			chmod(dirname($path), 0775);
+			$s = str_replace('0000/00-00-hello-world.html', basename(dirname($name)).'/'.basename($name), $s);
+			file_put_contents($path, $s);
+			chmod($path, 0664);
+			self::add($name);
+		}
+		
+		return true;
+	}
+	
+	static function add($pathspec, $forceIncludeIgnored=true) {
+		self::exec(($forceIncludeIgnored ? 'add --force ' : 'add ').escapeshellarg($pathspec));
+	}
+	
+	static function reset($pathspec=null, $commitobj=null, $flags='-q') {
+		if ($pathspec) {
+			if (is_array($pathspec))
+				$pathspec = implode(' ', array_map('escapeshellarg',$pathspec));
+			else
+				$pathspec = escapeshellarg($pathspec);
+			$pathspec = ' '.$pathspec;
+		}
+		$commitargs = '';
+		if ($commitobj) {
+			$badtype = false;
+			if (!is_array($commitobj))
+				$commitobj = array($commitobj);
+			foreach ($commitobj as $c) {
+				if (is_object($c)) {
+					if (strtolower(get_class($c)) !== 'GitCommit')
+						$badtype = true;
+					else
+						$commitargs .= ' '.escapeshellarg($c->id);
+				}
+				elseif (is_string($c))
+					$commitargs .= escapeshellarg($c);
+				else
+					$badtype = true;
+				if ($badtype)
+					throw new InvalidArgumentException('$commitobj argument must be a string, a GitCommit '
+						.'object or an array of any of the two mentioned types');
+			}
+		}
+		self::exec('reset '.$flags.' '.$commitargs.' --'.$pathspec);
+	}
+	
+	static function commit($message, $author=null) {
+		$author = $author ? '--author='.escapeshellarg($author) : '';
+		self::exec('commit -m '.escapeshellarg($message).' --quiet '.$author);
+		@chmod(gb::$site_dir.'/.git/COMMIT_EDITMSG', 0664);
+		return true;
+	}
+	
+	static function syncSiteState() {
+		if (!gb::$site_state) {
+			gb::$site_state = array(
+				# add default plugins
+				'plugins' => array('rebuild' => array('code-blocks.php'))
+			);
+		}
+		# Set current values
+		gb::$site_state['url'] = gb::$site_url;
+		gb::$site_state['version'] = gb::$version;
+		gb::$site_state['posts_pagesize'] = gb::$posts_pagesize;
+		# Encode
+		$json = json_encode(gb::$site_state);
+		$path = gb::$site_dir.'/site.json';
+		# Write site url for hooks
+		$bytes_written = file_put_contents(gb::$site_dir.'/.git/info/gitblog-site-url',
+			gb::$site_url, LOCK_EX);
+		# Write site.json
+		$bytes_written += file_put_contents($path, $json, LOCK_EX);
+		chmod($path, 0664);
+		gb::log(LOG_NOTICE, 'wrote site state to %s (%d bytes)', $path, $bytes_written);
+		return $bytes_written;
+	}
+	
+	static function upgradeCache($fromVersion) {
+		gb::log(LOG_NOTICE, 'upgrading cache from gitblog '.$fromVersion.' -> gitblog '.gb::$version);
+		self::syncSiteState();
+		GBRebuilder::rebuild(true);
+		gb::log(LOG_NOTICE, 'upgrade of cache to gitblog '.gb::$version.' complete');
+		return true;
+	}
+	
+	static function loadSiteState() {
+		gb::$site_state = @json_decode(file_get_contents(gb::$site_dir.'/site.json'), true);
+		if (gb::$site_state === false)
+			return false;
+		
+		return true;
+	}
+	
+	/**
+	 * Verify integrity of the site, automatically taking any actions to restore
+	 * it if broken.
+	 * 
+	 * Return values:
+	 *   0  Nothing done (everything is probably OK).
+	 *   -1 Error (the error has been logged through trigger_error).
+	 *   1  gitblog cache was updated.
+	 *   2  gitdir is missing and need to be created (git init).
+	 *   3  upgrade performed
+	 */
+	static function verifyIntegrity() {
+		$r = 0;
+		if (!is_dir(gb::$site_dir.'/.git/info/gitblog')) {
+			if (!is_dir(gb::$site_dir.'/.git')) {
+				# 2: no repo/not initialized
+				return 2; 
+			}
+			# 1: gitblog cache updated
+			self::syncSiteState();
+			GBRebuilder::rebuild(true);
+			return 1;
+		}
+		
+		# load site.json
+		$r = self::loadSiteState();
+		
+		# check site state
+		if ( $r === false || (gb::$site_state['url'] !== gb::$site_url
+			&& strpos(gb::$site_url, '://localhost') === false
+			&& strpos(gb::$site_url, '://127.0.0.1') === false) || !gb::$site_state['url'] )
+		{
+			return self::syncSiteState() === false ? -1 : 0;
+		}
+		elseif (gb::$site_state['version'] !== gb::$version) {
+			return self::upgradeCache(gb::$site_state['version']) ? 0 : -1;
+		}
+		elseif (gb::$site_state['posts_pagesize'] !== gb::$posts_pagesize) {
+			self::syncSiteState();
+			GBRebuilder::rebuild(true);
+			return 1;
+		}
+		
+		return 0;
+	}
+	
+	static function verifyConfig() {
+		if (!gb::$secret || strlen(gb::$secret) < 62) {
+			header('Status: 503 Service Unavailable');
+			header('Content-Type: text/plain; charset=utf-8');
+			exit("\n\ngb::\$secret is not set or too short.\n\nPlease edit your gb-config.php file.\n");
+		}
 	}
 }
 
@@ -639,306 +1009,6 @@ class GitError extends Exception {}
 class GitUninitializedRepoError extends GitError {}
 
 #------------------------------------------------------------------------------
-# Main class
-
-class GitBlog {
-	static public $rebuilders = array();
-	static public $gitQueryCount = 0;
-	
-	/** Execute a git command */
-	static function exec($cmd, $input=null) {
-		# build cmd
-		$cmd = 'git --git-dir='.escapeshellarg(gb::$site_dir.'/.git')
-			.' --work-tree='.escapeshellarg(gb::$site_dir)
-			.' '.$cmd;
-		#var_dump($cmd);
-		$r = self::shell($cmd, $input, gb::$site_dir);
-		self::$gitQueryCount++;
-		# fail?
-		if ($r === null)
-			return null;
-		# check for errors
-		if ($r[0] != 0) {
-			$msg = trim($r[1]."\n".$r[2]);
-			if (strpos($r[2], 'Not a git repository') !== false)
-				throw new GitUninitializedRepoError($msg);
-			else
-				throw new GitError($msg);
-		}
-		return $r[1];
-	}
-	
-	/** Execute a command inside a shell */
-	static function shell($cmd, $input=null, $cwd=null, $env=null) {
-		#var_dump($cmd);
-		# start process
-		$ps = gb_popen($cmd, $cwd, $env === null ? $_ENV : $env);
-		if (!$ps)
-			return null;
-		# stdin
-		if ($input)
-			fwrite($ps['pipes'][0], $input);
-		fclose($ps['pipes'][0]);
-		# stdout
-		$output = stream_get_contents($ps['pipes'][1]);
-		fclose($ps['pipes'][1]);
-		# stderr
-		$errors = stream_get_contents($ps['pipes'][2]);
-		fclose($ps['pipes'][2]);
-		# wait and return
-		return array(proc_close($ps['handle']), $output, $errors);
-	}
-	
-	static function pathToTheme($file='') {
-		return gb::$site_dir.'/theme/'.$file;
-	}
-	
-	static function pathToCachedContent($dirname, $slug) {
-		return gb::$site_dir.'/.git/info/gitblog/content/'.$dirname.'/'.$slug;
-	}
-	
-	static function pathToPostsPage($pageno) {
-		return gb::$site_dir.sprintf('/.git/info/gitblog/content-paged-posts/%011d', $pageno);
-	}
-	
-	static function pathToPost($path, $strptime=null) {
-		$st = ($strptime !== null) ? $strptime : strptime($path, gb::$posts_prefix);
-		$cachename = gmstrftime(gb::$posts_cn_pattern, gb_mkutctime($st)).$st['unparsed'].gb::$content_cache_fnext;
-		return self::pathToCachedContent('posts', $cachename);
-	}
-	
-	static function pageBySlug($slug) {
-		$path = self::pathToCachedContent('pages', $slug.gb::$content_cache_fnext);
-		$data = @file_get_contents($path);
-		return $data === false ? false : unserialize($data);
-	}
-	
-	static function postBySlug($slug, $strptime=null) {
-		$path = self::pathToPost($slug, $strptime);
-		$data = @file_get_contents($path);
-		return $data === false ? false : unserialize($data);
-	}
-	
-	static function postsPageByPageno($pageno) {
-		$path = self::pathToPostsPage($pageno);
-		$data = @file_get_contents($path);
-		return $data === false ? false : unserialize($data);
-	}
-	
-	static function tags($indexname='tags-by-popularity') {
-		return GBObjectIndex::loadNamed($indexname);
-	}
-	
-	static function urlToTags($tags) {
-		return gb::$site_url . gb::$index_prefix . gb::$tags_prefix 
-			. implode(',', array_map('urlencode', $tags));
-	}
-	
-	static function urlToTag($tag) {
-		return gb::$site_url . gb::$index_prefix . gb::$tags_prefix 
-			. urlencode($tag);
-	}
-	
-	static function urlToCategories($categories) {
-		return gb::$site_url . gb::$index_prefix . gb::$categories_prefix 
-			. implode(',', array_map('urlencode', $categories));
-	}
-	
-	static function urlToCategory($category) {
-		return gb::$site_url . gb::$index_prefix . gb::$categories_prefix 
-			. urlencode($category);
-	}
-	
-	static function init($add_sample_content=true, $shared='true', $theme='default') {
-		$mkdirmode = $shared === 'all' ? 0777 : 0775;
-		$shared = $shared ? "--shared=$shared" : '';
-		
-		# sanity check
-		$themedir = gb::$dir.'/themes/'.$theme;
-		if (!is_dir($themedir))
-			throw new InvalidArgumentException(
-				'no theme named '.$theme.' ('.$themedir.'not found or not a directory)');
-		
-		# create directories and chmod
-		if (!is_dir(gb::$site_dir.'/.git') && !mkdir(gb::$site_dir.'/.git', $mkdirmode, true))
-			return false;
-		chmod(gb::$site_dir, $mkdirmode);
-		chmod(gb::$site_dir.'/.git', $mkdirmode);
-		
-		# git init
-		self::exec('init --quiet '.$shared);
-		
-		# Create empty standard directories
-		mkdir(gb::$site_dir.'/content/posts', $mkdirmode, true);
-		mkdir(gb::$site_dir.'/content/pages', $mkdirmode);
-		chmod(gb::$site_dir.'/content', $mkdirmode);
-		chmod(gb::$site_dir.'/content/posts', $mkdirmode);
-		chmod(gb::$site_dir.'/content/pages', $mkdirmode);
-		
-		# Copy post-commit hook
-		copy(gb::$dir.'/skeleton/hooks/post-commit', gb::$site_dir.'/.git/hooks/post-commit');
-		chmod(gb::$site_dir.'/.git/hooks/post-commit', 0774);
-		
-		# Copy .gitignore
-		copy(gb::$dir.'/skeleton/gitignore', gb::$site_dir.'/.gitignore');
-		chmod(gb::$site_dir.'/.gitignore', 0664);
-		self::add('.gitignore');
-		
-		# Copy theme
-		$lnname = gb::$site_dir.'/index.php';
-		$lntarget = gb_relpath($lnname, $themedir.'/index.php');
-		symlink($lntarget, $lnname);
-		self::add('index.php');
-		
-		# Add gb-config.php (might been added already, might be missing and/or
-		# might be ignored by custom .gitignore -- doesn't really matter)
-		self::add('gb-config.php', false);
-		
-		# Add sample content
-		if ($add_sample_content) {
-			# Copy example "about" page
-			copy(gb::$dir.'/skeleton/content/pages/about.html', gb::$site_dir.'/content/pages/about.html');
-			chmod(gb::$site_dir.'/content/pages/about.html', 0664);
-			self::add('content/pages/about.html');
-		
-			# Copy example "hello world" post
-			$today = time();
-			$s = file_get_contents(gb::$dir.'/skeleton/content/posts/0000-00-00-hello-world.html');
-			$name = 'content/posts/'.date('Y/m-d').'-hello-world.html';
-			$path = gb::$site_dir.'/'.$name;
-			@mkdir(dirname($path), 0775, true);
-			chmod(dirname($path), 0775);
-			$s = str_replace('0000/00-00-hello-world.html', basename(dirname($name)).'/'.basename($name), $s);
-			file_put_contents($path, $s);
-			chmod($path, 0664);
-			self::add($name);
-		}
-		
-		return true;
-	}
-	
-	static function add($pathspec, $forceIncludeIgnored=true) {
-		self::exec(($forceIncludeIgnored ? 'add --force ' : 'add ').escapeshellarg($pathspec));
-	}
-	
-	static function reset($pathspec=null, $commitobj=null, $flags='-q') {
-		if ($pathspec) {
-			if (is_array($pathspec))
-				$pathspec = implode(' ', array_map('escapeshellarg',$pathspec));
-			else
-				$pathspec = escapeshellarg($pathspec);
-			$pathspec = ' '.$pathspec;
-		}
-		$commitargs = '';
-		if ($commitobj) {
-			$badtype = false;
-			if (!is_array($commitobj))
-				$commitobj = array($commitobj);
-			foreach ($commitobj as $c) {
-				if (is_object($c)) {
-					if (strtolower(get_class($c)) !== 'GitCommit')
-						$badtype = true;
-					else
-						$commitargs .= ' '.escapeshellarg($c->id);
-				}
-				elseif (is_string($c))
-					$commitargs .= escapeshellarg($c);
-				else
-					$badtype = true;
-				if ($badtype)
-					throw new InvalidArgumentException('$commitobj argument must be a string, a GitCommit '
-						.'object or an array of any of the two mentioned types');
-			}
-		}
-		self::exec('reset '.$flags.' '.$commitargs.' --'.$pathspec);
-	}
-	
-	static function commit($message, $author=null) {
-		$author = $author ? '--author='.escapeshellarg($author) : '';
-		self::exec('commit -m '.escapeshellarg($message).' --quiet '.$author);
-		@chmod(gb::$site_dir.'/.git/COMMIT_EDITMSG', 0664);
-		return true;
-	}
-	
-	static function writeSiteStateCache() {
-		# format: <0 site url> SP <1 version> SP <2 urlencoded posts_prefix> SP <3 posts_pagesize>
-		$state = implode(' ',array(
-			gb::$site_url,
-			gb::$version,
-			urlencode(gb::$posts_prefix),
-			gb::$posts_pagesize
-		));
-		$dst = gb::$site_dir.'/.git/info/gitblog-site-state';
-		gb::log(LOG_NOTICE, 'wrote site state to '.$dst);
-		return gb_atomic_write($dst, $state, 0664);
-	}
-	
-	static function upgradeCache($fromVersion, $rebuild) {
-		gb::log(LOG_NOTICE, 'upgrading cache from gitblog '.$fromVersion.' -> gitblog '.gb::$version);
-		self::writeSiteStateCache();
-		if ($rebuild)
-			GBRebuilder::rebuild(true);
-		gb::log(LOG_NOTICE, 'upgrade of cache to gitblog '.gb::$version.' complete');
-	}
-	
-	/**
-	 * Verify integrity of repository and gitblog cache.
-	 * 
-	 * Return values:
-	 *   0  Nothing was done (everything is probably OK).
-	 *   -1 Error (the error has been logged through trigger_error).
-	 *   1  gitblog cache was updated.
-	 *   2  gitdir is missing and need to be created (git init).
-	 *   3  upgrade performed
-	 */
-	static function verifyIntegrity() {
-		$r = 0;
-		if (!is_dir(gb::$site_dir.'/.git/info/gitblog')) {
-			if (!is_dir(gb::$site_dir.'/.git'))
-				return 2; # no repo/not initialized
-			self::writeSiteStateCache();
-			GBRebuilder::rebuild(true);
-			$r = 1;
-		}
-		
-		# check site state
-		# format: <0 site url> SP <1 version> SP <2 urlencoded posts_prefix> SP <3 posts_pagesize>
-		$state = @file_get_contents(gb::$site_dir.'/.git/info/gitblog-site-state');
-		$state = $state ? explode(' ', $state) : false;
-		if (!$state) {
-			# here the version MIGHT have changed. We don't really know, but we're optimistic.
-			self::writeSiteStateCache();
-		}
-		# prio 1: version mismatch causes cache upgrade and possibly a rebuild.
-		elseif ($state[1] !== gb::$version) {
-			self::upgradeCache($state[1], $r !== 1);
-			$r = 3;
-		}
-		# prio 2: some part which do affect cache state have changed and we need
-		#         to issue a rebuild to some extent (currently we perform a full
-		#         rebuild).
-		elseif (@intval($state[3]) !== gb::$posts_pagesize) {
-			self::writeSiteStateCache();
-			GBRebuilder::rebuild(true);
-			$r = 1;
-		}
-		# prio 3: some part which does not affect cache state have changed. We only
-		#         need to write an updated state file.
-		elseif ($state[0] !== gb::$site_url) {
-			self::writeSiteStateCache();
-		}
-		
-		return $r;
-	}
-	
-	static function verifyConfig() {
-		if (!gb::$secret || strlen(gb::$secret) < 62) {
-			header('Status: 503 Service Unavailable');
-			header('Content-Type: text/plain; charset=utf-8');
-			exit("\n\ngb::\$secret is not set or too short.\n\nPlease edit your gb-config.php file.\n");
-		}
-	}
-}
 
 class GBDateTime {
 	public $time;
@@ -1112,7 +1182,9 @@ class GBContent {
 				@chmod($p, 0775);
 			}
 		}
-		return gb_atomic_write($path, serialize($this), 0664);
+		$bw = file_put_contents($path, serialize($this), LOCK_EX);
+		chmod($path, 0664);
+		return $bw;
 	}
 	
 	function reload($data, $commits) {
@@ -2287,13 +2359,13 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 	$gb_urlpath = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
 
 	# verify integrity, implicitly rebuilding gitblog cache or need serious initing.
-	if (GitBlog::verifyIntegrity() === 2) {
+	if (gb::verifyIntegrity() === 2) {
 		header("Location: ".gb::$site_url."gitblog/admin/setup.php");
 		exit(0);
 	}
 
 	# verify configuration, like validity of the secret key.
-	GitBlog::verifyConfig();
+	gb::verifyConfig();
 	
 	if ($gb_urlpath) {
 		if (strpos($gb_urlpath, gb::$tags_prefix) === 0) {
@@ -2314,7 +2386,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		}
 		elseif (strpos($gb_urlpath, gb::$feed_prefix) === 0) {
 			# feed
-			$postspage = GitBlog::postsPageByPageno(0);
+			$postspage = gb::postsPageByPageno(0);
 			gb::$is_feed = true;
 			# if the theme has a "feed.php" file, include that one
 			if (is_file(gb::$theme_dir.'/feed.php')) {
@@ -2328,7 +2400,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		}
 		elseif (($strptime = strptime($gb_urlpath, gb::$posts_prefix)) !== false) {
 			# post
-			$post = GitBlog::postBySlug(urldecode($gb_urlpath), $strptime);
+			$post = gb::postBySlug(urldecode($gb_urlpath), $strptime);
 			if ($post === false)
 				gb::$is_404 = true;
 			elseif ($post->draft === true || $post->published->time > time())
@@ -2340,7 +2412,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		}
 		else {
 			# page
-			$post = GitBlog::pageBySlug(urldecode($gb_urlpath));
+			$post = gb::pageBySlug(urldecode($gb_urlpath));
 			if ($post === false)
 				gb::$is_404 = true;
 			else
@@ -2351,7 +2423,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 	else {
 		# posts
 		$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
-		$postspage = GitBlog::postsPageByPageno($pageno);
+		$postspage = gb::postsPageByPageno($pageno);
 		gb::$is_posts = true;
 		gb::$is_404 = $postspage === false;
 	}

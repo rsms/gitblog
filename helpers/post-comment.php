@@ -2,7 +2,7 @@
 require '../gitblog.php';
 ini_set('html_errors', '0');
 
-GitBlog::verifyConfig();
+gb::verifyConfig();
 
 /**
  * Acceptable fields.

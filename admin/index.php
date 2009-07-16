@@ -9,7 +9,8 @@ include '_header.php';
 	Authenticated as <?= h(gb::$authenticated) ?>
 </p>
 <h3>Fancy menu</h3>
-<p>
-	<a href="import-wordpress.php">Import a Wordpress blog</a>
-</p>
+<ul>
+	<li><a href="import-wordpress.php">Import a Wordpress blog</a></li>
+	<li><a href="rebuild.php">Rebuild cache</a></li>
+</ul>
 <? include '_footer.php' ?>

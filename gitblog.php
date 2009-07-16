@@ -2057,7 +2057,8 @@ class GBUserAccount {
 	static function _reload() {
 		if (file_exists(gb::$site_dir.'/.git/info/gitblog-users.php')) {
 			include gb::$site_dir.'/.git/info/gitblog-users.php';
-			self::$db = $db;
+			if (isset($db))
+				self::$db = $db;
 		}
 		else {
 			self::$db = array();

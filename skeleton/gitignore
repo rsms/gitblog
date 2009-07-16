@@ -7,4 +7,5 @@
 ._*
 
 # gitblog specific
-gitblog
+/gitblog
+/site.json

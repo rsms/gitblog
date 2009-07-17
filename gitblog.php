@@ -484,6 +484,13 @@ class gb {
 			copy(gb::$dir.'/skeleton/content/pages/about.html', gb::$site_dir.'/content/pages/about.html');
 			chmod(gb::$site_dir.'/content/pages/about.html', 0664);
 			self::add('content/pages/about.html');
+			
+			# Copy example "about/intro" snippet
+			mkdir(gb::$site_dir.'/content/pages/about', $mkdirmode);
+			chmod(gb::$site_dir.'/content/pages/about', $mkdirmode);
+			copy(gb::$dir.'/skeleton/content/pages/about/intro.html', gb::$site_dir.'/content/pages/about/intro.html');
+			chmod(gb::$site_dir.'/content/pages/about/intro.html', 0664);
+			self::add('content/pages/about/intro.html');
 		
 			# Copy example "hello world" post
 			$today = time();

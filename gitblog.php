@@ -53,7 +53,7 @@ class gb {
 	# --------------------------------------------------------------------------
 	# Constants
 	
-	static public $version = '0.1.0';
+	static public $version = '0.1.1';
 	
 	/** Absolute path to the gitblog directory */
 	static public $dir;
@@ -465,6 +465,9 @@ class gb {
 			chmod(gb::$site_dir.'/.git/hooks/'.$name, 0774);
 		}
 		
+		# Enable remote pushing with a checked-out copy
+		self::exec('config receive.denyCurrentBranch ignore');
+		
 		# Copy .gitignore
 		copy(gb::$dir.'/skeleton/gitignore', gb::$site_dir.'/.gitignore');
 		chmod(gb::$site_dir.'/.gitignore', 0664);
@@ -577,9 +580,31 @@ class gb {
 		return $bytes_written;
 	}
 	
-	static function upgradeCache($fromVersion) {
+	static function upgrade($fromVersion) {
 		gb::log(LOG_NOTICE, 'upgrading cache from gitblog '.$fromVersion.' -> gitblog '.gb::$version);
 		self::syncSiteState();
+		
+		# parse versions
+		list($fromma, $frommi, $fromb) = array_map('intval', explode('.', $fromVersion));
+		$from = ($fromma << 16) + ($frommi << 8) + $fromb;
+		list($toma, $tomi, $tob) = array_map('intval', explode('.', gb::$version));
+		$to = ($toma << 16) + ($tomi << 8) + $tob;
+		
+		# <0.1.1  -->  *
+		if ($from < 0x000101) {
+			# introduced in 0.1.1:
+			
+			# remote pushing
+			gb::exec('config receive.denyCurrentBranch ignore');
+			foreach (array('post-commit', 'post-update') as $name) {
+				copy(gb::$dir.'/skeleton/hooks/'.$name, gb::$site_dir.'/.git/hooks/'.$name);
+				@chmod(gb::$site_dir.'/.git/hooks/'.$name, 0774);
+			}
+			
+			# ignore site.json
+			file_put_contents(gb::$site_dir.'.gitignore', "\nsite.json\n", FILE_APPEND);
+		}
+		
 		GBRebuilder::rebuild(true);
 		gb::log(LOG_NOTICE, 'upgrade of cache to gitblog '.gb::$version.' complete');
 		return true;
@@ -628,7 +653,7 @@ class gb {
 			return self::syncSiteState() === false ? -1 : 0;
 		}
 		elseif (gb::$site_state['version'] !== gb::$version) {
-			return self::upgradeCache(gb::$site_state['version']) ? 0 : -1;
+			return self::upgrade(gb::$site_state['version']) ? 0 : -1;
 		}
 		elseif (gb::$site_state['posts_pagesize'] !== gb::$posts_pagesize) {
 			self::syncSiteState();

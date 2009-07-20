@@ -602,7 +602,7 @@ class gb {
 			}
 			
 			# ignore site.json
-			file_put_contents(gb::$site_dir.'.gitignore', "\nsite.json\n", FILE_APPEND);
+			file_put_contents(gb::$site_dir.'/.gitignore', "\nsite.json\n", FILE_APPEND);
 		}
 		
 		GBRebuilder::rebuild(true);

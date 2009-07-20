@@ -459,9 +459,11 @@ class gb {
 		chmod(gb::$site_dir.'/content/posts', $mkdirmode);
 		chmod(gb::$site_dir.'/content/pages', $mkdirmode);
 		
-		# Copy post-commit hook
-		copy(gb::$dir.'/skeleton/hooks/post-commit', gb::$site_dir.'/.git/hooks/post-commit');
-		chmod(gb::$site_dir.'/.git/hooks/post-commit', 0774);
+		# Copy post-* hooks
+		foreach (array('post-commit', 'post-update') as $name) {
+			copy(gb::$dir.'/skeleton/hooks/'.$name, gb::$site_dir.'/.git/hooks/'.$name);
+			chmod(gb::$site_dir.'/.git/hooks/'.$name, 0774);
+		}
 		
 		# Copy .gitignore
 		copy(gb::$dir.'/skeleton/gitignore', gb::$site_dir.'/.gitignore');

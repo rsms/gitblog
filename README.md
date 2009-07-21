@@ -14,16 +14,18 @@ Licensed under MIT means free to use for everyone. See LICENSE for more informat
 - No custom file formats for content (only JSON and HTML)
 - High performance
 - Hierarchical comments
+- Remote editing (git push/pull)
+- Wordpress import
 
 ### Work in progress
 
-- Remote editing (git push/pull)
+- Plugins
 
 ### Planned
 
-- Plugins
 - Pingback
 - Web administration
+- Search
 
 
 ## Installing & Getting started

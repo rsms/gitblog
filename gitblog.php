@@ -557,6 +557,9 @@ class gb {
 	}
 	
 	static function syncSiteState() {
+		# also, make sure the repo setup (hooks, config, etc) is up to date
+		self::verifyRepoSetup();
+		
 		if (!gb::$site_state) {
 			gb::$site_state = array(
 				# add default plugins
@@ -616,6 +619,17 @@ class gb {
 			return false;
 		
 		return true;
+	}
+	
+	static function verifyRepoSetup() {
+		gb::exec('config receive.denyCurrentBranch ignore');
+		foreach (array('post-commit', 'post-update') as $name) {
+			$dst = gb::$site_dir.'/.git/hooks/'.$name;
+			if (!file_exists($dst)) {
+				copy(gb::$dir.'/skeleton/hooks/'.$name, $dst);
+				@chmod($dst, 0774);
+			}
+		}
 	}
 	
 	/**

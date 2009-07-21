@@ -191,9 +191,18 @@ class gb {
 	
 	static protected $current_url = null;
 	
-	static function url_to($part) {
-		$v = $part.'_prefix';
-		return gb::$site_url.self::$index_prefix.self::$$v;
+	static function url_to($part=null, $htmlsafe=true) {
+		$s = gb::$site_url.self::$index_prefix;
+		if ($part) {
+			if ($part{0} === '/') {
+				$s .= substr($part, 1);
+			}
+			else {
+				$v = $part.'_prefix';
+				$s .= self::$$v;
+			}
+		}
+		return $htmlsafe ? h($s) : $s;
 	}
 	
 	static function url() {
@@ -414,6 +423,10 @@ class gb {
 	}
 	
 	static function tags($indexname='tags-by-popularity') {
+		return GBObjectIndex::loadNamed($indexname);
+	}
+	
+	static function categories($indexname='category-to-objs') {
 		return GBObjectIndex::loadNamed($indexname);
 	}
 	
@@ -2431,9 +2444,9 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		}
 		elseif (strpos($gb_urlpath, gb::$categories_prefix) === 0) {
 			# category(ies)
-			$cats = array_map('urldecode', explode(',', substr($gb_urlpath, strlen(gb::$categories_prefix))));
+			$categories = array_map('urldecode', explode(',', substr($gb_urlpath, strlen(gb::$categories_prefix))));
 			$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
-			$postspage = GBExposedContent::findByCategories($cats, $pageno);
+			$postspage = GBExposedContent::findByCategories($categories, $pageno);
 			gb::$is_categories = true;
 			gb::$is_404 = $postspage === false;
 		}

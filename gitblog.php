@@ -47,6 +47,10 @@ class gb {
 	/** Site title */
 	static public $site_title = null;
 	
+	/** Site description */
+	static public $site_description =
+		'Change this fancy description by editing gb::$site_description in gb-config.php';
+	
 	/** Shared secret */
 	static public $secret = '';
 	

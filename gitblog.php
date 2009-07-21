@@ -476,7 +476,7 @@ class gb {
 		# Copy theme
 		$lnname = gb::$site_dir.'/index.php';
 		$lntarget = gb_relpath($lnname, $themedir.'/index.php');
-		symlink($lntarget, $lnname);
+		symlink($lntarget, $lnname) or exit($lntarget);
 		self::add('index.php');
 		
 		# Add gb-config.php (might been added already, might be missing and/or

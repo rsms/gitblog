@@ -408,6 +408,30 @@ class GBContentIndexRebuilder {
 	}
 }
 
+class GBCategoryToObjsIndexRebuilder extends GBContentIndexRebuilder {
+	function __construct() {
+		parent::__construct('category-to-objs');
+	}
+	
+	function onObject($obj) {
+		if (!$obj->categories)
+			return;
+		foreach ($obj->categories as $cat) {
+			$cat = strtolower($cat);
+			if (!isset($this->index[$cat]))
+				$this->index[$cat] = array($obj->cachename());
+			else
+				$this->index[$cat][] = $obj->cachename();
+		}
+	}
+	
+	function serialize() {
+		foreach ($this->index as $k => $v)
+			$this->index[$k] = array_unique($v);
+		return parent::serialize();
+	}
+}
+
 class GBTagToObjsIndexRebuilder extends GBContentIndexRebuilder {
 	function __construct() {
 		parent::__construct('tag-to-objs');
@@ -417,6 +441,7 @@ class GBTagToObjsIndexRebuilder extends GBContentIndexRebuilder {
 		if (!$obj->tags)
 			return;
 		foreach ($obj->tags as $tag) {
+			$tag = strtolower($tag);
 			if (!isset($this->index[$tag]))
 				$this->index[$tag] = array($obj->cachename());
 			else
@@ -467,29 +492,6 @@ class GBTagsByPopularityIndexRebuilder extends GBContentIndexRebuilder {
 		$data = parent::serialize();
 		ini_set('serialize_precision', $orig);
 		return $data;
-	}
-}
-
-class GBCategoryToObjsIndexRebuilder extends GBContentIndexRebuilder {
-	function __construct() {
-		parent::__construct('category-to-objs');
-	}
-	
-	function onObject($obj) {
-		if (!$obj->categories)
-			return;
-		$this->dirty = true;
-		foreach ($obj->categories as $cat) {
-			if (!isset($this->index[$cat]))
-				$this->index[$cat] = array($obj->cachename());
-			else
-				$this->index[$cat][] = $obj->cachename();
-		}
-	}
-	
-	function serialize() {
-		$this->index = array_unique($this->index);
-		return parent::serialize();
 	}
 }
 

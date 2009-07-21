@@ -2103,8 +2103,8 @@ class GBUserAccount {
 	static public $db = null;
 	
 	static function _reload() {
-		if (file_exists(gb::$site_dir.'/.git/info/gitblog-users.php')) {
-			include gb::$site_dir.'/.git/info/gitblog-users.php';
+		if (file_exists(gb::$site_dir.'/gb-users.php')) {
+			include gb::$site_dir.'/gb-users.php';
 			if (isset($db))
 				self::$db = $db;
 		}
@@ -2116,9 +2116,9 @@ class GBUserAccount {
 	static function sync() {
 		if (self::$db === null)
 			return;
-		$r = file_put_contents(gb::$site_dir.'/.git/info/gitblog-users.php', 
+		$r = file_put_contents(gb::$site_dir.'/gb-users.php', 
 			'<? $db = '.var_export(self::$db, 1).'; ?>', LOCK_EX);
-		chmod(gb::$site_dir.'/.git/info/gitblog-users.php', 0660);
+		chmod(gb::$site_dir.'/gb-users.php', 0660);
 		return $r;
 	}
 	

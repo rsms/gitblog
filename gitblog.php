@@ -1286,6 +1286,7 @@ class GBExposedContent extends GBContent {
 	public $meta;
 	public $title;
 	public $body;
+	public $excerpt;
 	public $tags = array();
 	public $categories = array();
 	public $comments;
@@ -1415,6 +1416,26 @@ class GBExposedContent extends GBContent {
 		}
 	}
 	
+	/**
+	 * Return a, possibly cloned, version of this post which contains a minimal
+	 * set of information. Primarily used for paged posts pages.
+	*/
+	function condensedVersion() {
+		$c = clone $this;
+		# excerpt member turns into a boolean "is ->body an excerpt?"
+		if ($c->excerpt) {
+			$c->body = $c->excerpt;
+			$c->excerpt = true;
+		}
+		else {
+			$c->excerpt = false;
+		}
+		# comments member turns into an integer "number of comments"
+		$c->comments = $c->comments ? $c->comments->countApproved() : 0;
+		
+		return $c;
+	}
+	
 	function urlpath() {
 		return str_replace('%2F', '/', urlencode($this->slug));
 	}
@@ -1436,7 +1457,7 @@ class GBExposedContent extends GBContent {
 		 	return '';
 		return strtr($template, array(
 			'%u' => h($this->url()).'#comments',
-			'%n' => $this->comments,
+			'%n' => is_int($this->comments) ? $this->comments : $this->comments->countApproved(),
 			'%t' => $this->numberOfComments()
 		));
 	}
@@ -1477,7 +1498,7 @@ class GBExposedContent extends GBContent {
 	
 	function __sleep() {
 		static $members = array(
-			'slug','meta','title','body',
+			'slug','meta','title','body','excerpt',
 			'tags','categories',
 			'comments',
 			'commentsOpen','pingbackOpen',
@@ -1587,6 +1608,11 @@ class GBExposedContent extends GBContent {
 		
 		return $cachenames;
 	}
+	
+	function domID() {
+		return 'post-'.$this->published->utcformat('%Y-%m-%d-')
+			. preg_replace('/[^A-Za-z0-9_-]+/', '-', $this->slug);
+	}
 }
 
 
@@ -1670,21 +1696,6 @@ class GBPage extends GBExposedContent {
 	public $order = null; # order in menu, etc.
 	public $hidden = false; # hidden from menu, but still accessible (i.e. not the same thing as $draft)
 	
-	/**
-	 * Return a, possibly cloned, version of this page without a body and with
-	 * comment count instead of actual comments.
-	*/
-	function condensedVersion() {
-		$c = clone $this;
-		# excerpt member turns into a boolean "is ->body an excerpt?"
-		$c->body = strlen($c->body);
-		
-		# comments member turns into an integer "number of comments"
-		$c->comments = $c->comments ? $c->comments->countApproved() : 0;
-		
-		return $c;
-	}
-	
 	function isCurrent() {
 		if (!gb::$is_page)
 			return false;
@@ -1713,36 +1724,9 @@ class GBPage extends GBExposedContent {
 
 
 class GBPost extends GBExposedContent {
-	public $excerpt;
-	
-	/**
-	 * Return a, possibly cloned, version of this post which contains a minimal
-	 * set of information. Primarily used for paged posts pages.
-	*/
-	function condensedVersion() {
-		$c = clone $this;
-		# excerpt member turns into a boolean "is ->body an excerpt?"
-		if ($c->excerpt) {
-			$c->body = $c->excerpt;
-			$c->excerpt = true;
-		}
-		else {
-			$c->excerpt = false;
-		}
-		# comments member turns into an integer "number of comments"
-		$c->comments = $c->comments ? $c->comments->countApproved() : 0;
-		
-		return $c;
-	}
-	
 	function urlpath() {
 		return $this->published->utcformat(gb::$posts_prefix)
 			. str_replace('%2F', '/', urlencode($this->slug));
-	}
-	
-	function domID() {
-		return 'post-'.$this->published->utcformat('%Y-%m-%d-')
-			. preg_replace('/[^A-Za-z0-9_-]+/', '-', $this->slug);
 	}
 	
 	static function mkCachename($published, $slug) {
@@ -1757,10 +1741,6 @@ class GBPost extends GBExposedContent {
 	static function find($published, $slug) {
 		$path = gb::$site_dir.'/.git/info/gitblog/'.self::mkCachename($published, $slug);
 		return @unserialize(file_get_contents($path));
-	}
-	
-	function __sleep() {
-		return array_merge(parent::__sleep(), array('excerpt'));
 	}
 	
 	/**

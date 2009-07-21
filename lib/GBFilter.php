@@ -526,14 +526,11 @@ function gb_filter_post_reload_content(GBExposedContent $c) {
 function gb_filter_post_reload_content_html(GBExposedContent $c) {
 	if ($c->body) {
 		# create excerpt for GBPosts if not already set
-		if ($c instanceof GBPost && !$c->excerpt) {
-			$p = strpos($c->body, '<!--more-->');
-			if ($p !== false) {
-				$c->excerpt = substr($c->body, 0, $p);
-				$c->body = $c->excerpt
-					.'<div id="'.$c->domID().'-more" class="post-more-anchor"></div>'
-					.substr($c->body, $p+strlen('<!--more-->'));
-			}
+		if (!$c->excerpt && preg_match('/<!--[ \s\t\r\n]*more[ \s\t\r\n]*--(>)/i', $c->body, $m, PREG_OFFSET_CAPTURE)) {
+			$c->excerpt = substr($c->body, 0, $m[0][1]);
+			$c->body = $c->excerpt
+				.'<div id="read-more" class="post-more-anchor"></div>'
+				.substr($c->body, $m[1][1]+1 /* pos of last ">" */ );
 		}
 		$c->body = GBFilter::apply('body.html', $c->body);
 	}

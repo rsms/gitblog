@@ -498,9 +498,9 @@ class gb {
 			self::add('content/pages/about/intro.html');
 		
 			# Copy example "hello world" post
-			$today = time();
 			$s = file_get_contents(gb::$dir.'/skeleton/content/posts/0000-00-00-hello-world.html');
-			$name = 'content/posts/'.date('Y/m-d').'-hello-world.html';
+			$s = preg_replace('/published:.+/', 'published: '.date('H:i:s O'), $s);
+			$name = 'content/posts/'.gmdate('Y/m-d').'-hello-world.html';
 			$path = gb::$site_dir.'/'.$name;
 			@mkdir(dirname($path), 0775, true);
 			chmod(dirname($path), 0775);

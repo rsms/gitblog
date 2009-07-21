@@ -609,7 +609,7 @@ class gb {
 		}
 		
 		GBRebuilder::rebuild(true);
-		gb::log(LOG_NOTICE, 'upgrade of cache to gitblog '.gb::$version.' complete');
+		gb::log(LOG_NOTICE, 'upgrade of %s to gitblog %s complete', gb::$site_dir, gb::$version);
 		return true;
 	}
 	

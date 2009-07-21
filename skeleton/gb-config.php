@@ -1,6 +1,7 @@
 <?
-# Site title
+# Site title and description
 gb::$site_title = 'My gitblog';
+#gb::$site_description = 'Ramblings by My Name';
 
 # Shared secret used for hook triggering, etc.
 # Must contain only shell-safe characters (a-zA-Z0-9_-. and so on) and be at

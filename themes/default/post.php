@@ -1,11 +1,11 @@
 <div class="wrapper">
 	<div class="posts single">
 		<div class="post">
+			<?= $post->commentsLink() ?>
 			<h1><?= $post->title ?></h1>
 			<p class="meta">
 				<?= $post->published->age() ?>
-				by <?= h($post->author->name) . $post->tagLinks(', tagged ') . $post->categoryLinks(', categorized as ')  ?>
-				<?= $post->comments ? '('.$post->numberOfComments().')' : '' ?>
+				by <?= h($post->author->name) . $post->tagLinks(', tagged ') . $post->categoryLinks(', filed under ')  ?>
 			</p>
 			<div class="body">
 				<?= $post->body ?>
@@ -13,7 +13,6 @@
 		</div>
 		<div class="breaker"></div>
 	</div>
-	<? include gb::$theme_dir.'/sidebar.php' ?>
 	<div class="breaker"></div>
 </div>
 <? flush() ?>
@@ -67,7 +66,7 @@
 	<? if ($post->commentsOpen): ?>
 		<div id="reply"></div>
 		<h3 id="reply-title">Add a comment</h3>
-		<form id="comment-form" action="<?= gb::$site_url ?>gitblog/helpers/post-comment.php" method="POST">
+		<form id="comment-form" action="<?= h(gb::$site_url) ?>gitblog/helpers/post-comment.php" method="POST">
 			<?= gb_comment_fields() ?>
 			<p>
 				<textarea id="comment-reply-message" name="reply-message" rows="3"></textarea>

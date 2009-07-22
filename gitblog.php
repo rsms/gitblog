@@ -1617,38 +1617,38 @@ class GBExposedContent extends GBContent {
 
 
 class GBLazyObjectsIterator implements Iterator {
-	public $a;
+	public $objects;
 	
 	function __construct($cachenames, $condensed=true) {
-		$this->a = array_flip($cachenames);
+		$this->objects = array_flip($cachenames);
 		$this->condensed = $condensed;
 	}
 	
 	public function rewind() {
-		reset($this->a);
+		reset($this->objects);
 	}
 
 	public function current() {
-		$v = current($this->a);
+		$v = current($this->objects);
 		if (!is_object($v)) {
-			$v = GBExposedContent::findByCacheName(key($this->a));
+			$v = GBExposedContent::findByCacheName(key($this->objects));
 			if ($this->condensed)
 				$v = $v->condensedVersion();
-			$this->a[key($this->a)] = $v;
+			$this->objects[key($this->objects)] = $v;
 		}
 		return $v;
 	}
 
 	public function key() {
-		return key($this->a);
+		return key($this->objects);
 	}
 
 	public function next() {
-		return next($this->a);
+		return next($this->objects);
 	}
 
 	public function valid() {
-		return current($this->a) !== false;
+		return current($this->objects) !== false;
 	}
 }
 

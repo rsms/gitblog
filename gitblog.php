@@ -1337,14 +1337,18 @@ class GBExposedContent extends GBContent {
 		# lift lists from meta to this
 		static $special_lists = array('tag'=>'tags', 'category'=>'categories');
 		foreach ($special_lists as $singular => $plural) {
+			$s = false;
 			if (isset($this->meta[$plural])) {
-				$this->$plural = array_unique(preg_split('/[ \t]*,+[ \t]*/', $this->meta[$plural]));
+				$s = $this->meta[$plural];
 				unset($this->meta[$plural]);
 			}
 			elseif (isset($this->meta[$singular])) {
-				$this->$plural = array($this->meta[$singular]);
+				$s = $this->meta[$singular];
 				unset($this->meta[$singular]);
 			}
+			
+			if ($s)
+				$this->$plural = GBFilter::apply('parse-tags', $s);
 		}
 		
 		# lift specials, like title, from meta to this

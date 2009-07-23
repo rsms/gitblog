@@ -35,8 +35,14 @@
 					src="http://www.gravatar.com/avatar.php?gravatar_id=<?= md5($comment->email) ?>&amp;size=48" />
 				<div class="message-wrapper">
 					<? if ($post->commentsOpen): ?>
-					<div class="reply-link">
-						<a href="javascript:reply('<?= $comment->id ?>');" title="Reply to this comment"><span>&#x21A9;</span></a>
+					<div class="actions">
+						<? if (gb::$authenticated): ?>
+							<a class="rm" href="<?= $comment->removeURL() ?>"
+								title="Remove this comment and hide any replies to it"><span>&otimes;</span></a>
+						<? endif ?>
+						<a class="reply" href="javascript:reply('<?= $comment->id ?>');" 
+							title="Reply to this comment"><span>&#x21A9;</span></a>
+						<div class="breaker"></div>
 					</div>
 					<? endif; ?>
 					<div class="author">

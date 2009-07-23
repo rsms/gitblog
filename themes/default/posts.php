@@ -1,3 +1,4 @@
+<!-- ========================== top columns/info ========================== -->
 <? if (gb::$is_posts): ?>
 <div id="summary" class="columns c3">
 	<div class="wrapper">
@@ -44,8 +45,10 @@
 	<div class="breaker"></div>
 </div>
 <? endif ?>
+<!-- =========================== posts =========================== -->
 <div class="wrapper">
 	<div class="posts">
+		<!-- For SEO purposes. Not actually displayed: -->
 		<h1><?= gb_site_title() ?></h1>
 	<? foreach ($postspage->posts as $post): ?>
 		<div class="post">
@@ -72,6 +75,7 @@
 	</div>
 	<div class="breaker"></div>
 </div>
+<!-- =========================== paged nav =========================== -->
 <div id="paged-footer">
 	<div class="wrapper">
 	<? if ($postspage->nextpage != -1 || $postspage->prevpage != -1): ?>

@@ -73,6 +73,12 @@
 		</p>
 	<? endif; ?>
 	</div>
+	<!-- =========================== sidebar =========================== -->
+	<div id="sidebar">
+		<p>popular posts</p>
+		<p>links to friends</p>
+		<p>latest comments</p>
+	</div>
 	<div class="breaker"></div>
 </div>
 <!-- =========================== paged nav =========================== -->

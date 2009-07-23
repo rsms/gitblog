@@ -26,9 +26,12 @@ elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->pos
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 	<head>
 		<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8"/>
+    <meta http-equiv="imagetoolbar" content="no" />
+    <meta name="viewport" content="width=940" />
+    <meta name="generator" content="Gitblog <? gb::$version ?>" />
 		<title><?= gb_title() ?></title>
-		<link href="<?= gb::$theme_url ?>style.css" type="text/css" rel="stylesheet" media="screen" />
-		<link href="<?= h(gb::url_to('feed')) ?>" rel="alternate" title="Atom feed" type="application/atom+xml" />
+		<link rel="stylesheet" type="text/css" href="<?= gb::$theme_url ?>style.css" media="screen" />
+		<link rel="alternate" type="application/atom+xml" href="<?= h(gb::url_to('feed')) ?>" title="Atom feed" />
 	</head>
 	<? flush() ?>
 	<body>

@@ -39,7 +39,7 @@
 					<? if ($post->commentsOpen): ?>
 					<div class="actions">
 						<? if (gb::$authenticated): ?>
-							<a class="rm" href="<?= $comment->removeURL() ?>"
+							<a class="rm" href="<?= h($comment->removeURL()) ?>"
 								title="Remove this comment and hide any replies to it"><span>&otimes;</span></a>
 						<? endif ?>
 						<a class="reply" href="javascript:reply('<?= $comment->id ?>');" 

@@ -26,7 +26,7 @@ h2 { font-size:19px; }
 
 /* Universal helpers */
 .breaker { clear:both; }
-.wrapper { clear:both; margin:0 auto; width:900px; }
+.wrapper { clear:both; margin:0 auto; width:920px; }
 
 /* Header */
 #header {
@@ -82,8 +82,8 @@ h2 { font-size:19px; }
 /* Columns */
 div.columns div.col { float:left; }
 div.columns.c3 {}
-	div.columns.c3 div.col { width:275px; float:left; }
-	div.columns.c3 div.col + div.col { margin:0 37px 0 38px; }
+	div.columns.c3 div.col { width:280px; float:left; }
+	div.columns.c3 div.col + div.col { margin:0 40px; }
 	div.columns.c3 div.col + div.col + div.col { margin:0; }
 
 /* Summary columns */
@@ -120,13 +120,18 @@ div.columns.c3 {}
 /* Sidebar */
 #sidebar {
 	float:left;
-	width:258px;
-	margin-left:20px;
-	padding:20px 0 0 20px;
-	border-left:1px solid #ccc;
-	border-right:1px solid #ccc;
+	width:279px;
+	border-left:1px dashed #ddd;
+	margin:0 0 0 20px;
+	padding:20px 0 20px 20px;
+	min-height:400px;
 }
-	#sidebar > hr { margin:1em 0 1em -20px; background-color:#eee; }
+	#sidebar > hr {
+		margin:1em -20px 1em -20px;
+		background-color:transparent;
+		height:0;
+		border-top:1px dashed #ddd;
+	}
 
 /* Posts */
 div.posts { width:600px; float:left; }

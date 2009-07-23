@@ -1464,7 +1464,8 @@ class GBExposedContent extends GBContent {
 	}
 	
 	function commentsStageName() {
-		return gb_filenoext($this->name).'.comments'; # not gb::$comments_cache_fnext
+		# not the same as gb::$comments_cache_fnext
+		return gb_filenoext($this->name).'.comments';
 	}
 	
 	function getCommentsDB() {
@@ -1879,11 +1880,11 @@ class GBComments extends GBContent implements IteratorAggregate {
 	function cachename() {
 		if (!$this->cachenamePrefix)
 			throw new UnexpectedValueException('cachenamePrefix is empty or null');
-		return $this->cachenamePrefix.gb::$comments_cache_fnext;
+		return gb_filenoext($this->cachenamePrefix).gb::$comments_cache_fnext;
 	}
 	
 	static function find($cachenamePrefix) {
-		$path = gb::$site_dir.'/.git/info/gitblog/'.$cachenamePrefix.gb::$comments_cache_fnext;
+		$path = gb::$site_dir.'/.git/info/gitblog/'.gb_filenoext($cachenamePrefix).gb::$comments_cache_fnext;
 		return @unserialize(file_get_contents($path));
 	}
 	

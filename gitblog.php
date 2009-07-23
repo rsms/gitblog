@@ -589,17 +589,15 @@ class gb {
 	}
 	
 	static function syncSiteState() {
-		# also, make sure the repo setup (hooks, config, etc) is up to date
+		# verify repo setup, which also makes sure the repo setup (hooks, config,
+		# etc) is up to date:
 		self::verifyRepoSetup();
 		
 		# no previous state?
 		if (!gb::$site_state) {
 			gb::$site_state = array(
 				# add default plugins
-				'plugins' => array(
-					'rebuild' => array('code-blocks.php'),
-					''
-				)
+				'plugins' => array('rebuild' => array('code-blocks.php'))
 			);
 		}
 		

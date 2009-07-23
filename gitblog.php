@@ -235,24 +235,39 @@ class gb {
 	
 	static public $auth_nonce_ttl = 86400;
 	static public $authenticated = null;
+	static public $auths = null;
 	
-	static function authenticate($realm='gb-admin', $exit_after_request=true) {
-		$users = array();
-		$accounts = GBUserAccount::get();
-		foreach ($accounts as $email => $account) {
-			if (strpos($email, '@') !== false)
-				$users[$email] = $account->passhash;
+	static function authenticator($realm='gb-admin') {
+		if (self::$auths === null)
+			self::$auths = array();
+		if (!isset(self::$auths[$realm])) {
+			$users = array();
+			foreach (GBUserAccount::get() as $email => $account) {
+				# only include actual users
+				if (strpos($email, '@') !== false)
+					$users[$email] = $account->passhash;
+			}
+			self::$auths[$realm] = new GBHTTPDigestAuth(
+				$realm, $users, self::$auth_nonce_ttl, self::$site_url);
 		}
-		$dg = new GBHTTPDigestAuth($realm, self::$auth_nonce_ttl);
-		if ($authed = $dg->authenticate($users)) {
+		return self::$auths[$realm];
+	}
+	
+	static function authenticate($silent=false, $exit_after_request=true, $realm='gb-admin') {
+		$dg = self::authenticator($realm);
+		if ($authed = $dg->authenticate()) {
 			self::$authenticated = GBUserAccount::get($authed);
 			return self::$authenticated;
 		}
-		else {
+		elseif ($silent === false) {
 			self::$authenticated = null;
-			$dg->send();
-			if ($exit_after_request)
+			if ($exit_after_request) {
+				$dg->sendHeaders();
 				exit(0);
+			}
+			else {
+				$dg->sendHeaders(false);
+			}
 			return false;
 		}
 	}
@@ -2412,6 +2427,14 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 
 	# verify configuration, like validity of the secret key.
 	gb::verifyConfig();
+	
+	# authed?
+	if ((isset($_SERVER['PHP_AUTH_DIGEST']) && !empty($_SERVER['PHP_AUTH_DIGEST']))
+		|| (isset($_COOKIE['gb_check_auth']) && $_COOKIE['gb_check_auth'] === '1'))
+	{
+		gb::authenticate(false, false);
+		# now, gb::$authenticated (a GBUserAccount) is set (authed ok) or null (not authed)
+	}
 	
 	if ($gb_urlpath) {
 		if (strpos($gb_urlpath, gb::$tags_prefix) === 0) {

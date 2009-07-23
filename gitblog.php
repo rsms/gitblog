@@ -309,7 +309,7 @@ class gb {
 	
 	static public $plugins_loaded = array();
 	
-	static function load_plugins($context) {
+	static function loadPlugins($context) {
 		if (self::$site_state === null)
 			gb::verifyIntegrity();
 		
@@ -592,22 +592,30 @@ class gb {
 		# also, make sure the repo setup (hooks, config, etc) is up to date
 		self::verifyRepoSetup();
 		
+		# no previous state?
 		if (!gb::$site_state) {
 			gb::$site_state = array(
 				# add default plugins
-				'plugins' => array('rebuild' => array('code-blocks.php'))
+				'plugins' => array(
+					'rebuild' => array('code-blocks.php'),
+					''
+				)
 			);
 		}
+		
 		# Set current values
 		gb::$site_state['url'] = gb::$site_url;
 		gb::$site_state['version'] = gb::$version;
 		gb::$site_state['posts_pagesize'] = gb::$posts_pagesize;
+		
 		# Encode
 		$json = json_encode(gb::$site_state);
 		$path = gb::$site_dir.'/site.json';
+		
 		# Write site url for hooks
 		$bytes_written = file_put_contents(gb::$site_dir.'/.git/info/gitblog-site-url',
 			gb::$site_url, LOCK_EX);
+		
 		# Write site.json
 		$bytes_written += file_put_contents($path, $json, LOCK_EX);
 		chmod($path, 0664);
@@ -647,10 +655,7 @@ class gb {
 	
 	static function loadSiteState() {
 		gb::$site_state = @json_decode(file_get_contents(gb::$site_dir.'/site.json'), true);
-		if (gb::$site_state === false)
-			return false;
-		
-		return true;
+		return (gb::$site_state !== false);
 	}
 	
 	static function verifyRepoSetup() {
@@ -2434,15 +2439,18 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
 
 if (isset($gb_handle_request) && $gb_handle_request) {
 	$gb_urlpath = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
-
+	
 	# verify integrity, implicitly rebuilding gitblog cache or need serious initing.
 	if (gb::verifyIntegrity() === 2) {
 		header("Location: ".gb::$site_url."gitblog/admin/setup.php");
 		exit(0);
 	}
-
+	
 	# verify configuration, like validity of the secret key.
 	gb::verifyConfig();
+	
+	# load plugins
+	gb::loadPlugins('online');
 	
 	# authed?
 	if ((isset($_SERVER['PHP_AUTH_DIGEST']) && !empty($_SERVER['PHP_AUTH_DIGEST']))

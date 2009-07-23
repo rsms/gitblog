@@ -41,7 +41,7 @@ class GBRebuilder {
 		$time_started = microtime(1);
 		
 		# Load rebuild plugins
-		gb::load_plugins('rebuild');
+		gb::loadPlugins('rebuild');
 		
 		# Load rebuilders if needed
 		if (empty(self::$rebuilders))
@@ -53,7 +53,7 @@ class GBRebuilder {
 			$rebuilders[] = new $cls($forceFullRebuild);
 		
 		# Load rebuild plugins (2nd offer)
-		gb::load_plugins('rebuild');
+		gb::loadPlugins('rebuild');
 		
 		# Query ls-tree
 		$ls = rtrim(gb::exec('ls-files --stage'));

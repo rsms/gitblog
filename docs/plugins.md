@@ -1,19 +1,10 @@
 # Plugins
 
-There are three types of plugins, or rather three types of *execution contexts*: Online, Rebuild and Hook.
-
-
 ## Execution contexts
 
-### Online
+- rebuild
 
-Plugins registered in this context are loaded for every public request to the blog interface. Please keep in mind the performance penelty introduced by PHP `require` which is used under the hood.
-
-Examples:
-
-- Modifying behaviour based on who is visiting the site (i.e. alternate interface for mobile users)
-
-> **Not yet implemented.** This execution context has not yet been fully implemented but will be available in a future version.
+- request
 
 
 ### Rebuild
@@ -25,6 +16,17 @@ Examples:
 - Adding support for a new input format (i.e. markdown or similar)
 
 - Building custom indices (i.e. popular comments)
+
+
+### Request
+
+Plugins registered in this context are loaded for every public request to the blog interface. Please keep in mind the performance penelty introduced by PHP `require` which is used under the hood.
+
+Examples:
+
+- Modifying behaviour based on who is visiting the site (i.e. alternate interface for mobile users)
+
+> **Not yet implemented.** This execution context has not yet been fully implemented but will be available in a future version.
 
 
 ### Hook

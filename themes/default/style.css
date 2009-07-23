@@ -151,15 +151,18 @@ div.post { margin-top:20px; width:600px; }
 				border:none;
 				display:block;
 				float:right;
-				background-image:url(comment-hint.png);
+				background-image:url(icons16.png);
 				background-repeat:no-repeat;
-				background-position:right center;
+				background-position:right -64px;
+				background-color:transparent;
 				padding-right:19px;
-				margin-top:5px;
-				height:18px;
-				line-height:18px;
+				margin-top:9px;
+				height:16px;
+				line-height:16px;
 			}
+			div.post a.numcomments:hover { background-position:right -80px; }
 			div.post a.numcomments:link, div.post a.numcomments:visited { color:#777; }
+			div.post a.numcomments:link:hover, div.post a.numcomments:visited:hover { color:#000; }
 	div.post div.body { margin-bottom:30px; }
 	div.post div.body hr { margin:1em 0 1em -9999em; }
 	div.post div.body blockquote {
@@ -218,7 +221,17 @@ div.post { margin-top:20px; width:600px; }
 				li.comment div.actions a.reply:hover { background-position:0 -16px; }
 				li.comment div.actions a.rm { background-position:0 -32px; }
 				li.comment div.actions a.rm:hover { background-position:0 -48px; }
-		li.comment div.author { font-weight:bold; }
+		li.comment div.author {
+			float:left;
+			line-height:1;
+			font-family:'helvetica neue',helvetica,arial,sans-serif;
+			font-weight:bold;
+		}
+			li.comment div.author a { color:#111; border:none; }
+			li.comment div.author a.age { margin-left:0.3em; color:#999; }
+			li.comment div.author a:link:hover { color:#006be4; }
+			li.comment div.author a:visited:hover { color:#af00cf; }
+		li.comment div.message { margin-top:5px; }
 		li.comment div.message > p { margin:0.6em 0 0 0; }
 		li.comment div.message > p:first-child { margin:0; }
 		li.comment > form { margin:10px 10px 10px 68px; }

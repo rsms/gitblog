@@ -1,3 +1,4 @@
+<!-- =========================== post =========================== -->
 <div class="wrapper">
 	<div class="posts single">
 		<div class="post">
@@ -16,6 +17,7 @@
 	<div class="breaker"></div>
 </div>
 <? flush() ?>
+<!-- =========================== comments =========================== -->
 <div id="comments">
 	<div class="wrapper">
 	<? if ($post->comments): ?>
@@ -46,8 +48,10 @@
 					</div>
 					<? endif; ?>
 					<div class="author">
-						<a href="#comment-<?= $comment->id ?>"><?= $comment->date->age() ?></a> <?= $comment->nameLink() ?> said
+						<?= $comment->nameLink() ?>
+						<a href="#comment-<?= $comment->id ?>" class="age"><?= $comment->date->age() ?></a>
 					</div>
+					<div class="breaker"></div>
 					<div class="message">
 						<?= $comment->body ?>
 					</div>
@@ -57,6 +61,7 @@
 			<li class="breaker"></li>
 		<? endforeach; echo str_repeat('</ul>', $prevlevel); ?>
 		</ul>
+		<!-- =========================== unapproved info =========================== -->
 		<div class="breaker"></div>
 		<? if ($post->comments->countUnapproved()): ?>
 			<p><small>
@@ -69,6 +74,7 @@
 			</small></p>
 		<? endif; ?>
 	<? endif; # comments ?>
+	<!-- =========================== post comment form =========================== -->
 	<? if ($post->commentsOpen): ?>
 		<div id="reply"></div>
 		<h3 id="reply-title">Add a comment</h3>

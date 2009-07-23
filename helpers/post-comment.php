@@ -171,7 +171,7 @@ if ($comment) {
 			exit(0);
 		}
 		
-		gb::log(LOG_ERROR, 'failed to add comment '.var_export($comment->body,1)
+		gb::log(LOG_ERR, 'failed to add comment '.var_export($comment->body,1)
 			.' from '.var_export($comment->name,1).' <'.var_export($comment->email,1).'>'
 			.' to '.$post->cachename());
 		

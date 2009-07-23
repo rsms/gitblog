@@ -95,6 +95,8 @@ function code_blocks_unwrap($content='') {
 
 
 function code_blocks_init($context) {
+	if ($context !== 'rebuild')
+		return false;
 	GBFilter::add('body.html', 'code_blocks_wrap', 0);
 	GBFilter::add('body.html', 'code_blocks_unwrap', 9999);
 	return true;

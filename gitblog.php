@@ -2067,6 +2067,17 @@ class GBComment {
 			return h($this->name);
 	}
 	
+	function removeURL($post=null) {
+		if ($post === null) {
+			unset($post);
+			global $post;
+		}
+		if ($this->id === null)
+			throw new UnexpectedValueException('$this->id is null');
+		return gb::$site_url .'gitblog/helpers/rm-comment.php?object='
+			.urlencode($post->cachename()).'&amp;comment='.$this->id;
+	}
+	
 	function __sleep() {
 		return array('date','ipAddress','email','uri','name','body','approved','comments');
 	}

@@ -623,6 +623,20 @@ function gb_uri_to_html_link($text) {
 	return $text;
 }
 
+function gb_split_tags($text) {
+	return array_filter(preg_split('/[ \t]*,+[ \t]*/', $text));
+}
+
+function gb_unique_strings($strings) {
+	# a trick for removing duplicates w/o reordering items.
+	# Also faster than array_unique.
+	return array_flip(array_flip($strings));
+}
+
+function gb_strtolowers($strings) {
+	return array_map('strtolower', $strings);
+}
+
 # Applied to GBComment after being posted, but before being saved to stage
 GBFilter::add('pre-comment', 'gb_filter_pre_comment');
 
@@ -640,5 +654,14 @@ GBFilter::add('sanitize-comment', 'gb_filter_allowed_tags', 60);
 GBFilter::add('sanitize-comment', 'gb_normalize_html_structure', 70);
 GBFilter::add('sanitize-comment', 'gb_htmlents_to_xmlents', 80);
 GBFilter::add('sanitize-comment', 'gb_xmlents_to_utf8', 90);
+
+# Applied to tag-type meta fields at reload and should at the end return a
+# clean array of tokens. Note that gb_split_tags performs the initial splitting
+# on comma and strips whitespace, thus any filter run after this one will get
+# an array as the first argument. Any filter run prior to gb_split_tags will
+# get a string as input and should return a string.
+GBFilter::add('parse-tags', 'gb_split_tags', 10);
+GBFilter::add('parse-tags', 'gb_strtolowers', 20);
+GBFilter::add('parse-tags', 'gb_unique_strings', 30);
 
 ?>

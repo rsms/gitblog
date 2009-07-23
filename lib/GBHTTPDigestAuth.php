@@ -1,18 +1,23 @@
 <?
 class GBHTTPDigestAuth {
-	public $realm = 'realm';
-	public $url = '/';
+	public $realm = 'auth';
+	public $domain = null;
 	public $ttl = 300;
 	
-	function __construct($realm='auth', $ttl=300, $url=null) {
+	function __construct($realm='auth', $users=null, $ttl=300, $domain=null) {
 		$this->realm = $realm;
-		$this->url = $url !== null ? $url : gb::$site_url;
+		$this->users = $users;
 		$this->ttl = $ttl;
+		$this->domain = $domain;
 	}
 	
-	function authenticate($users) {
-		if (empty($_SERVER['PHP_AUTH_DIGEST']))
+	function authenticate($users=null) {
+		if (!isset($_SERVER['PHP_AUTH_DIGEST']) || empty($_SERVER['PHP_AUTH_DIGEST']))
 			return false;
+		
+		# users
+		if ($users === null)
+			$users = $this->users ? $this->users : array();
 		
 		# analyze
 		if (!($data = self::parse($_SERVER['PHP_AUTH_DIGEST'])) || !isset($users[$data['username']]))
@@ -23,11 +28,18 @@ class GBHTTPDigestAuth {
 			return false;
 		
 		# generate the valid response
-		$A1 = $users[$data['username']];
-		$A2 = md5($_SERVER['REQUEST_METHOD'].':'.$data['uri']);
+		$A1 = $users[$data['username']]; # MD5(username:realm:password)
+		$A2 = md5($_SERVER['REQUEST_METHOD'].':'.$data['uri']); # MD5(method:digestURI)
 		$valid_response = md5($A1.':'.$data['nonce'].':'.$data['nc'].':'.$data['cnonce'].':'.$data['qop'].':'.$A2);
 		if ($data['response'] != $valid_response)
 			return false;
+		
+		# set hint cookie
+		if (headers_sent() === false) {
+			$cookieurl = new GBURL(gb::$site_url);
+			setrawcookie('gb_check_auth', '1', time()+$this->ttl, 
+				$cookieurl->path, $cookieurl->host, $cookieurl->secure);
+		}
 		
 		return $data['username'];
 	}
@@ -36,11 +48,12 @@ class GBHTTPDigestAuth {
 		return gb_nonce_make('digest-auth-'.$this->realm, $this->ttl);
 	}
 	
-	function send() {
-		header('HTTP/1.0 401 Unauthorized');
+	function sendHeaders($status='401 Unauthorized') {
+		if ($status)
+			header('HTTP/1.1 '.$status);
 		header('WWW-Authenticate: Digest '.
 			'realm="'.$this->realm.'",'.
-			#'domain="'.$this->url.'",'.
+			($this->domain ? 'domain="'.$this->domain.'",' : '').
 			'qop="auth",'.
 			'algorithm="MD5",'.
 			'nonce="'.$this->nonce().'",'.
@@ -68,7 +81,7 @@ $users = array(
 );
 $d = new GBHTTPDigestAuth($realm);
 if (!($username = $d->authenticate($users))) {
-	$d->send();
+	$d->sendHeaders();
 	exit(0);
 }
 echo 'authenticated as '.$username;

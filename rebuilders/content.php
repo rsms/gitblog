@@ -426,8 +426,9 @@ class GBCategoryToObjsIndexRebuilder extends GBContentIndexRebuilder {
 	}
 	
 	function serialize() {
+		# array_flip-array_flip is cheaper than array_unique and retains order
 		foreach ($this->index as $k => $v)
-			$this->index[$k] = array_unique($v);
+			$this->index[$k] = array_flip(array_flip($v));
 		return parent::serialize();
 	}
 }
@@ -450,8 +451,9 @@ class GBTagToObjsIndexRebuilder extends GBContentIndexRebuilder {
 	}
 	
 	function serialize() {
+		# array_flip-array_flip is cheaper than array_unique and retains order
 		foreach ($this->index as $k => $v)
-			$this->index[$k] = array_unique($v);
+			$this->index[$k] = array_flip(array_flip($v));
 		return parent::serialize();
 	}
 }

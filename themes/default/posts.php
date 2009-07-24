@@ -45,8 +45,10 @@
 	<div class="breaker"></div>
 </div>
 <? endif ?>
-<!-- =========================== posts =========================== -->
 <div class="wrapper">
+	<!-- =========================== sidebar =========================== -->
+	<? include gb::$theme_dir . '/sidebar.php' ?>
+	<!-- =========================== posts =========================== -->
 	<div class="posts">
 		<!-- For SEO purposes. Not actually displayed: -->
 		<h1><?= gb_site_title() ?></h1>
@@ -72,12 +74,6 @@
 			There is no published content here at the moment. Check back later my friend.
 		</p>
 	<? endif; ?>
-	</div>
-	<!-- =========================== sidebar =========================== -->
-	<div id="sidebar">
-		<p>popular posts</p>
-		<p>links to friends</p>
-		<p>latest comments</p>
 	</div>
 	<div class="breaker"></div>
 </div>

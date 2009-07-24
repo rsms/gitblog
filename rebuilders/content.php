@@ -27,6 +27,7 @@ class GBContentRebuilder extends GBRebuilder {
 			GBContentFinalizer::$dirtyObjects[$id] = $obj;
 		}
 		GBContentFinalizer::$objects[$id] = $obj;
+		GBContentFinalizer::$objectsByName[gb_filenoext($obj->name)] = $obj;
 		return $obj;
 	}
 	
@@ -121,6 +122,8 @@ class GBContentFinalizer extends GBContentRebuilder {
 	static public $newfound;      # [id   => GBExposedContent, ..]
 	static public $duplicates;    # [id   => GBExposedContent, ..]
 	
+	static public $objectsByName;
+	
 	static public $objectIndexRebuilders = array();
 	static public $commentIndexRebuilders = array();
 	
@@ -132,6 +135,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		self::$dirtyComments = array();
 		self::$newfound = array();
 		self::$duplicates = array();
+		self::$objectsByName = array();
 	}
 	
 	/** Batch-reload objects */
@@ -497,16 +501,44 @@ class GBTagsByPopularityIndexRebuilder extends GBContentIndexRebuilder {
 	}
 }
 
-class GBCommentsIndexRebuilder extends GBContentIndexRebuilder {
+class GBRecentCommentsIndexRebuilder extends GBContentIndexRebuilder {
+	public $limit = 10;
+	
 	function __construct() {
-		parent::__construct('comments-by-date-desc');
+		parent::__construct('recent-comments');
 	}
 	
 	function serialize() {
-		usort($this->index, 'gb_sortfunc_cobj_date_published_r');
-		# only keep cachenames
-		foreach($this->index as $k => $obj)
-			$this->index[$k] = $obj->cachename();
+		$comments = array();
+		$i = 0;
+		
+		# find
+		foreach ($this->index as $commentObject) {
+			$name = gb_filenoext($commentObject->name);
+			foreach ($commentObject as $approvedComment) {
+				$comments[strval($approvedComment->date->time).'0'.$i++] = array($approvedComment, $name);
+			}
+		}
+		
+		# sort
+		krsort($comments);
+		$this->index = array_values($comments);
+		
+		# limit
+		if (count($this->index) > $this->limit)
+			$this->index = array_slice($this->index, 0, $this->limit);
+		
+		# attach objects
+		foreach ($this->index as $k => $tuple) {
+			$object = null;
+			if (isset(GBContentFinalizer::$objectsByName[$tuple[1]])) {
+				$object = GBContentFinalizer::$objectsByName[$tuple[1]]->condensedVersion();
+				unset($object->body);
+			}
+			$tuple[1] = $object;
+			$this->index[$k] = $tuple;
+		}
+		
 		return parent::serialize();
 	}
 }
@@ -557,6 +589,6 @@ function init_rebuilder_content(&$rebuilders) {
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBTagsByPopularityIndexRebuilder';
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBCategoryToObjsIndexRebuilder';
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBPagesIndexRebuilder';
-	GBContentFinalizer::$commentIndexRebuilders[] = 'GBCommentsIndexRebuilder';
+	GBContentFinalizer::$commentIndexRebuilders[] = 'GBRecentCommentsIndexRebuilder';
 }
 ?>

@@ -11,7 +11,7 @@ class GBFilter {
 	 * any more filter after the one returning FALSE. Returning anything else
 	 * have no effect.
 	 */
-	static function add($tag, $func, $priority=10) {
+	static function add($tag, $func, $priority=100) {
 		if (!isset(self::$filters[$tag]))
 			self::$filters[$tag] = array($priority => array($func));
 		elseif (!isset(self::$filters[$tag][$priority]))
@@ -497,10 +497,10 @@ function gb_force_balance_tags( $text ) {
 
 
 # Used to GBExposedContent->slug = filter(GBExposedContent->title)
-GBFilter::add('sanitize-title', 'gb_sanitize_title');
+GBFilter::add('sanitize-title', 'gb_sanitize_title', 10);
 
 # Applied to URLs from the outside world, for instance when adding comments
-GBFilter::add('sanitize-url', 'gb_sanitize_url');
+GBFilter::add('sanitize-url', 'gb_sanitize_url', 10);
 
 # Applied to HTML content prior to writing cache
 GBFilter::add('body.html', 'gb_texturize_html', 10);
@@ -539,8 +539,8 @@ function gb_filter_post_reload_content_html(GBExposedContent $c) {
 	return $c;
 }
 
-GBFilter::add('post-reload-GBExposedContent', 'gb_filter_post_reload_content');
-GBFilter::add('post-reload-GBExposedContent.html', 'gb_filter_post_reload_content_html');
+GBFilter::add('post-reload-GBExposedContent', 'gb_filter_post_reload_content', 10);
+GBFilter::add('post-reload-GBExposedContent.html', 'gb_filter_post_reload_content_html', 10);
 
 
 # -----------------------------------------------------------------------------
@@ -618,13 +618,27 @@ function gb_filter_pre_comment(GBComment $comment) {
 }
 
 function gb_uri_to_html_link($text) {
-	static $pattern = '/^(|[^"\'a-zA-Z])([a-zA-Z][a-zA-Z0-9\.+-]*:[^>< \t\n\r]*[^>< \t\n\r\.,])/';
-	$text = preg_replace($pattern, '$1<a href="$2">$2</a>', $text);
-	return $text;
+	$tokens = gb_tokenize_html($text);
+	$out = '';
+	
+	foreach ($tokens as $token) {
+		if (isset($token{0}) && $token{0} !== '<' && $token{0} !== '[') {
+			$words = preg_split('/([\\x00-\\x20\\x7f\\x60"\'<>\\\\\]\[\^]+)/', $token, -1,
+				PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY);
+			$token = '';
+			foreach ($words as $word) {
+				$word = preg_replace('/^[a-zA-Z][a-zA-Z0-9\.+-]*:.+$/', '<a href="$0">$0</a>', $word);
+				$token .= $word;
+			}
+		}
+		$out .= $token;
+	}
+	
+	return $out;
 }
 
 function gb_split_tags($text) {
-	return array_filter(preg_split('/[ \t]*,+[ \t]*/', $text));
+	return preg_split('/[ \t]*,+[ \t]*/', $text, -1, PREG_SPLIT_NO_EMPTY);
 }
 
 function gb_unique_strings($strings) {
@@ -638,11 +652,11 @@ function gb_strtolowers($strings) {
 }
 
 # Applied to GBComment after being posted, but before being saved to stage
-GBFilter::add('pre-comment', 'gb_filter_pre_comment');
+GBFilter::add('pre-comment', 'gb_filter_pre_comment', 10);
 
 # Applied to GBComments/GBComment after being reloaded but prior to writing cache.
-GBFilter::add('post-reload-comments', 'gb_filter_post_reload_comments');
-GBFilter::add('post-reload-comment', 'gb_filter_post_reload_comment');
+GBFilter::add('post-reload-comments', 'gb_filter_post_reload_comments', 10);
+GBFilter::add('post-reload-comment', 'gb_filter_post_reload_comment', 10);
 
 # Applied to GBComment::$body prior to writing the comments' cache.
 GBFilter::add('sanitize-comment', 'gb_texturize_html', 10);

@@ -1,7 +1,7 @@
 #!/bin/sh
 cd $(dirname "$0")
 SECRET=$(grep 'gb::$secret' ../../gb-config.php | cut -d' ' -f 3 | sed "s/[;']//g")
-RSP=$(git --git-dir=.. --work-tree=../.. log -p --full-index -1 \
+git --git-dir=.. --work-tree=../.. log -p --full-index -1 \
 | curl \
 	-H 'X-gb-shared-secret: '$SECRET \
 	-H 'Expect:' \
@@ -10,8 +10,4 @@ RSP=$(git --git-dir=.. --work-tree=../.. log -p --full-index -1 \
 	--silent --show-error \
 	--data-binary @- \
 	-k \
-	$(cat ../info/gitblog-site-url)'gitblog/hooks/post-patch.php')
-echo "$RSP"
-if (echo "$RSP" | grep -q -E '^error'); then
-	exit 1
-fi
+	$(cat ../info/gitblog-site-url)'gitblog/hooks/post-patch.php'

@@ -96,6 +96,8 @@ class GitCommit {
 			
 			foreach ($files as $line) {
 				$line = explode("\t", $line);
+				if (count($line) < 2)
+					continue;
 				$t = $line[0]{0};
 				$name = gb_normalize_git_name($line[1]);
 				$previousName = null;

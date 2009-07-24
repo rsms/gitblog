@@ -56,7 +56,7 @@ To demonstrate that the "working tree" is indeed a working area and not the live
 
 Now, let's commit the changes, pusing them live:
 
-	$ git commit -a -m 'Updated my awesome hello-world post'
+	$ git commit -m 'Updated my awesome hello-world post' content
 
 Reload your web browser and... voila!
 

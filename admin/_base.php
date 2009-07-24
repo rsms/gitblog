@@ -1,7 +1,7 @@
 <?
 require '../gitblog.php';
 
-define('GITBLOG_ADMIN_URL', gb::$site_url.'/gitblog/admin/');
+define('GITBLOG_ADMIN_URL', gb::$site_url.'gitblog/admin/');
 
 $integrity = gb::verifyIntegrity();
 $errors = array();

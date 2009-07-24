@@ -613,7 +613,7 @@ function gb_filter_allowed_tags($body) {
 }
 
 function gb_filter_pre_comment(GBComment $comment) {
-	$comment->approved = true; # todo: akismet or something funky
+	#$comment->approved = true; # todo: akismet or something funky
 	return $comment;
 }
 

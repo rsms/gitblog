@@ -533,7 +533,7 @@ class GBRecentCommentsIndexRebuilder extends GBContentIndexRebuilder {
 			$object = null;
 			if (isset(GBContentFinalizer::$objectsByName[$tuple[1]])) {
 				$object = GBContentFinalizer::$objectsByName[$tuple[1]]->condensedVersion();
-				unset($object->body);
+				$object->body = null;
 			}
 			$tuple[1] = $object;
 			$this->index[$k] = $tuple;

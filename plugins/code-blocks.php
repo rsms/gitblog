@@ -38,7 +38,10 @@ function code_blocks_highlight($content, $lang, $conf, $input_encoding='utf-8') 
 	}
 	# $st => array(int status, string out, string err)
 	if ($st[0] !== 0) {
-		gb::log(LOG_WARNING, 'code-blocks plugin failed to highlight code: '.$st[2]);
+		if (strpos($st[2], 'guess_lexer') !== false)
+			gb::log(LOG_NOTICE, 'code-blocks plugin failed to guess language (pygments guess_lexer failed)');
+		else
+			gb::log(LOG_WARNING, 'code-blocks plugin failed to highlight code: '.$st[2]);
 		return code_blocks_dummy_block($content);
 	}
 	return $st[1];

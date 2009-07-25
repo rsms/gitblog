@@ -2292,6 +2292,54 @@ class gb_author_cookie {
 }
 
 # -----------------------------------------------------------------------------
+# Notification/Event hub
+
+class gbevent {
+	static public $observers = array();
+	
+	static function observe($notification, $callable) {
+		if(isset(self::$observers[$notification]))
+			self::$observers[$notification][] = $callable;
+		else
+			self::$observers[$notification] = array($callable);
+	}
+	
+	static function remove($callable, $notification=null) {
+		if($notification !== null) {
+			if(isset(self::$observers[$notification])) {
+				$a =& self::$observers[$notification];
+				if(($i = array_search($callable, $a)) !== false) {
+					unset($a[$i]);
+					if(!$a)
+						unset(self::$observers[$notification]);
+					return true;
+				}
+			}
+		}
+		else {
+			foreach(self::$observers as $n => $a) {
+				if(($i = array_search($callable, $a)) !== false) {
+					unset(self::$observers[$n][$i]);
+					if(!self::$observers[$n])
+						unset(self::$observers[$n]);
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
+	static function post($notification, $args=array()) {
+		if(isset(self::$observers[$notification])) {
+			foreach(self::$observers[$notification] as $callable) {
+				if (call_user_func_array($callable, $args) === true)
+					break;
+			}
+		}
+	}
+}
+
+# -----------------------------------------------------------------------------
 # Template helpers
 
 gb::$title = array(gb::$site_title);

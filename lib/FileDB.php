@@ -23,6 +23,8 @@ class FileDB {
 			throw new LogicException('a transaction is already active');
 		$this->txExclusive = $exclusive;
 		$this->txFp = @fopen($this->file, 'r+');
+		if (file_exists($this->file) && !is_writable($this->file))
+			throw new RuntimeException($this->file.' is not writable');
 		if ( ($this->txFp === false) && (($this->txFp = fopen($this->file, 'x+')) !== false) ) {
 			if ($this->createmode !== false)
 				chmod($this->file, $this->createmode);

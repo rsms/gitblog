@@ -438,11 +438,11 @@ class gb {
 	}
 	
 	static function tags($indexname='tags-by-popularity') {
-		return GBObjectIndex::loadNamed($indexname);
+		return GBObjectIndex::getNamed($indexname);
 	}
 	
 	static function categories($indexname='category-to-objs') {
-		return GBObjectIndex::loadNamed($indexname);
+		return GBObjectIndex::getNamed($indexname);
 	}
 	
 	static function urlToTags($tags) {
@@ -1569,7 +1569,7 @@ class GBExposedContent extends GBContent {
 	}
 	
 	static function findByMetaIndex($tags, $indexname, $pageno) {
-		$index = GBObjectIndex::loadNamed($indexname);
+		$index = GBObjectIndex::getNamed($indexname);
 		$objs = self::_findByMetaIndex($tags, $index);
 		if (!$objs)
 			return false;
@@ -2089,7 +2089,7 @@ class GBComment {
 	}
 	
 	function __sleep() {
-		return array('date','ipAddress','email','uri','name','body','approved','comments','type');
+		return array('date','ipAddress','email','uri','name','body','approved','comments','type','id');
 	}
 }
 
@@ -2105,7 +2105,7 @@ class GBObjectIndex {
 		return gb::$site_dir.'/.git/info/gitblog/'.self::mkCachename($name);
 	}
 	
-	static function loadNamed($name) {
+	static function getNamed($name) {
 		if (isset(self::$loadcache[$name]))
 			return self::$loadcache[$name];
 		gb::catch_errors();

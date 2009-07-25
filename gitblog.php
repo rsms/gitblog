@@ -607,7 +607,7 @@ class gb {
 		gb::$site_state['posts_pagesize'] = gb::$posts_pagesize;
 		
 		# Encode
-		$json = json_encode(gb::$site_state);
+		$json = json::pretty(gb::$site_state)."\n";
 		$path = gb::$site_dir.'/site.json';
 		
 		# Write site url for hooks

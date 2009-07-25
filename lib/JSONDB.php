@@ -8,13 +8,15 @@
  */
 class JSONDB extends FileDB {
 	public $autocommit = true;
+	public $pretty_output = true;
 	
 	/** For keeping track of modifications done or not */
 	protected $originalData = null;
 	
-	function __construct($file='/dev/null', $createmode=0660, $autocommit=true) {
+	function __construct($file='/dev/null', $createmode=0660, $autocommit=true, $pretty_output=true) {
 		parent::__construct($file, $createmode);
 		$this->autocommit = $autocommit;
+		$this->pretty_output = $pretty_output;
 	}
 	
 	function loadString($s) {
@@ -51,7 +53,7 @@ class JSONDB extends FileDB {
 	}
 	
 	function encodeData() {
-		$this->data = json_encode($this->data);
+		$this->data = $this->pretty_output ? json::pretty($this->data)."\n" : json_encode($this->data);
 		if ($this->data === null)
 			$this->throwJsonEncoderError();
 	}

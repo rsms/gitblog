@@ -614,6 +614,10 @@ function gb_filter_allowed_tags($body) {
 
 function gb_filter_pre_comment(GBComment $comment) {
 	#$comment->approved = true; # todo: akismet or something funky
+	
+	# replace CR[LF] with LF (damned be you, Windows users!)
+	$comment->body = preg_replace('/\\r\\n?/', "\n", $comment->body);
+	
 	return $comment;
 }
 

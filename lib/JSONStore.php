@@ -6,15 +6,15 @@
  * (vector or map) since this interface is built upon key-value pairs. Keys
  * must be strings, integers or floats. Values can be of any type.
  */
-class JSONDB extends FileDB {
+class JSONStore extends FileDB {
 	public $autocommit = true;
 	public $pretty_output = true;
 	
 	/** For keeping track of modifications done or not */
 	protected $originalData = null;
 	
-	function __construct($file='/dev/null', $createmode=0660, $autocommit=true, $pretty_output=true) {
-		parent::__construct($file, $createmode);
+	function __construct($file='/dev/null', $skeleton_file=null, $createmode=0660, $autocommit=true, $pretty_output=true) {
+		parent::__construct($file, $skeleton_file, $createmode);
 		$this->autocommit = $autocommit;
 		$this->pretty_output = $pretty_output;
 	}
@@ -116,7 +116,7 @@ class JSONDB extends FileDB {
 
 /*# Test
 error_reporting(E_ALL);
-$fdb = new JSONDB('/Users/rasmus/Desktop/db.json');
+$fdb = new JSONStore('/Users/rasmus/Desktop/db.json');
 $fdb->begin();
 try {
 	assert($fdb->get('mykey') === null);

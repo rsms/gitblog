@@ -837,6 +837,7 @@ gb::$is_internal_call = ((strpos($s, '/gitblog/') !== false || substr($s, -8) ==
 # gb::$site_dir
 if (isset($gb_site_dir)) {
 	gb::$site_dir = $gb_site_dir;
+	unset($gb_site_dir);
 }
 else {
 	if (gb::$is_internal_call) {
@@ -856,14 +857,21 @@ else {
 	gb::$site_dir = realpath($s);
 }
 
-# gb::$site_url
-if (isset(gb::$site_url)) {
-	gb::$site_url = gb::$site_url;
+# gb::$site_path -- must end in a slash ("/").
+if (isset($gb_site_path)) {
+	gb::$site_path = $gb_site_path;
+	unset($gb_site_path);
 }
 else {
-	# URL to the base of the site.
-	# Must end with a slash ("/").
 	gb::$site_path = ($u === '/' ? $u : $u.'/');
+}
+
+# gb::$site_url -- URL to the base of the site. Must end in a slash ("/").
+if (isset($gb_site_url)) {
+	gb::$site_url = $gb_site_url;
+	unset($gb_site_url);
+}
+else {
 	gb::$site_url = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://')
 		.$_SERVER['SERVER_NAME'] . gb::$site_path;
 }
@@ -874,6 +882,7 @@ if (!gb::$is_internal_call) {
 	# gb::$theme_dir
 	if (isset($gb_theme_dir)) {
 		gb::$theme_dir = $gb_theme_dir;
+		unset($gb_theme_dir);
 	}
 	else {
 		$bt = debug_backtrace();
@@ -883,6 +892,7 @@ if (!gb::$is_internal_call) {
 	# gb::$theme_url
 	if (isset($gb_theme_url)) {
 		gb::$theme_url = $gb_theme_url;
+		unset($gb_theme_url);
 	}
 	else {
 		$relpath = gb_relpath(gb::$site_dir, gb::$theme_dir);

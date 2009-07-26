@@ -234,7 +234,7 @@ class gb {
 	# Admin authentication
 	
 	static public $auth_nonce_ttl = 86400;
-	static public $authenticated = null;
+	static public $authorized = null;
 	static public $auths = null;
 	
 	static function authenticator($realm='gb-admin') {
@@ -253,15 +253,24 @@ class gb {
 		return self::$auths[$realm];
 	}
 	
-	static function authenticate($silent=false, $exit_after_request=true, $realm='gb-admin') {
+	static function authenticate($silent=false, $exit_after_response=true, $realm='gb-admin') {
 		$dg = self::authenticator($realm);
 		if ($authed = $dg->authenticate()) {
-			self::$authenticated = GBUserAccount::get($authed);
-			return self::$authenticated;
+			# user authenticated
+			self::$authorized = GBUserAccount::get($authed);
+			
+			# set hint cookie
+			if (headers_sent() === false && !isset($_COOKIE['gb_check_auth'])) {
+				$cookieurl = new GBURL(gb::$site_url);
+				setrawcookie('gb_check_auth', '1', time()+$this->ttl, 
+					$cookieurl->path, $cookieurl->host, $cookieurl->secure);
+			}
+			
+			return self::$authorized;
 		}
 		elseif ($silent === false) {
-			self::$authenticated = null;
-			if ($exit_after_request) {
+			self::$authorized = null;
+			if ($exit_after_response) {
 				$dg->sendHeaders();
 				exit(0);
 			}

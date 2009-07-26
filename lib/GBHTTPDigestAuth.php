@@ -34,13 +34,6 @@ class GBHTTPDigestAuth {
 		if ($data['response'] != $valid_response)
 			return false;
 		
-		# set hint cookie
-		if (headers_sent() === false) {
-			$cookieurl = new GBURL(gb::$site_url);
-			setrawcookie('gb_check_auth', '1', time()+$this->ttl, 
-				$cookieurl->path, $cookieurl->host, $cookieurl->secure);
-		}
-		
 		return $data['username'];
 	}
 	

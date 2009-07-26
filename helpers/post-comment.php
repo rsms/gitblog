@@ -127,19 +127,27 @@ if ( $input['client-timezone-offset'] !== false
 if ($input['author-url'] !== false)
 	$input['author-uri'] = GBFilter::apply('sanitize-url', $input['author-url']);
 
+# if we are logged in, use the canonical email
+if (gb::$authorized)
+	$input['author-email'] = gb::$authorized->email;
+
 # set author cookie
 gb_author_cookie::set($input['author-email'], $input['author-name'], $input['author-uri']);
 
 # create comment object
 $comment = new GBComment(array(
 	'date'      => $date->__toString(),
-	'ipAddress' => $_SERVER['REMOTE_ADDR'],
+	'ipAddress' => preg_replace('/[^0-9., ]/', '', $_SERVER['REMOTE_ADDR']),
 	'email'     => $input['author-email'],
 	'uri'       => $input['author-uri'],
 	'name'      => $input['author-name'],
 	'body'      => $input['reply-message'],
 	'approved'  => false,
-));	
+));
+
+# always approve admin comments
+if (gb::$authorized)
+	$comment->approved = true;
 
 # apply filters
 $comment = GBFilter::apply('pre-comment', $comment);

@@ -309,7 +309,7 @@ class gb {
 	
 	static public $plugins_loaded = array();
 	
-	static function loadPlugins($context) {
+	static function load_plugins($context) {
 		if (self::$site_state === null)
 			gb::verifyIntegrity();
 		
@@ -328,6 +328,9 @@ class gb {
 			$loaded = array();
 			self::$plugins_loaded[$context] =& $loaded;
 		}
+		
+		if (!is_array($plugins))
+			return;
 		
 		# load plugins
 		foreach ($plugins as $path) {
@@ -715,7 +718,7 @@ class gb {
 		return 0;
 	}
 	
-	static function verifyConfig() {
+	static function verify_config() {
 		if (!gb::$secret || strlen(gb::$secret) < 62) {
 			header('Status: 503 Service Unavailable');
 			header('Content-Type: text/plain; charset=utf-8');
@@ -2552,17 +2555,17 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 	}
 	
 	# verify configuration, like validity of the secret key.
-	gb::verifyConfig();
+	gb::verify_config();
 	
 	# load plugins
-	gb::loadPlugins('online');
+	gb::load_plugins('online');
 	
 	# authed?
 	if ((isset($_SERVER['PHP_AUTH_DIGEST']) && !empty($_SERVER['PHP_AUTH_DIGEST']))
 		|| (isset($_COOKIE['gb_check_auth']) && $_COOKIE['gb_check_auth'] === '1'))
 	{
 		gb::authenticate(false, false);
-		# now, gb::$authenticated (a GBUserAccount) is set (authed ok) or null (not authed)
+		# now, gb::$authorized (a GBUserAccount) is set (authed ok) or null (not authed)
 	}
 	
 	if ($gb_urlpath) {

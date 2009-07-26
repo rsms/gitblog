@@ -1,8 +1,24 @@
 <?
+/**
+ * Takes care of posting a comment.
+ * 
+ * Events:
+ *   
+ * - "skipped-duplicate-comment", $comment, $exposedcontentobj
+ *   Posted after a comment was detected to be a duplicate and will not be
+ *   added $exposedcontentobj. Posted just before the response is sent.
+ * 
+ * - "added-comment", $comment, $exposedcontentobj
+ *   Posted after a comment was successfully added to $exposedcontentobj, but
+ *   before the response is sent.
+ * 
+ */
 require '../gitblog.php';
 ini_set('html_errors', '0');
 
-gb::verifyConfig();
+gb::verify_config();
+gb::authenticate(false, false);
+gb::load_plugins('admin');
 
 /**
  * Acceptable fields.

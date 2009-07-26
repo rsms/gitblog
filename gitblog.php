@@ -649,9 +649,19 @@ class gb {
 		self::exec('reset '.$flags.' '.$commitargs.' --'.$pathspec);
 	}
 	
-	static function commit($message, $author=null) {
+	static function commit($message, $author=null, $pathspec=null) {
+		if ($pathspec) {
+			if (is_array($pathspec))
+				$pathspec = implode(' ', array_map('escapeshellarg',$pathspec));
+			else
+				$pathspec = escapeshellarg($pathspec);
+			$pathspec = ' '.$pathspec;
+		}
+		else {
+			$pathspec = '';
+		}
 		$author = $author ? '--author='.escapeshellarg($author) : '';
-		self::exec('commit -m '.escapeshellarg($message).' --quiet '.$author);
+		self::exec('commit -m '.escapeshellarg($message).' --quiet '.$author.$pathspec);
 		@chmod(gb::$site_dir.'/.git/COMMIT_EDITMSG', 0664);
 		return true;
 	}

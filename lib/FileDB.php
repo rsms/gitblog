@@ -7,11 +7,13 @@
  */
 class FileDB {
 	public $file;
+	public $skeleton_file;
 	public $createmode;
 	public $data = null;
 	
-	function __construct($file, $createmode=0660) {
+	function __construct($file, $skeleton_file=null, $createmode=0660) {
 		$this->file = $file;
+		$this->skeleton_file = $skeleton_file;
 		$this->createmode = $createmode;
 	}
 	
@@ -25,7 +27,13 @@ class FileDB {
 		$this->txFp = @fopen($this->file, 'r+');
 		if (file_exists($this->file) && !is_writable($this->file))
 			throw new RuntimeException($this->file.' is not writable');
-		if ( ($this->txFp === false) && (($this->txFp = fopen($this->file, 'x+')) !== false) ) {
+		if ($this->skeleton_file) {
+			copy($this->skeleton_file, $this->file);
+			if ($this->createmode !== false)
+				chmod($this->file, $this->createmode);
+			$this->txFp = fopen($this->file, 'r+');
+		}
+		elseif ( ($this->txFp === false) && (($this->txFp = fopen($this->file, 'x+')) !== false) ) {
 			if ($this->createmode !== false)
 				chmod($this->file, $this->createmode);
 		}

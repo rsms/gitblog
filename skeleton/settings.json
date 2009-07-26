@@ -1,4 +1,5 @@
 {
-	/* Automatic spam filtering. How to activate: http://akismet.com/personal/ */
-	"akismet_api_key": ""
+	"akismet": {
+		"api_key": ""
+	}
 }

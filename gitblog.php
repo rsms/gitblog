@@ -195,7 +195,7 @@ class gb {
 		$s = gb::$site_url.self::$index_prefix;
 		if ($part) {
 			if ($part{0} === '/') {
-				$s .= substr($part, 1);
+				$s .= strlen($part) > 1 ? substr($part, 1) : '';
 			}
 			else {
 				$v = $part.'_prefix';

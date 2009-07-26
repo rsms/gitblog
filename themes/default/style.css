@@ -200,14 +200,14 @@ div.post { margin-top:20px; width:600px; }
 }
 	#comments hr { margin-top:0; margin-right:0; }
 	#comments h2 { margin-bottom:1em; }
-	#comments ul { list-style:none; margin:0; padding:0 0 0 30px; }
+	#comments ul { list-style:none; margin:0; padding:0 0 10px 30px; width:620px; }
 	#comments > div.wrapper > ul { padding-left:0; } /* first level is not indented */
-		#comments ul.l1 li { width:590px; }
-		#comments ul.l2 li { width:560px; }
-		#comments ul.l3 li { width:530px; }
-		#comments ul.l4 li { width:500px; }
-		#comments ul.l5 li { width:470px; }
-		#comments ul.l6 li { width:440px; }
+		#comments ul.l1, #comments ul.l1 li { width:590px; }
+		#comments ul.l2, #comments ul.l2 li { width:560px; }
+		#comments ul.l3, #comments ul.l3 li { width:530px; }
+		#comments ul.l4, #comments ul.l4 li { width:500px; }
+		#comments ul.l5, #comments ul.l5 li { width:470px; }
+		#comments ul.l6, #comments ul.l6 li { width:440px; }
 		#comments ul.l1 div.message-wrapper { width:512px; }
 		#comments ul.l2 div.message-wrapper { width:482px; }
 		#comments ul.l3 div.message-wrapper { width:452px; }
@@ -217,11 +217,11 @@ div.post { margin-top:20px; width:600px; }
 	/* Comment */
 	li.comment {
 		width:620px;
-		margin:10px 0 -1px 0;
+		margin:0 0 10px 0;
 		display:block;
-		background-color:#fff;
 	}
-	li.comment.post-author { border:none; background-color:yellow; }
+		li.comment.post-author div.author a.name { color:#00942a; }
+		li.comment.post-author div.author a.name:after { content:" (author)"; font-weight:normal; font-style:italic; }
 		li.comment div.avatar { float:left; width:48px; height:48px; margin:10px 0; }
 		li.pingback div.avatar {
 			background-image:url(icons48.png);
@@ -232,7 +232,7 @@ div.post { margin-top:20px; width:600px; }
 		li.comment div.message-wrapper {
 			float:left;
 			width:542px;
-			margin:10px 0 20px 15px;
+			margin:10px 0 10px 15px;
 		}
 			li.comment div.actions { float:right; }
 				li.comment div.actions a {

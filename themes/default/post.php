@@ -36,7 +36,10 @@
 						echo str_repeat('</ul>', $prevlevel-$level);
 					$prevlevel = $level;
 				?>
-				<li class="comment<?= $comment->type === GBComment::TYPE_PINGBACK ? ' pingback' : '' ?>" id="comment-<?= $comment->id ?>">
+				<li class="comment<?
+					if ($comment->type === GBComment::TYPE_PINGBACK) echo ' pingback';
+					if ($comment->email === $post->author->email) echo ' post-author';
+			 		?>" id="comment-<?= $comment->id ?>">
 					<div class="avatar">
 						<img 
 							src="http://www.gravatar.com/avatar.php?gravatar_id=<?= md5($comment->email) ?>&amp;size=48&amp;default=<?= urlencode(gb::$theme_url . 'default-avatar.png') ?>" />
@@ -44,7 +47,7 @@
 					<div class="message-wrapper">
 						<? if ($post->commentsOpen): ?>
 						<div class="actions">
-							<? if (gb::$authenticated): ?>
+							<? if (gb::$authorized): ?>
 								<a class="rm" href="<?= h($comment->removeURL()) ?>"
 									title="Remove this comment and hide any replies to it"><span>&otimes;</span></a>
 							<? endif ?>
@@ -54,7 +57,7 @@
 						</div>
 						<? endif; ?>
 						<div class="author">
-							<?= $comment->nameLink() ?>
+							<?= $comment->nameLink('class="name"') ?>
 							<a href="#comment-<?= $comment->id ?>" class="age"><?= $comment->date->age() ?></a>
 						</div>
 						<div class="breaker"></div>

@@ -673,10 +673,14 @@ class gb {
 		
 		# no previous state?
 		if (!gb::$site_state) {
-			gb::$site_state = array(
-				# add default plugins
-				'plugins' => array('rebuild' => array('code-blocks.php'))
-			);
+			gb::$site_state = json_decode(file_get_contents(gb::$dir.'/skeleton/site.json'), true);
+			# create secret
+			gb::$secret = '';
+			while (strlen(gb::$secret) < 62) {
+				mt_srand();
+				gb::$secret .= base_convert(mt_rand(), 10, 36);
+			}
+			gb::$site_state['secret'] = gb::$secret;
 		}
 		
 		# Set current values

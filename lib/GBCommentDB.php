@@ -1,5 +1,5 @@
 <?
-class GBCommentDB extends JSONDB {
+class GBCommentDB extends JSONStore {
 	public $lastComment = false;
 	public $autocommitToRepo = true;
 	

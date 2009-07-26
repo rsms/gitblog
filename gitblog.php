@@ -852,6 +852,58 @@ $_ENV['PATH'] .= ':/opt/local/bin';
 #------------------------------------------------------------------------------
 # Utilities
 
+class JSONDict implements ArrayAccess, Countable {
+	public $file;
+	public $skeleton_file;
+	public $cache;
+	public $storage;
+	
+	function __construct($file, $skeleton_file=null) {
+		$this->file = $file;
+		$this->cache = null;
+		$this->storage = null;
+		$this->skeleton_file = $skeleton_file;
+	}
+	
+	/** Retrieve the underlying JSONStore storage */
+	function storage() {
+		if ($this->storage === null)
+			$this->storage = new JSONStore($this->file, $this->skeleton_file);
+		return $this->storage;
+	}
+	
+	function offsetGet($k) {
+		if ($this->cache === null)
+			$this->cache = $this->storage()->get();
+		return isset($this->cache[$k]) ? $this->cache[$k] : null;
+	}
+	
+	function offsetSet($k, $v) {
+		$this->storage()->set($k, $v);
+		$this->cache = null; # will be reloaded at next call to get
+	}
+	
+	function offsetExists($k) {
+		if ($this->cache === null)
+			$this->cache = $this->storage()->get();
+		return isset($this->cache[$k]);
+	}
+	
+	function offsetUnset($k) {
+		$this->storage()->set($k, null);
+		$this->cache = null; # will be reloaded at next call to get
+	}
+	
+	function count() {
+		if ($this->cache === null)
+			$this->cache = $this->storage()->get();
+		return count($this->cache);
+	}
+}
+
+# settings.json
+gb::$settings = new JSONDict(gb::$site_dir.'/settings.json', gb::$dir.'/skeleton/settings.json');
+
 class PHPException extends RuntimeException {
 	function __construct($msg=null, $errno=0, $file=null, $line=-1, $cause=null) {
 		if ($msg instanceof Exception) {
@@ -2119,7 +2171,7 @@ class GBObjectIndex {
 # -----------------------------------------------------------------------------
 # Users
 
-# todo: use JSONDB for GBUserAccount
+# todo: use JSONStore for GBUserAccount
 class GBUserAccount {
 	public $name;
 	public $email;

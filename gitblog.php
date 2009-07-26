@@ -738,8 +738,21 @@ class gb {
 	}
 	
 	static function loadSiteState() {
-		gb::$site_state = @json_decode(file_get_contents(gb::$site_dir.'/site.json'), true);
-		return (gb::$site_state !== false);
+		$data = @file_get_contents(gb::$site_dir.'/site.json');
+		if ($data === false)
+			return false;
+		gb::$site_state = json_decode($data, true);
+		if (gb::$site_state === null || is_string(gb::$site_state)) {
+			self::log(LOG_WARNING, 'syntax error in site.json -- moved to site.json.broken and creating new');
+			if (!rename(gb::$site_dir.'/site.json', gb::$site_dir.'/site.json.broken')) {
+				self::log(LOG_WARNING, 'failed to move "%s" to "%s"', 
+					gb::$site_dir.'/site.json', gb::$site_dir.'/site.json.broken');
+			}
+			gb::$site_state = null;
+			return false;
+		}
+		gb::$secret = gb::$site_state['secret'];
+		return true;
 	}
 	
 	static function verifyRepoSetup() {

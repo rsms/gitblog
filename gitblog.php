@@ -363,6 +363,61 @@ class gb {
 		}
 	}
 	
+	/** A JSONDict */
+	static public $settings = null;
+	# initialized after the gb class
+	
+	# --------------------------------------------------------------------------
+	# Events
+	
+	static public $events = array();
+	
+	/** Register $callable for receiving $event s */
+	static function observe($event, $callable) {
+		if(isset(self::$events[$event]))
+			self::$events[$event][] = $callable;
+		else
+			self::$events[$event] = array($callable);
+	}
+	
+	/** Dispatch an event, optionally with arguments. */
+	static function event(/* $event [, $arg ..] */ ) {
+		$args = func_get_args();
+		$event = array_shift($args);
+		if(isset(self::$events[$event])) {
+			foreach(self::$events[$event] as $callable) {
+				if (call_user_func_array($callable, $args) === true)
+					break;
+			}
+		}
+	}
+	
+	/** Unregister $callable from receiving $event s */
+	static function stop_observing($callable, $event=null) {
+		if($event !== null) {
+			if(isset(self::$events[$event])) {
+				$a =& self::$events[$event];
+				if(($i = array_search($callable, $a)) !== false) {
+					unset($a[$i]);
+					if(!$a)
+						unset(self::$events[$event]);
+					return true;
+				}
+			}
+		}
+		else {
+			foreach(self::$events as $n => $a) {
+				if(($i = array_search($callable, $a)) !== false) {
+					unset(self::$events[$n][$i]);
+					if(!self::$events[$n])
+						unset(self::$events[$n]);
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
 	# --------------------------------------------------------------------------
 	# GitBlog
 	
@@ -2352,54 +2407,6 @@ class gb_author_cookie {
 		if ($part === null)
 			return self::$cookie;
 		return isset(self::$cookie[$part]) ? self::$cookie[$part] : null;
-	}
-}
-
-# -----------------------------------------------------------------------------
-# Notification/Event hub
-
-class gbevent {
-	static public $observers = array();
-	
-	static function observe($notification, $callable) {
-		if(isset(self::$observers[$notification]))
-			self::$observers[$notification][] = $callable;
-		else
-			self::$observers[$notification] = array($callable);
-	}
-	
-	static function remove($callable, $notification=null) {
-		if($notification !== null) {
-			if(isset(self::$observers[$notification])) {
-				$a =& self::$observers[$notification];
-				if(($i = array_search($callable, $a)) !== false) {
-					unset($a[$i]);
-					if(!$a)
-						unset(self::$observers[$notification]);
-					return true;
-				}
-			}
-		}
-		else {
-			foreach(self::$observers as $n => $a) {
-				if(($i = array_search($callable, $a)) !== false) {
-					unset(self::$observers[$n][$i]);
-					if(!self::$observers[$n])
-						unset(self::$observers[$n]);
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	static function post($notification, $args=array()) {
-		if(isset(self::$observers[$notification])) {
-			foreach(self::$observers[$notification] as $callable) {
-				if (call_user_func_array($callable, $args) === true)
-					break;
-			}
-		}
 	}
 }
 

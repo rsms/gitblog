@@ -1972,7 +1972,7 @@ class GBPost extends GBExposedContent {
 }
 
 
-class GBComments extends GBContent implements IteratorAggregate {
+class GBComments extends GBContent implements IteratorAggregate, Countable {
 	/** [GBComment, ..] */
 	public $comments = array();
 	public $cachenamePrefix;

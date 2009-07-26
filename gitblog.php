@@ -142,9 +142,9 @@ class gb {
 	 * 6    LOG_INFO    informational message
 	 * 7    LOG_DEBUG   debug-level message
 	 */
-	static function log($priority, $fmt/* [mixed ..] */) {
+	static function log(/* [$priority,] $fmt [mixed ..] */) {
 		$vargs = func_get_args();
-		$priority = array_shift($vargs);
+		$priority = count($vargs) === 1 || !is_int($vargs[0]) ? LOG_NOTICE : array_shift($vargs);
 		return self::vlog($priority, $vargs);
 	}
 	

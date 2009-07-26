@@ -708,7 +708,10 @@ class gb {
 		self::syncSiteState();
 		
 		# parse versions
-		list($fromma, $frommi, $fromb) = array_map('intval', explode('.', $fromVersion));
+		$fromv = array_map('intval', explode('.', $fromVersion));
+		if (count($fromv) < 3)
+			$fromv = array(0,0,0);
+		list($fromma, $frommi, $fromb) = $fromv;
 		$from = ($fromma << 16) + ($frommi << 8) + $fromb;
 		list($toma, $tomi, $tob) = array_map('intval', explode('.', gb::$version));
 		$to = ($toma << 16) + ($tomi << 8) + $tob;

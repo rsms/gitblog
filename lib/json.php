@@ -142,8 +142,9 @@ class json {
 						return '{}';
 					$s = '';
 					$count = count($var);
+					$i = 0;
 					foreach ($var as $k => $v) {
-						$comma = $count-- === 1 ? '':',';
+						$comma = ++$i === $count ? '':',';
 						$s .= "\n\t".$indent . json_encode(strval($k)) . ': ' 
 							. self::pretty($v, $compact, $force_object, $level+1) . $comma;
 					}
@@ -155,8 +156,9 @@ class json {
 					
 					$s = '[';
 					$count = count($var);
+					$i = 0;
 					foreach ($var as $v) {
-						$comma = $count-- === 1 ? '':',';
+						$comma = ++$i === $count ? '':',';
 					 	$s .= "\n\t".$indent . self::pretty($v, $compact, $force_object, $level+1) . $comma;
 					}
 					$s .= "\n".$indent.']';

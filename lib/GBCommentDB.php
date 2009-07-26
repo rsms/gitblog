@@ -28,16 +28,9 @@ class GBCommentDB extends JSONStore {
 		parent::commit();
 		# commit to repo
 		if ($this->autocommitToRepo) {
-			gb::add($this->file);
-			try {
-				$author = $this->lastComment ? $this->lastComment->gitAuthor() : GBUserAccount::getAdmin()->gitAuthor();
-				gb::commit('comment', $author);
-				$this->lastComment = false;
-			}
-			catch (GitError $e) {
-				gb::reset($this->file);
-				throw $e;
-			}
+			$author = $this->lastComment ? $this->lastComment->gitAuthor() : GBUserAccount::getAdmin()->gitAuthor();
+			gb::commit('comment', $author, $this->file);
+			$this->lastComment = false;
 		}
 	}
 	

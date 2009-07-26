@@ -161,6 +161,7 @@ if ($comment) {
 		# duplicate?
 		if ($index === false) {
 			gb::log(LOG_NOTICE, 'skipped duplicate comment from '.var_export($comment->email,1));
+			gb::event('skipped-duplicate-comment', $comment, $post);
 			if (isset($input['gb-referrer'])) {
 				header('Status: 304 Not Modified');
 				header('Location: '.$input['gb-referrer'].'#skipped-duplicate-reply');
@@ -174,14 +175,17 @@ if ($comment) {
 		gb::log(LOG_NOTICE, 'added comment from '.var_export($comment->email,1)
 			.' to '.$post->cachename());
 		
+		gb::event('added-comment', $comment, $post);
+		
 		# done
 		if (isset($input['gb-referrer'])) {
-			header('Location: '.$input['gb-referrer'].'#comment-'.$index);
-			#header('Content-Type: text/html; charset=utf-8');
-			#$url = h($input['gb-referrer'].'#comment-'.$index);
-			#echo '<html><head><meta http-equiv="refresh" content="0;url='
-			#	. $url.'" /></head><body>'
-			#	.'<a href="'.$url.'">Continue</a></body></html>';
+			$suffix = '#comment-'.$index;
+			if (!$comment->approved) {
+				$suffix = (strpos($input['gb-referrer'], '?') === false ? '?' : '&')
+					. 'comment-pending-approval' 
+					. $suffix;
+			}
+			header('Location: '.$input['gb-referrer'].$suffix);
 		}
 		else {
 			exit2("new comment index: $index\n", '200 OK');
@@ -190,6 +194,7 @@ if ($comment) {
 	catch (Exception $e) {
 		if ($e instanceof GitError && strpos($e->getMessage(), 'nothing to commit') !== false) {
 			gb::log(LOG_NOTICE, 'skipped duplicate comment from '.var_export($comment->email,1));
+			gb::event('skipped-duplicate-comment', $comment, $post);
 			header('Status: 304 Not Modified');
 			header('Location: '.$input['gb-referrer'].'#skipped-duplicate-reply');
 			exit(0);

@@ -431,6 +431,7 @@ class gb {
 			.' --work-tree='.escapeshellarg(gb::$site_dir)
 			.' '.$cmd;
 		#var_dump($cmd);
+		gb::log(LOG_DEBUG, 'exec$ '.$cmd);
 		$r = self::shell($cmd, $input, gb::$site_dir);
 		self::$gitQueryCount++;
 		# fail?

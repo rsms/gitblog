@@ -613,8 +613,6 @@ function gb_filter_allowed_tags($body) {
 }
 
 function gb_filter_pre_comment(GBComment $comment) {
-	#$comment->approved = true; # todo: akismet or something funky
-	
 	# replace CR[LF] with LF (damned be you, Windows users!)
 	$comment->body = preg_replace('/\\r\\n?/', "\n", $comment->body);
 	
@@ -655,8 +653,16 @@ function gb_strtolowers($strings) {
 	return array_map('strtolower', $strings);
 }
 
-# Applied to GBComment after being posted, but before being saved to stage
+function gb_approve_ham_comment($comment) {
+	if ($comment->spam === false)
+		$comment->approved = true;
+	return $comment;
+}
+
+# Applied to GBComment after being posted, but before being saved
 GBFilter::add('pre-comment', 'gb_filter_pre_comment', 10);
+# before this one you might want to hook on some spam assessment plugin, like Akismet.
+GBFilter::add('pre-comment', 'gb_approve_ham_comment', 10000);
 
 # Applied to GBComments/GBComment after being reloaded but prior to writing cache.
 GBFilter::add('post-reload-comments', 'gb_filter_post_reload_comments', 10);

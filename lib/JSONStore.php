@@ -71,19 +71,27 @@ class JSONStore extends FileDB {
 	}
 	
 	function set($key, $value=null) {
+		$return_value = true;
 		$temptx = $this->txFp === false && $this->autocommit;
 		if ($temptx)
 			$this->begin();
 		if ($this->data === null)
 			$this->txReadData();
-		if (is_array($key))
+		if (is_array($key)) {
 			$this->data = $key;
-		elseif ($value === null)
-			unset($this->data[$key]);
-		else
+		}
+		elseif ($value === null) {
+			if (($return_value = isset($this->data[$key]))) {
+				$return_value = $this->data[$key];
+				unset($this->data[$key]);
+			}
+		}
+		else {
 			$this->data[$key] = $value;
+		}
 		if ($temptx)
 			$this->commit();
+		return $return_value;
 	}
 	
 	function get($key=null) {

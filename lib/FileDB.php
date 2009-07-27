@@ -23,22 +23,27 @@ class FileDB {
 	function begin($exclusive=true) {
 		if ($this->txFp !== false)
 			throw new LogicException('a transaction is already active');
+		
 		$this->txExclusive = $exclusive;
-		$this->txFp = @fopen($this->file, 'r+');
-		if (file_exists($this->file) && !is_writable($this->file))
-			throw new RuntimeException($this->file.' is not writable');
-		if ($this->skeleton_file) {
-			copy($this->skeleton_file, $this->file);
-			if ($this->createmode !== false)
-				chmod($this->file, $this->createmode);
-			$this->txFp = fopen($this->file, 'r+');
+		
+		if (($this->txFp = @fopen($this->file, 'r+')) === false) {
+			if ($this->txFp === false && file_exists($this->file))
+				throw new RuntimeException($this->file.' is not writable or is a directory');
+			if ($this->skeleton_file) {
+				copy($this->skeleton_file, $this->file);
+				if ($this->createmode !== false)
+					chmod($this->file, $this->createmode);
+				if (($this->txFp = fopen($this->file, 'r+')) === false)
+					throw new RuntimeException('fopen('.var_export($this->file,1).', "r+") failed');
+			}
+			else {
+				if (($this->txFp = fopen($this->file, 'x+')) === false)
+					throw new RuntimeException('fopen('.var_export($this->file,1).', "x+") failed');
+				elseif ($this->createmode !== false)
+					chmod($this->file, $this->createmode);
+			}
 		}
-		elseif ( ($this->txFp === false) && (($this->txFp = fopen($this->file, 'x+')) !== false) ) {
-			if ($this->createmode !== false)
-				chmod($this->file, $this->createmode);
-		}
-		if ($this->txFp === false)
-			throw new RuntimeException('fopen('.var_export($this->file,1).', "x+") failed');
+		
 		if ($this->txExclusive && !flock($this->txFp, LOCK_EX)) {
 			fclose($this->txFp);
 			throw new RuntimeException('flock(<txFp>, LOCK_EX) failed');

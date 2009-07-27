@@ -120,8 +120,7 @@ class GBCommentDB extends JSONStore {
 				$this->resolveIndexPath($indexpath, $superComment) : $superComment;
 			if ($comment === null) {
 				# delete
-				$return_value = isset($parentComment->comments[$subCommentIndex]);
-				if ($return_value) {
+				if (($return_value = isset($parentComment->comments[$subCommentIndex]))) {
 					$return_value = $parentComment->comments[$subCommentIndex];
 					unset($parentComment->comments[$subCommentIndex]);
 				}
@@ -134,7 +133,7 @@ class GBCommentDB extends JSONStore {
 			parent::set($superCommentIndex, $superComment);
 		}
 		else {
-			parent::set($index, $comment);
+			return parent::set($index, $comment);
 		}
 		return $return_value;
 	}

@@ -87,31 +87,56 @@ class GBCommentDB extends JSONStore {
 		}
 	}
 	
+	/**
+	 * Set or remove a comment.
+	 * 
+	 * By not passing the second argument the action will be to remove a comment
+	 * rather than setting it to null. You can also pass an array as the first
+	 * and only argument in which case the whole underlying data set is replaced.
+	 * You have been warned.
+	 * 
+	 * Return values:
+	 * 
+	 *  - After a set operation, true is returned on success, otherwise false.
+	 * 
+	 *  - After a remove operation, the removed comment is returned (if found and
+	 *    removed), otherwise false.
+	 */
 	function set($index, GBComment $comment=null) {
+		$return_value = true;
 		if ($comment->post === null)
 			$comment->post = $this->post;
 		$this->lastComment = $comment;
 		if (is_string($index)) {
 			$indexpath = explode('.', $index);
 			if (!$indexpath)
-				return;
+				return false;
 			if (count($indexpath) === 1)
 				return parent::set($indexpath[0], $comment);
-			
 			$superCommentIndex = intval(array_shift($indexpath));
 			$superComment = $this->get($superCommentIndex);
 			$subCommentIndex = array_pop($indexpath);
 			$parentComment = $indexpath ? 
 				$this->resolveIndexPath($indexpath, $superComment) : $superComment;
-			if ($comment === null)
-				unset($parentComment->comments[$subCommentIndex]);
-			else
+			if ($comment === null) {
+				# delete
+				$return_value = isset($parentComment->comments[$subCommentIndex]);
+				if ($return_value) {
+					$return_value = $parentComment->comments[$subCommentIndex];
+					unset($parentComment->comments[$subCommentIndex]);
+				}
+			}
+			else {
+				# set
 				$parentComment->comments[$subCommentIndex] = $comment;
+				$return_value = true;
+			}
 			parent::set($superCommentIndex, $superComment);
 		}
 		else {
 			parent::set($index, $comment);
 		}
+		return $return_value;
 	}
 	
 	function append(GBComment $comment, $index=null, $skipDuplicate=true) {

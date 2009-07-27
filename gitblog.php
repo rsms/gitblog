@@ -17,6 +17,9 @@ class gb {
 	/** URL prefix for the feed */
 	static public $feed_prefix = 'feed';
 
+	/** URL prefix for authorization requests */
+	static public $authorize_prefix = 'authorize';
+
 	/**
 	 * URL prefix (strftime pattern).
 	 * Need to specify at least year and month. Day, time and so on is optional.
@@ -233,52 +236,55 @@ class gb {
 	# --------------------------------------------------------------------------
 	# Admin authentication
 	
-	static public $auth_nonce_ttl = 86400;
 	static public $authorized = null;
-	static public $auths = null;
+	static public $_authenticators = null;
 	
-	static function authenticator($realm='gb-admin') {
-		if (self::$auths === null)
-			self::$auths = array();
-		if (!isset(self::$auths[$realm])) {
-			$users = array();
-			foreach (GBUserAccount::get() as $email => $account) {
-				# only include actual users
-				if (strpos($email, '@') !== false)
-					$users[$email] = $account->passhash;
-			}
-			self::$auths[$realm] = new GBHTTPDigestAuth(
-				$realm, $users, self::$auth_nonce_ttl, self::$site_url);
+	static function authenticator($context='gb-admin') {
+		if (self::$_authenticators === null)
+			self::$_authenticators = array();
+		elseif (isset(self::$_authenticators[$context])) 
+			return self::$_authenticators[$context];
+		$users = array();
+		foreach (GBUserAccount::get() as $email => $account) {
+			# only include actual users
+			if (strpos($email, '@') !== false)
+				$users[$email] = $account->passhash;
 		}
-		return self::$auths[$realm];
+		$chap = new CHAP($users, $context);
+		self::$_authenticators[$context] = $chap;
+		return $chap;
 	}
 	
-	static function authenticate($silent=false, $exit_after_response=true, $realm='gb-admin') {
-		$dg = self::authenticator($realm);
-		if ($authed = $dg->authenticate()) {
-			# user authenticated
+	static function deauthorize($redirect=true, $context='gb-admin') {
+		$old_authorized = self::$authorized;
+		self::$authorized = null;
+		if (self::authenticator($context)->deauthorize()) {
+			if ($old_authorized)
+				self::log('client deauthorized: '.$old_authorized->email);
+			self::event('client-deauthorized', $old_authorized);
+		}
+		if ($redirect) {
+			header('HTTP/1.1 303 See Other');
+			header('Location: '.(isset($_REQUEST['referrer']) ? $_REQUEST['referrer'] : gb::$site_url));
+			exit(0);
+		}
+	}
+	
+	static function authenticate($force=true, $context='gb-admin') {
+		$auth = self::authenticator($context);
+		self::$authorized = null;
+		if (($authed = $auth->authenticate())) {
 			self::$authorized = GBUserAccount::get($authed);
-			
-			# set hint cookie
-			if (headers_sent() === false && !isset($_COOKIE['gb_check_auth'])) {
-				$cookieurl = new GBURL(gb::$site_url);
-				setrawcookie('gb_check_auth', '1', time()+$this->ttl, 
-					$cookieurl->path, $cookieurl->host, $cookieurl->secure);
-			}
-			
 			return self::$authorized;
 		}
-		elseif ($silent === false) {
-			self::$authorized = null;
-			if ($exit_after_response) {
-				$dg->sendHeaders();
-				exit(0);
-			}
-			else {
-				$dg->sendHeaders(false);
-			}
-			return false;
+		elseif ($force) {
+			$url = self::$site_url . 'gitblog/admin/authenticate.php'
+				.'?referrer='.urlencode(self::url());
+			header('HTTP/1.1 303 See Other');
+			header('Location: '.$url);
+			exit('<html><body>See Other <a href="'.$url.'"></a></body></html>');
 		}
+		return $authed;
 	}
 	
 	# --------------------------------------------------------------------------
@@ -672,16 +678,8 @@ class gb {
 		self::verifyRepoSetup();
 		
 		# no previous state?
-		if (!gb::$site_state) {
+		if (!gb::$site_state)
 			gb::$site_state = json_decode(file_get_contents(gb::$dir.'/skeleton/site.json'), true);
-			# create secret
-			gb::$secret = '';
-			while (strlen(gb::$secret) < 62) {
-				mt_srand();
-				gb::$secret .= base_convert(mt_rand(), 10, 36);
-			}
-			gb::$site_state['secret'] = gb::$secret;
-		}
 		
 		# Set current values
 		gb::$site_state['url'] = gb::$site_url;
@@ -729,7 +727,8 @@ class gb {
 			}
 			
 			# ignore site.json
-			file_put_contents(gb::$site_dir.'/.gitignore', "\nsite.json\n", FILE_APPEND);
+			if (substr(file_get_contents(gb::$site_dir.'/.gitignore'), '/site.json') === false)
+				file_put_contents(gb::$site_dir.'/.gitignore', "\n/site.json\n", FILE_APPEND);
 		}
 		
 		GBRebuilder::rebuild(true);
@@ -751,7 +750,6 @@ class gb {
 			gb::$site_state = null;
 			return false;
 		}
-		gb::$secret = gb::$site_state['secret'];
 		return true;
 	}
 	
@@ -811,6 +809,14 @@ class gb {
 		}
 		
 		return 0;
+	}
+	
+	static function verify() {
+		if (self::verifyIntegrity() === 2) {
+			header("Location: ".gb::$site_url."gitblog/admin/setup.php");
+			exit(0);
+		}
+		gb::verify_config();
 	}
 	
 	static function verify_config() {
@@ -1639,7 +1645,7 @@ class GBExposedContent extends GBContent {
 	}
 	
 	function getCommentsDB() {
-		return new GBCommentDB(gb::$site_dir.'/'.$this->commentsStageName());
+		return new GBCommentDB(gb::$site_dir.'/'.$this->commentsStageName(), $this);
 	}
 	
 	function commentsLink($prefix='', $suffix='', $template='<a href="%u" class="numcomments" title="%t">%n</a>') {
@@ -2181,7 +2187,10 @@ class GBComment {
 	
 	# members below are not serialized
 	
-	/** String id (indexpath), available during iteration */
+	/** GBExposedContent set when appropriate. Might be null. */
+	public $post;
+	
+	/** String id (indexpath), available during iteration, etc. */
 	public $id;
 	
 	/* these two are not serialized, but lazy-initialized by GBComments::count() */
@@ -2208,8 +2217,8 @@ class GBComment {
 		}
 	}
 	
-	function same(GBComment $comment) {
-		return (($this->email === $comment->email) && ($this->body === $comment->body));
+	function duplicate(GBComment $other) {
+		return (($this->email === $other->email) && ($this->body === $other->body));
 	}
 	
 	function gitAuthor() {
@@ -2239,13 +2248,41 @@ class GBComment {
 	
 	function removeURL($post=null) {
 		if ($post === null) {
-			unset($post);
-			global $post;
+			if ($this->post !== null) {
+				$post = $this->post;
+			}
+			else {
+				unset($post);
+				global $post;
+			}
+		}
+		if (!$post) {
+			throw new UnexpectedValueException(
+				'unable to deduce $post needed to build commentURL');
 		}
 		if ($this->id === null)
 			throw new UnexpectedValueException('$this->id is null');
 		return gb::$site_url .'gitblog/helpers/rm-comment.php?object='
 			.urlencode($post->cachename()).'&amp;comment='.$this->id;
+	}
+	
+	function commentURL($post=null) {
+		if ($post === null) {
+			if ($this->post !== null) {
+				$post = $this->post;
+			}
+			else {
+				unset($post);
+				global $post;
+			}
+		}
+		if (!$post) {
+			throw new UnexpectedValueException(
+				'unable to deduce $post needed to build commentURL');
+		}
+		if ($this->id === null)
+			throw new UnexpectedValueException('$this->id is null');
+		return $post->url().'#comment-'.$this->id;
 	}
 	
 	function __sleep() {
@@ -2320,9 +2357,8 @@ class GBUserAccount {
 		return $r;
 	}
 	
-	static function passhash($email, $passphrase, $realm='gb-admin') {
-		# must be a1 http digest auth hash
-		return md5($email.':'.$realm.':'.$passphrase);
+	static function passhash($email, $passphrase, $context='gb-admin') {
+		return chap::shadow($email, $passphrase, $context);
 	}
 	
 	static function create($email, $passphrase, $name, $admin=false) {
@@ -2605,41 +2641,41 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
 if (isset($gb_handle_request) && $gb_handle_request) {
 	$gb_urlpath = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
 	
-	# verify integrity, implicitly rebuilding gitblog cache or need serious initing.
-	if (gb::verifyIntegrity() === 2) {
-		header("Location: ".gb::$site_url."gitblog/admin/setup.php");
-		exit(0);
-	}
-	
-	# verify configuration, like validity of the secret key.
-	gb::verify_config();
+	# verify integrity and config
+	gb::verify();
 	
 	# load plugins
 	gb::load_plugins('online');
 	
 	# authed?
-	if ((isset($_SERVER['PHP_AUTH_DIGEST']) && !empty($_SERVER['PHP_AUTH_DIGEST']))
-		|| (isset($_COOKIE['gb_check_auth']) && $_COOKIE['gb_check_auth'] === '1'))
-	{
-		gb::authenticate(false, false);
-		# now, gb::$authorized (a GBUserAccount) is set (authed ok) or null (not authed)
+	if (isset($_COOKIE['gb-chap']) && $_COOKIE['gb-chap']) {
+		gb::authenticate(false);
+		# now, gb::$authorized (a GBUserAccount) is set (authed ok) or a CHAP
+		# constant (not authed).
 	}
 	
+	# ugly hack because HTTP Digest is broken so domain does not work. In the
+	# case gb::$index_prefix is a sibling (or deeper) to gb::$index_prefix/gitblog/
+	# (i.e. if gb::$index_prefix is not the empty string) we need to send 
+	# authorization requests directly to index.php:
+	if ($gb_urlpath === '' && isset($_GET['gb-compat-authorize']))
+		gb::authentication_request();
+	
 	if ($gb_urlpath) {
-		if (strpos($gb_urlpath, gb::$tags_prefix) === 0) {
-			# tag(s)
-			$tags = array_map('urldecode', explode(',', substr($gb_urlpath, strlen(gb::$tags_prefix))));
-			$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
-			$postspage = GBExposedContent::findByTags($tags, $pageno);
-			gb::$is_tags = true;
-			gb::$is_404 = $postspage === false;
-		}
-		elseif (strpos($gb_urlpath, gb::$categories_prefix) === 0) {
+		if (strpos($gb_urlpath, gb::$categories_prefix) === 0) {
 			# category(ies)
 			$categories = array_map('urldecode', explode(',', substr($gb_urlpath, strlen(gb::$categories_prefix))));
 			$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
 			$postspage = GBExposedContent::findByCategories($categories, $pageno);
 			gb::$is_categories = true;
+			gb::$is_404 = $postspage === false;
+		}
+		elseif (strpos($gb_urlpath, gb::$tags_prefix) === 0) {
+			# tag(s)
+			$tags = array_map('urldecode', explode(',', substr($gb_urlpath, strlen(gb::$tags_prefix))));
+			$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
+			$postspage = GBExposedContent::findByTags($tags, $pageno);
+			gb::$is_tags = true;
 			gb::$is_404 = $postspage === false;
 		}
 		elseif (strpos($gb_urlpath, gb::$feed_prefix) === 0) {
@@ -2655,6 +2691,10 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 				require gb::$dir.'/helpers/feed.php';
 			}
 			exit(0);
+		}
+		elseif (strpos($gb_urlpath, gb::$authorize_prefix) === 0) {
+			# authorization (login)
+			gb::authentication_request();
 		}
 		elseif (($strptime = strptime($gb_urlpath, gb::$posts_prefix)) !== false) {
 			# post

@@ -2,11 +2,22 @@
 class GBCommentDB extends JSONStore {
 	public $lastComment = false;
 	public $autocommitToRepo = true;
+	public $post = null;
+	
+	function __construct($file='/dev/null', $post=null, $skeleton_file=null, 
+	                     $createmode=0660, $autocommit=true, $pretty_output=true)
+	{
+		parent::__construct($file, $skeleton_file, $createmode, $autocommit, $pretty_output);
+		$this->post = $post;
+	}
 	
 	function parseData() {
 		parent::parseData();
-		foreach ($this->data as $k => $v)
-			$this->data[$k] = new GBComment($v);
+		foreach ($this->data as $k => $v) {
+			$c = new GBComment($v);
+			$c->post = $this->post;
+			$this->data[$k] = $c;
+		}
 	}
 	
 	function encodeData() {
@@ -28,6 +39,7 @@ class GBCommentDB extends JSONStore {
 		parent::commit();
 		# commit to repo
 		if ($this->autocommitToRepo) {
+			gb::log('GBCommentDB: committing changes to '.$this->file);
 			$author = $this->lastComment ? $this->lastComment->gitAuthor() : GBUserAccount::getAdmin()->gitAuthor();
 			gb::commit('comment', $author, $this->file);
 			$this->lastComment = false;
@@ -44,7 +56,7 @@ class GBCommentDB extends JSONStore {
 			if (!isset($comment->comments[$i]))
 				return null;
 			$comment = $comment->comments[$i];
-			if ($skipIfSameAsComment !== null && $skipIfSameAsComment->same($comment))
+			if ($skipIfSameAsComment !== null && $skipIfSameAsComment->duplicate($comment))
 				return null;
 		}
 		return $comment;
@@ -58,6 +70,7 @@ class GBCommentDB extends JSONStore {
 			if ($this->data === null)
 				$this->txReadData();
 			$v = new GBComment();
+			$v->post = $this->post;
 			$v->comments =& $this->data;
 			$v = $this->resolveIndexPath(explode('.', $index), $v);
 			if ($temptx)
@@ -70,6 +83,8 @@ class GBCommentDB extends JSONStore {
 	}
 	
 	function set($index, GBComment $comment=null) {
+		if ($comment->post === null)
+			$comment->post = $this->post;
 		$this->lastComment = $comment;
 		if (is_string($index)) {
 			$indexpath = explode('.', $index);
@@ -95,6 +110,8 @@ class GBCommentDB extends JSONStore {
 	}
 	
 	function append(GBComment $comment, $index=null, $skipDuplicate=true) {
+		if ($comment->post === null)
+			$comment->post = $this->post;
 		$temptx = $this->txFp === false && $this->autocommit;
 		# begin if in temporary tx
 		if ($temptx)
@@ -127,7 +144,7 @@ class GBCommentDB extends JSONStore {
 				if (!$parentc)
 					throw new OutOfBoundsException('invalid comment index '.$index);
 			
-				if ( ($skipDuplicate && !$parentc->same($comment)) || !$skipDuplicate )
+				if ( ($skipDuplicate && !$parentc->duplicate($comment)) || !$skipDuplicate )
 					$newindex = $index.'.'.$parentc->append($comment);
 			}
 			else {
@@ -139,10 +156,11 @@ class GBCommentDB extends JSONStore {
 					$newindex = array_pop(array_keys($this->data))+1;
 					$skip = false;
 					if ($skipDuplicate) {
+						# look at previous comments and see if we have a dup
 						$parentc = new GBComment(array('comments' => $this->data));
 						$it = new GBCommentsIterator($parentc);
 						foreach ($it as $c) {
-							if ($c->same($comment)) {
+							if ($c->duplicate($comment)) {
 								$skip = true;
 								break;
 							}
@@ -163,7 +181,13 @@ class GBCommentDB extends JSONStore {
 		# commit if in temporary tx
 		if ($temptx)
 			$this->commit();
-		return $newindex !== false ? strval($newindex) : $newindex;
+		
+		# set comment->id and return it, unless false
+		if ($newindex !== false) {
+			$comment->id = strval($newindex);
+			return $newindex;
+		}
+		return $newindex;
 	}
 	
 	function remove($index) {

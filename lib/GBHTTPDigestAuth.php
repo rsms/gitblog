@@ -20,8 +20,14 @@ class GBHTTPDigestAuth {
 			$users = $this->users ? $this->users : array();
 		
 		# analyze
-		if (!($data = self::parse($_SERVER['PHP_AUTH_DIGEST'])) || !isset($users[$data['username']]))
+		if (!($data = self::parse($_SERVER['PHP_AUTH_DIGEST']))) {
+			gb::log('GBHTTPDigestAuth: failed to parse '.var_export($_SERVER['PHP_AUTH_DIGEST'],1));
 			return false;
+		}
+		elseif (!isset($users[$data['username']])) {
+			gb::log('GBHTTPDigestAuth: unknown username '.var_export($data['username'],1));
+			return false;
+		}
 		
 		# check input
 		if ($this->ttl > 0 && $data['nonce'] !== $this->nonce())
@@ -31,8 +37,10 @@ class GBHTTPDigestAuth {
 		$A1 = $users[$data['username']]; # MD5(username:realm:password)
 		$A2 = md5($_SERVER['REQUEST_METHOD'].':'.$data['uri']); # MD5(method:digestURI)
 		$valid_response = md5($A1.':'.$data['nonce'].':'.$data['nc'].':'.$data['cnonce'].':'.$data['qop'].':'.$A2);
-		if ($data['response'] != $valid_response)
+		if ($data['response'] != $valid_response) {
+			gb::log('GBHTTPDigestAuth: unexpected response '.var_export($data['response'],1));
 			return false;
+		}
 		
 		return $data['username'];
 	}
@@ -56,7 +64,7 @@ class GBHTTPDigestAuth {
 	
 	static function parse($txt) {
 		# protect against missing data
-		static $needed_parts = array('nonce'=>1, 'nc'=>1, 'cnonce'=>1, 'qop'=>1, 'username'=>1, 'uri'=>1, 'response'=>1);
+		$needed_parts = array('nonce'=>1, 'nc'=>1, 'cnonce'=>1, 'qop'=>1, 'username'=>1, 'uri'=>1, 'response'=>1);
 		$data = array();
 		$keys = implode('|', array_keys($needed_parts));
 		preg_match_all('@(' . $keys . ')=(?:([\'"])([^\2]+?)\2|([^\s,]+))@', $txt, $matches, PREG_SET_ORDER);
@@ -67,6 +75,7 @@ class GBHTTPDigestAuth {
 		return $needed_parts ? false : $data;
 	}
 }
+
 /*
 $realm = 'hell';
 $users = array(

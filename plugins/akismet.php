@@ -4,8 +4,11 @@
  * 
  * Events:
  * 
- *  - "akismet-spam-caught", $comment
- *    Posted when a comment have been caught as spam
+ *  - "did-spam-comment", $comment
+ *    Posted when a comment have been caught as spam.
+ * 
+ *  - "did-ham-comment", $comment
+ *    Posted when a comment have been verified as ham.
  * 
  */
 class akismet {
@@ -14,8 +17,12 @@ class akismet {
 	static public $port = 80;
 	
 	static function init() {
+		# check settings
+		if (gb::$settings['akismet'] === null)
+			gb::$settings['akismet'] = array('api_key' => '');
+		
 		if (!self::$key)
-			self::$key = gb::$settings['akismet_api_key'];
+			self::$key = gb::$settings['akismet']['api_key'];
 	}
 
 	static function verify_key($key, $ip=null) {
@@ -58,14 +65,14 @@ class akismet {
 	// seconds; use $cache_timeout = 0 to force an update.
 	// Returns the same associative array as akismet_check_server_connectivity()
 	static function get_server_connectivity( $cache_timeout = 86400 ) {
-		$servers = gb::$settings['akismet_available_servers'];
-		if ( (time() - gb::$settings['akismet_connectivity_time'] < $cache_timeout) && $servers !== false )
+		$servers = gb::$settings['akismet']['available_servers'];
+		if ( (time() - gb::$settings['akismet']['connectivity_time'] < $cache_timeout) && $servers !== false )
 			return $servers;
 
 		// There's a race condition here but the effect is harmless.
 		$servers = self::check_server_connectivity();
-		gb::$settings['akismet_available_servers'] = $servers;
-		gb::$settings['akismet_connectivity_time'] = time();
+		gb::$settings['akismet']['available_servers'] = $servers;
+		gb::$settings['akismet']['connectivity_time'] = time();
 		return $servers;
 	}
 
@@ -174,12 +181,14 @@ class akismet {
 		# parse response
 		if ($response[1] === 'true') {
 			gb::log(LOG_NOTICE, 'aksimet: comment classed as spam');
-			gb::$settings['akismet_spam_count'] = intval(gb::$settings['akismet_spam_count']) + 1;
-			gb::event('akismet-spam-caught', $comment);
+			gb::$settings['akismet']['spam_count'] = intval(gb::$settings['akismet']['spam_count']) + 1;
+			$comment->approved = false;
+			gb::event('did-spam-comment', $comment);
 		}
 		elseif ($response[1] === 'false') {
 			gb::log(LOG_NOTICE, 'aksimet: comment classed as ham');
 			$comment->approved = true;
+			gb::event('did-ham-comment', $comment);
 		}
 		else {
 			gb::log(LOG_WARNING, 'akismet: unexpected response from /1.1/comment-check: '.$response[1]);
@@ -191,12 +200,14 @@ class akismet {
 }
 
 function akismet_init($context) {
+	akismet::init();
+	
 	if (!akismet::$key) {
-		gb::log(LOG_NOTICE, 'akismet not loaded since akismet_api_key is not set in settings.json');
+		gb::log(LOG_NOTICE, 
+			'akismet not loaded since "akismet" => "api_key" is not set in settings.json');
 		return false;
 	}
 	
-	akismet::init();
 	gb::log(LOG_DEBUG, 'akismet: loaded from '.__FILE__);
 	
 	if ($context === 'admin') {

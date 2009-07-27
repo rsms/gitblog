@@ -4,11 +4,11 @@
  * 
  * Events:
  *   
- * - "skipped-duplicate-comment", $comment, $exposedcontentobj
+ * - "was-duplicate-comment", $comment
  *   Posted after a comment was detected to be a duplicate and will not be
  *   added $exposedcontentobj. Posted just before the response is sent.
  * 
- * - "added-comment", $comment, $exposedcontentobj
+ * - "did-add-comment", $comment
  *   Posted after a comment was successfully added to $exposedcontentobj, but
  *   before the response is sent.
  * 
@@ -16,8 +16,8 @@
 require '../gitblog.php';
 ini_set('html_errors', '0');
 
-gb::verify_config();
-gb::authenticate(false, false);
+gb::verify();
+gb::authenticate(false);
 gb::load_plugins('admin');
 
 /**
@@ -143,6 +143,9 @@ $comment = new GBComment(array(
 	'name'      => $input['author-name'],
 	'body'      => $input['reply-message'],
 	'approved'  => false,
+	
+	# not stored, but used until request has finished
+	'post'      => $post
 ));
 
 # always approve admin comments
@@ -156,12 +159,12 @@ $comment = GBFilter::apply('pre-comment', $comment);
 if ($comment) {
 	try {
 		$cdb = $post->getCommentsDB();
-		$index = $cdb->append($comment, $input['reply-to'] ? $input['reply-to'] : null);
+		$added = $cdb->append($comment, $input['reply-to'] ? $input['reply-to'] : null);
 		
 		# duplicate?
-		if ($index === false) {
+		if ($added === false) {
 			gb::log(LOG_NOTICE, 'skipped duplicate comment from '.var_export($comment->email,1));
-			gb::event('skipped-duplicate-comment', $comment, $post);
+			gb::event('was-duplicate-comment', $comment);
 			if (isset($input['gb-referrer'])) {
 				header('Status: 304 Not Modified');
 				header('Location: '.$input['gb-referrer'].'#skipped-duplicate-reply');
@@ -175,26 +178,31 @@ if ($comment) {
 		gb::log(LOG_NOTICE, 'added comment from '.var_export($comment->email,1)
 			.' to '.$post->cachename());
 		
-		gb::event('added-comment', $comment, $post);
+		gb::event('did-add-comment', $comment);
 		
 		# done
 		if (isset($input['gb-referrer'])) {
-			$suffix = '#comment-'.$index;
+			$suffix = '#comment-'.$comment->id;
 			if (!$comment->approved) {
-				$suffix = (strpos($input['gb-referrer'], '?') === false ? '?' : '&')
-					. 'comment-pending-approval' 
-					. $suffix;
+				$suffix = '#comments';
+				if (strpos($input['gb-referrer'], 'comment-pending-approval') === false) {
+					$suffix = (strpos($input['gb-referrer'], '?') === false ? '?' : '&')
+						. 'comment-pending-approval='.$comment->id
+						. $suffix;
+				}
 			}
+			header('Status: 303 See Other');
 			header('Location: '.$input['gb-referrer'].$suffix);
 		}
 		else {
-			exit2("new comment index: $index\n", '200 OK');
+			exit2("new comment: {$comment->id}\n", '200 OK');
 		}
 	}
 	catch (Exception $e) {
 		if ($e instanceof GitError && strpos($e->getMessage(), 'nothing to commit') !== false) {
-			gb::log(LOG_NOTICE, 'skipped duplicate comment from '.var_export($comment->email,1));
-			gb::event('skipped-duplicate-comment', $comment, $post);
+			gb::log(LOG_NOTICE, 'skipped duplicate comment from '
+				.var_export($comment->email,1).' (nothing to commit)');
+			gb::event('was-duplicate-comment', $comment);
 			header('Status: 304 Not Modified');
 			header('Location: '.$input['gb-referrer'].'#skipped-duplicate-reply');
 			exit(0);

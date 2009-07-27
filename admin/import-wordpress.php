@@ -443,6 +443,7 @@ class WordpressImporter {
 				if ($obj->comments === null)
 					$obj->comments = array();
 				$comment = $this->parseComment($n, $wpid);
+				$comment->post = $obj;
 				$obj->comments[$wpid] = $comment;
 			}
 			elseif ($is_exposed && substr($name, 0, 3) === 'wp:' && trim($n->nodeValue)) {

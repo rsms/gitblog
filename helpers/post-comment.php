@@ -12,6 +12,17 @@
  *   Posted after a comment was successfully added to $exposedcontentobj, but
  *   before the response is sent.
  * 
+ * 
+ * Referrer might receive one query string parameter named "comment-status"
+ * which will have one of the following values:
+ * 
+ *  - "rejected"  -- Comment was rejected for undisclosed reasons.
+ *  - "duplicate" -- Comment was rejected because it's a duplicate in the
+ *                   context of the related post.
+ *  - "pending"   -- Comment is pending approval by moderator/author.
+ * 
+ * As a theme designer, you should take care of these and present them to the
+ * user in an appropriate manner.
  */
 require '../gitblog.php';
 ini_set('html_errors', '0');
@@ -70,10 +81,7 @@ $fields = array(
 	'gb-nonce' => array(
 		'filter' => FILTER_SANITIZE_STRING,
 		'flags'  => FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH
-	),
-	
-	# Referrer
-	'gb-referrer' => FILTER_SANITIZE_URL
+	)
 );
 
 function exit2($msg, $status='400 Bad Request') {
@@ -139,7 +147,7 @@ gb_author_cookie::set($input['author-email'], $input['author-name'], $input['aut
 # create comment object
 $comment = new GBComment(array(
 	'date'      => $date->__toString(),
-	'ipAddress' => preg_replace('/[^0-9., ]/', '', $_SERVER['REMOTE_ADDR']),
+	'ipAddress' => $_SERVER['REMOTE_ADDR'],
 	'email'     => $input['author-email'],
 	'uri'       => $input['author-uri'],
 	'name'      => $input['author-name'],
@@ -157,6 +165,9 @@ if (gb::$authorized)
 # apply filters
 $comment = GBFilter::apply('pre-comment', $comment);
 
+# aquire referrer
+$referrer = gb::referrer_url();
+
 # append to comment db
 if ($comment) {
 	try {
@@ -165,14 +176,14 @@ if ($comment) {
 		
 		# duplicate?
 		if ($added === false) {
-			gb::log(LOG_NOTICE, 'skipped duplicate comment from '.var_export($comment->email,1));
+			gb::log('skipped duplicate comment from '.var_export($comment->email,1));
 			gb::event('was-duplicate-comment', $comment);
-			if (isset($input['gb-referrer'])) {
-				$dest = new GBURL($input['gb-referrer']);
-				$dest->fragment = 'comments';
-				$dest['skipped-duplicate-comment'] = $comment->id;
+			
+			if ($referrer) {
+				$referrer->fragment = 'comments';
+				$referrer['comment-status'] = 'duplicate';
 				header('Status: 304 Not Modified');
-				header('Location: '.$dest);
+				header('Location: '.$referrer);
 				exit(0);
 			}
 			else {
@@ -180,23 +191,24 @@ if ($comment) {
 			}
 		}
 		
-		gb::log(LOG_NOTICE, 'added comment from '.var_export($comment->email,1)
+		gb::log('added comment from '.var_export($comment->email,1)
 			.' to '.$post->cachename());
 		
 		gb::event('did-add-comment', $comment);
 		
 		# done
-		if (isset($input['gb-referrer'])) {
-			gb::log($input['gb-referrer']);
-			$dest = new GBURL($input['gb-referrer']);
-			$dest->fragment = 'comment-'.$comment->id;
+		if ($referrer) {
+			$referrer->fragment = 'comment-'.$comment->id;
 			if (!$comment->approved) {
-				$dest->fragment = 'comments';
-				$dest['comment-pending-approval'] = $comment->id;
+				$referrer->fragment = 'comments';
+				$referrer['comment-status'] = 'pending';
+			}
+			else {
+				unset($referrer['comment-status']);
 			}
 			header('Status: 303 See Other');
-			gb::log('Location: '.$dest);
-			header('Location: '.$dest);
+			header('Location: '.$referrer);
+			exit(0);
 		}
 		else {
 			exit2("new comment: {$comment->id}\n", '200 OK');
@@ -204,7 +216,7 @@ if ($comment) {
 	}
 	catch (Exception $e) {
 		if ($e instanceof GitError && strpos($e->getMessage(), 'nothing to commit') !== false) {
-			gb::log(LOG_NOTICE, 'skipped duplicate comment from '
+			gb::log('skipped duplicate comment from '
 				.var_export($comment->email,1).' (nothing to commit)');
 			gb::event('was-duplicate-comment', $comment);
 			header('Status: 304 Not Modified');
@@ -220,6 +232,18 @@ if ($comment) {
 		echo '$input => ';var_export($input);echo "\n";
 		flush();
 		throw $e;
+	}
+}
+else {
+	# rejected by filter(s)
+	if ($referrer) {
+		$referrer->fragment = 'comments';
+		$referrer['comment-status'] = 'rejected';
+		header('Status: 303 See Other');
+		header('Location: '.$referrer);
+	}
+	else {
+		exit2("rejected\n", '200 OK');
 	}
 }
 

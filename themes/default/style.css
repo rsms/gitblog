@@ -1,4 +1,4 @@
-* { margin:0; padding:0; background-repeat:no-repeat; }
+* { margin:0; padding:0; }
 body {
 	font-family:georgia,serif;
 	background-color:#fff;
@@ -42,12 +42,14 @@ h2 { font-size:19px; }
 		width:16px; height:16px;
 		background-image:url(icons16.png);
 		background-position:0 -32px;
+		background-repeat:no-repeat;
 	}
 	#gb-errors a.close:hover { background-position:0 -48px; }
 	#gb-errors a.close span { display:none; }
 	#gb-errors div.icon {
 		background-image:url(icons48.png);
 		background-position:0 -48px;
+		background-repeat:no-repeat;
 		width:48px; height:48px;
 		float:left;
 		margin-left:-15px;
@@ -186,6 +188,7 @@ div.post { margin-top:20px; width:600px; }
 				background-image:url(icons16.png);
 				background-position:right -64px;
 				background-color:transparent;
+				background-repeat:no-repeat;
 				padding-right:19px;
 				margin-top:9px;
 				height:16px;
@@ -220,6 +223,8 @@ div.post { margin-top:20px; width:600px; }
 	width:620px;
 	margin-right:-20px;
 }
+	#comments div.notification { background:#9cc8ff; color:#00234e; width:560px; padding:10px 20px; margin:20px 0; }
+	#comments div.notification p { padding-top:10px;padding-bottom:10px; margin:0; }
 	#comments hr { margin-top:0; margin-right:0; }
 	#comments h2 { margin-bottom:1em; }
 	#comments ul { list-style:none; margin:0; padding:0 0 10px 30px; width:620px; }
@@ -248,6 +253,7 @@ div.post { margin-top:20px; width:600px; }
 		li.pingback div.avatar {
 			background-image:url(icons48.png);
 			background-position:0 0;
+			background-repeat:no-repeat;
 		}
 			li.pingback div.avatar img { display:none; }
 		li.comment div.message-wrapper {
@@ -263,6 +269,7 @@ div.post { margin-top:20px; width:600px; }
 					float:left;
 					background-color:transparent;
 					background-position:0 0;
+					background-repeat:no-repeat;
 					background-image:url(icons16.png);
 				}
 					li.comment div.actions a span { display:none; }

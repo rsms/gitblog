@@ -244,6 +244,19 @@ class gb {
 		return self::$current_url;
 	}
 	
+	static function referrer_url($fallback_on_http_referer=false) {
+		$dest = isset($_REQUEST['gb-referrer']) ? $_REQUEST['gb-referrer'] 
+			: (isset($_REQUEST['referrer']) ? $_REQUEST['referrer'] : false);
+		if ($fallback_on_http_referer && $dest === false && isset($_SERVER['HTTP_REFERER']))
+			$dest = $_SERVER['HTTP_REFERER'];
+		if ($dest) {
+			$dest = new GBURL($dest);
+			unset($dest['gb-error']);
+			return $dest;
+		}
+		return false;
+	}
+	
 	# --------------------------------------------------------------------------
 	# Admin authentication
 	
@@ -989,6 +1002,101 @@ class JSONDict implements ArrayAccess, Countable {
 		$this->skeleton_file = $skeleton_file;
 	}
 	
+	/**
+	 * Higher level GET operation able to read deep values, which keys are
+	 * separated by $sep.
+	 */
+	function get($key, $default=null, $sep='/') {
+		if (!$sep)
+			return $this->offsetGet($key);
+		$keys = explode($sep, trim($key,$sep));
+		if (($count = count($keys)) < 2)
+			return $this->offsetGet($key);
+		$value = $this->offsetGet($keys[0]);
+		for ($i=1; $i<$count; $i++) {
+			$key = $keys[$i];
+			if (!is_array($value) || !isset($value[$key]))
+				return null;
+			$value = $value[$key];
+		}
+		return $value;
+	}
+	
+	/**
+	 * Higher level PUT operation able to set deep values, which keys are
+	 * separated by $sep.
+	 */
+	function put($key, $value, $sep='/') {
+		$keys = explode($sep, trim($key, $sep));
+		if (($count = count($keys)) < 2)
+			return $this->offsetSet($key, $value);
+		
+		$this->cache === null;
+		$storage = $this->storage();
+		$storage->begin();
+		try {
+			$storage->get();
+			
+			# two-key optimisation
+			if ($count === 2) {
+				$key1 = $keys[0];
+				$d =& $storage->data[$key1];
+				if (!isset($d))
+					$d = array($keys[1] => $value);
+				elseif (!is_array($d))
+					$d = array($storage->data[$key1], $keys[1] => $value);
+				else
+					$d[$keys[1]] = $value;
+			}
+			else {
+				$patch = null;
+				$n = array();
+				$leaf_key = array_pop($keys);
+				$eroot = null;
+				$e = $storage->data;
+				$ef = true;
+			
+				# build patch
+				foreach ($keys as $key) {
+					$n[$key] = array();
+					if ($patch === null) {
+						$patch =& $n;
+						$eroot =& $e;
+					}
+					if ($ef !== false) {
+						if (isset($e[$key]) && is_array($e[$key]))
+							$e =& $e[$key];
+						else
+							$ef = false;
+					}
+					$n =& $n[$key];
+				}
+			
+				# apply
+				if ($ef !== false) {
+					# quick patch (simply replace or set value)
+					if (!is_array($e))
+						$e = array($leaf_key => $value);
+					else
+						$e[$leaf_key] = $value;
+					$storage->data = $eroot;
+				}
+				else {
+					# merge patch
+					$n[$leaf_key] = $value;
+					$storage->data = array_merge_recursive($storage->data, $patch);
+				}
+			}
+			
+			# commit changes
+			$this->cache = $storage->data;
+			$storage->commit();
+		}
+		catch (Exception $e) {
+			$storage->rollback();
+		}
+	}
+	
 	/** Retrieve the underlying JSONStore storage */
 	function storage() {
 		if ($this->storage === null)
@@ -1022,6 +1130,12 @@ class JSONDict implements ArrayAccess, Countable {
 		if ($this->cache === null)
 			$this->cache = $this->storage()->get();
 		return count($this->cache);
+	}
+	
+	function __toString() {
+		if ($this->cache === null)
+			$this->cache = $this->storage()->get();
+		return var_export($this->cache ,1);
 	}
 }
 
@@ -1116,8 +1230,10 @@ class GBURL implements ArrayAccess, Countable {
 				$s .= $path;
 		}
 			
-		if ($query === true && $this->query)
-			$s .= '?'.(is_string($this->query) ? $this->query : http_build_query($this->query));
+		if ($query === true && $this->query) {
+			if (($query = is_string($this->query) ? $this->query : http_build_query($this->query)))
+				$s .= '?'.$query;
+		}
 		elseif ($query !== true && $query !== false && $query)
 			$s .= '?'.(is_string($query) ? $query : http_build_query($query));
 		
@@ -2226,7 +2342,10 @@ class GBComment {
 	public $comments;
 	public $type;
 	
-	# members below are not serialized
+	# members below are only serialized when non-null
+	public $spam;
+	
+	# members below are never serialized
 	
 	/** GBExposedContent set when appropriate. Might be null. */
 	public $post;
@@ -2299,7 +2418,7 @@ class GBComment {
 		return $s;
 	}
 	
-	function removeURL($post=null) {
+	function _post($post=null) {
 		if ($post === null) {
 			if ($this->post !== null) {
 				$post = $this->post;
@@ -2309,39 +2428,63 @@ class GBComment {
 				global $post;
 			}
 		}
-		if (!$post) {
-			throw new UnexpectedValueException(
-				'unable to deduce $post needed to build commentURL');
-		}
+		if (!$post)
+			throw new UnexpectedValueException('unable to deduce $post needed to build url');
+		return $post;
+	}
+	
+	function commentsObject($post=null) {
+		return $this->_post($post)->comments;
+	}
+	
+	function _bounceURL($relpath, $post=null, $include_referrer=true) {
+		$post = $this->_post($post);
 		if ($this->id === null)
 			throw new UnexpectedValueException('$this->id is null');
-		return gb::$site_url .'gitblog/helpers/rm-comment.php?object='
+		return gb::$site_url.$relpath.'object='
 			.urlencode($post->cachename())
 			.'&comment='.$this->id
-			.'&referrer='.urlencode(gb::url());
+			.($include_referrer ? '&referrer='.urlencode(gb::url()) : '');
+	}
+	
+	function approveURL($post=null, $include_referrer=true) {
+		return $this->_bounceURL('gitblog/admin/approve-comment.php?action=approve&',
+			$post, $include_referrer);
+	}
+	
+	function unapproveURL($post=null, $include_referrer=true) {
+		return $this->_bounceURL('gitblog/admin/approve-comment.php?action=unapprove&',
+			$post, $include_referrer);
+	}
+	
+	function hamURL($post=null, $include_referrer=true) {
+		return $this->_bounceURL('gitblog/admin/spam-comment.php?action=ham&',
+			$post, $include_referrer);
+	}
+	
+	function spamURL($post=null, $include_referrer=true) {
+		return $this->_bounceURL('gitblog/admin/spam-comment.php?action=spam&',
+			$post, $include_referrer);
+	}
+	
+	function removeURL($post=null, $include_referrer=true) {
+		return $this->_bounceURL('gitblog/admin/remove-comment.php?',
+			$post, $include_referrer);
 	}
 	
 	function commentURL($post=null) {
-		if ($post === null) {
-			if ($this->post !== null) {
-				$post = $this->post;
-			}
-			else {
-				unset($post);
-				global $post;
-			}
-		}
-		if (!$post) {
-			throw new UnexpectedValueException(
-				'unable to deduce $post needed to build commentURL');
-		}
+		$post = $this->_post($post);
 		if ($this->id === null)
 			throw new UnexpectedValueException('$this->id is null');
 		return $post->url().'#comment-'.$this->id;
 	}
 	
 	function __sleep() {
-		return array('date','ipAddress','email','uri','name','body','approved','comments','type','id');
+		$members = array('date','ipAddress','email','uri','name','body',
+			'approved','comments','type','id');
+		if ($this->spam !== null)
+			$members[] = 'spam';
+		return $members;
 	}
 }
 

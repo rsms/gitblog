@@ -24,6 +24,26 @@
 	<div id="comments">
 		<hr/>
 		<div class="wrapper">
+		<? if (isset($_GET['skipped-duplicate-comment'])): ?>
+			<div class="notification">
+				<p>
+					You posted a duplicate comment. Naughty! It was rejected.
+				</p>
+			</div>
+		<? elseif (isset($_GET['comment-pending-approval'])): ?>
+			<div class="notification">
+				<p>
+					Your comment is being held for approval.
+				</p>
+				<p>
+					It might have failed to be verified as "ham" or the author
+					wants to manually approve of new comments.
+				</p>
+				<p>
+					Hold in there!
+				</p>
+			</div>
+		<? endif ?>
 		<? if (count($post->comments)): ?>
 			<h2><?= $post->numberOfComments() ?></h2>
 			<ul>

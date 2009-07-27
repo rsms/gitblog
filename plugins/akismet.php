@@ -18,11 +18,14 @@ class akismet {
 	
 	static function init() {
 		# check settings
-		if (gb::$settings['akismet'] === null)
-			gb::$settings['akismet'] = array('api_key' => '');
+		if (!is_array(gb::$settings['akismet'])) {
+			gb::$settings['akismet'] = array(
+				'api_key' => '', 
+				'comment'=>'Please visit http://akismet.com/personal/ for information on how to activate this Akismet plugin.');
+		}
 		
 		if (!self::$key)
-			self::$key = gb::$settings['akismet']['api_key'];
+			self::$key = gb::$settings->get('akismet/api_key');
 	}
 
 	static function verify_key($key, $ip=null) {
@@ -65,14 +68,14 @@ class akismet {
 	// seconds; use $cache_timeout = 0 to force an update.
 	// Returns the same associative array as akismet_check_server_connectivity()
 	static function get_server_connectivity( $cache_timeout = 86400 ) {
-		$servers = gb::$settings['akismet']['available_servers'];
-		if ( (time() - gb::$settings['akismet']['connectivity_time'] < $cache_timeout) && $servers !== false )
+		$servers = gb::$settings->get('akismet/available_servers');
+		if ( (time() - gb::$settings->get('akismet/connectivity_time') < $cache_timeout) && $servers !== null )
 			return $servers;
 
 		// There's a race condition here but the effect is harmless.
 		$servers = self::check_server_connectivity();
-		gb::$settings['akismet']['available_servers'] = $servers;
-		gb::$settings['akismet']['connectivity_time'] = time();
+		gb::$settings->put('akismet/available_servers', $servers);
+		gb::$settings->put('akismet/connectivity_time', time());
 		return $servers;
 	}
 
@@ -174,20 +177,20 @@ class akismet {
 				$params[$key] = $value;
 		
 		# POST
-		gb::log(LOG_NOTICE, 'checking comment');
+		gb::log('checking comment');
 		$reqbody = http_build_query($params);
 		$response = self::http_post($reqbody, '/1.1/comment-check', self::$key.'.'.self::$host);
 		
 		# parse response
 		if ($response[1] === 'true') {
-			gb::log(LOG_NOTICE, 'comment classed as spam');
-			gb::$settings['akismet']['spam_count'] = intval(gb::$settings['akismet']['spam_count']) + 1;
-			$comment->approved = false;
+			gb::log('comment classed as spam');
+			gb::$settings->put('akismet/spam_count', intval(gb::$settings->get('akismet/spam_count', 0)) + 1);
+			$comment->spam = true;
 			gb::event('did-spam-comment', $comment);
 		}
 		elseif ($response[1] === 'false') {
-			gb::log(LOG_NOTICE, 'comment classed as ham');
-			$comment->approved = true;
+			gb::log('comment classed as ham');
+			$comment->spam = false;
 			gb::event('did-ham-comment', $comment);
 		}
 		else {

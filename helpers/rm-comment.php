@@ -20,8 +20,7 @@ gb::load_plugins('admin');
 
 static $fields = array(
 	'object' => FILTER_REQUIRE_SCALAR,
-	'comment' => FILTER_REQUIRE_SCALAR,
-	'referrer' => FILTER_SANITIZE_URL
+	'comment' => FILTER_REQUIRE_SCALAR
 );
 static $required_fields = array('object','comment');
 
@@ -63,14 +62,14 @@ if (!$post) exit2('no such object '.$input['object']);
 try {
 	$cdb = $post->getCommentsDB();
 	$removed_comment = $cdb->remove($input['comment']);
+	$referrer = gb::referrer_url();
 	
 	# comment not found
 	if (!$removed_comment) {
-		if (isset($input['referrer'])) {
-			$dest = new GBURL($input['referrer']);
-			$dest['gb-error'] = 'Comment '.$input['comment'].' not found';
+		if ($referrer) {
+			$referrer['gb-error'] = 'Comment '.$input['comment'].' not found';
 			header('Status: 303 See Other');
-			header('Location: '.$dest);
+			header('Location: '.$referrer);
 		}
 		else {
 			header('Status: 404 Not Found');
@@ -83,9 +82,10 @@ try {
 	gb::event('did-remove-comment', $removed_comment);
 	
 	# done OK
-	if (isset($input['referrer'])) {
+	if ($referrer) {
+		$referrer->fragment = 'comments';
 		header('Status: 303 See Other');
-		header('Location: '.$input['referrer'].'#comments');
+		header('Location: '.$referrer);
 	}
 	else {
 		exit2("removed comment: {$removed_comment->id}\n", '200 OK');

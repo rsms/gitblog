@@ -32,9 +32,9 @@ class GBCommentDB extends JSONStore {
 	}
 	
 	function commit() {
-		parent::commit();
+		$did_write = parent::commit();
 		# commit to repo
-		if ($this->autocommitToRepo) {
+		if ($did_write && $this->autocommitToRepo) {
 			gb::add($this->file);
 			try {
 				$author = $this->lastComment ? $this->lastComment->gitAuthor() : GBUserAccount::getAdmin()->gitAuthor();
@@ -48,6 +48,7 @@ class GBCommentDB extends JSONStore {
 				throw $e;
 			}
 		}
+		return $did_write;
 	}
 	
 	function rollback($strict=true) {
@@ -195,7 +196,7 @@ class GBCommentDB extends JSONStore {
 	}
 	
 	function remove($index) {
-		$this->set($index);
+		return $this->set($index);
 	}
 }
 

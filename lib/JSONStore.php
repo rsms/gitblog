@@ -66,7 +66,8 @@ class JSONStore extends FileDB {
 	protected function txWriteData() {
 		$this->encodeData();
 		if ($this->data != $this->originalData)
-			parent::txWriteData();
+			return parent::txWriteData();
+		return false;
 	}
 	
 	function set($key, $value=null) {

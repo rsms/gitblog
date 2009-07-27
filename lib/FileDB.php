@@ -64,6 +64,7 @@ class FileDB {
 			if (fwrite($this->txFp, $this->data) === false)
 				throw new RuntimeException('fwrite(<txFp>, <data>) failed');
 		}
+		return true;
 	}
 	
 	function commit() {
@@ -71,7 +72,7 @@ class FileDB {
 			throw new LogicException('transaction is not active');
 		$ex = null;
 		try {
-			$this->txWriteData();
+			$did_write = $this->txWriteData();
 		}
 		catch (Exception $e) {
 			$ex = $e;
@@ -79,6 +80,7 @@ class FileDB {
 		$this->txEnd($ex);
 		if ($ex)
 			throw $ex;
+		return $did_write;
 	}
 	
 	function rollback($strict=true) {

@@ -22,15 +22,9 @@ class GBCommentDB extends JSONStore {
 	
 	function encodeData() {
 		$c = new GBComment();
-		$c->comments =& $this->data;
+		$c->comments = $this->data;
 		$it = new GBCommentsIterator($c);
-		foreach ($it as $comment) {
-			# todo: use __sleep for this
-			unset($comment->id);
-			unset($comment->post);
-			unset($comment->_countTotal);
-			unset($comment->_countApproved);
-			unset($comment->_countApprovedTopo);
+		foreach ($it as $k => $comment) {
 			if (is_object($comment->date))
 				$comment->date = strval($comment->date);
 		}

@@ -104,7 +104,7 @@ class GBCommentDB extends JSONStore {
 	 */
 	function set($index, GBComment $comment=null) {
 		$return_value = true;
-		if ($comment->post === null)
+		if ($comment !== null && $comment->post === null)
 			$comment->post = $this->post;
 		$this->lastComment = $comment;
 		if (is_string($index)) {

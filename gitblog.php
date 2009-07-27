@@ -2100,10 +2100,6 @@ class GBCommentsIterator implements Iterator {
 
 	function current() {
 		$comment = current($this->comments);
-		while ($comment && $this->onlyApproved && !$comment->approved) {
-			$this->next();
-			$comment = current($this->comments);
-		}
 		if ($comment && $comment->id === null) {
 			$comment->id = $this->idstack;
 			$comment->id[] = key($this->comments);
@@ -2162,7 +2158,17 @@ class GBCommentsIterator implements Iterator {
 				}
 				return key($this->comments) !== null;
 			}
-			return false;
+			else {
+				return false;
+			}
+		}
+		if ($this->onlyApproved) {
+			$comment = current($this->comments);
+			while ($comment && !$comment->approved) {
+				$this->next();
+				$comment = current($this->comments);
+			}
+			return $comment ? true : false;
 		}
 		return true;
 	}

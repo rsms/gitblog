@@ -515,9 +515,8 @@ class GBRecentCommentsIndexRebuilder extends GBContentIndexRebuilder {
 		# find
 		foreach ($this->index as $commentObject) {
 			$name = gb_filenoext($commentObject->name);
-			foreach ($commentObject as $approvedComment) {
+			foreach ($commentObject as $approvedComment)
 				$comments[strval($approvedComment->date->time).'0'.$i++] = array($approvedComment, $name);
-			}
 		}
 		
 		# sort

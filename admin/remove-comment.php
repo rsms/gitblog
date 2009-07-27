@@ -53,7 +53,7 @@ if (strpos($input['object'], 'content/') !== 0)
 $input['comment'] = preg_replace('/[^0-9\.]+/', '', $input['comment']);
 
 # look up post/page
-$post = GBExposedContent::findByCacheName($input['object']);
+$post = GBExposedContent::findByCacheName($input['object'].gb::$content_cache_fnext);
 
 # verify existing content and that comments are enabled
 if (!$post) exit2('no such object '.$input['object']);

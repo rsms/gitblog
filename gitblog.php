@@ -2441,8 +2441,9 @@ class GBComment {
 		$post = $this->_post($post);
 		if ($this->id === null)
 			throw new UnexpectedValueException('$this->id is null');
+		$object = strpos(gb::$content_cache_fnext,'.') !== false ? gb_filenoext($post->cachename()) : $post->cachename();
 		return gb::$site_url.$relpath.'object='
-			.urlencode($post->cachename())
+			.urlencode($object)
 			.'&comment='.$this->id
 			.($include_referrer ? '&referrer='.urlencode(gb::url()) : '');
 	}
@@ -2740,7 +2741,7 @@ function gb_comment_fields($post=null, $id_prefix='comment-') {
 		unset($post);
 		global $post;
 	}
-	$post_cachename = $post->cachename();
+	$post_cachename = strpos(gb::$content_cache_fnext,'.') !== false ? gb_filenoext($post->cachename()) : $post->cachename();
 	$nonce_context = 'post-comment-'.$post_cachename;
 	return gb_nonce_field($nonce_context, true, $id_prefix)
 		. gb_timezone_offset_field($id_prefix.'client-timezone-offset')

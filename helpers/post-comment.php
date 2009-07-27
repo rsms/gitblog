@@ -114,7 +114,7 @@ if (strpos($input['reply-post'], 'content/') !== 0)
 	exit2('malformed parameter "reply-post"');
 
 # look up post/page
-$post = GBExposedContent::findByCacheName($input['reply-post']);
+$post = GBExposedContent::findByCacheName($input['reply-post'].gb::$content_cache_fnext);
 
 # verify existing content and that comments are enabled
 if (!$post) exit2('no such reply-post '.$input['reply-post']);

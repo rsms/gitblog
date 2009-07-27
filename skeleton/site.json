@@ -1,6 +1,6 @@
 {
 	"plugins": {
 		"rebuild": [ "code-blocks.php" ],
-		"admin": [ "akismet.php" ]
+		"admin": [ "akismet.php", "email-notification.php" ]
 	}
 }

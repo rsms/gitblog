@@ -15,7 +15,10 @@
  */
 require '../gitblog.php';
 ini_set('html_errors', '0');
+header('Content-Type: text/plain; charset=utf-8');
+header('Cache-Control: no-cache');
 
+gb::catch_errors();
 gb::verify();
 gb::authenticate(false);
 gb::load_plugins('admin');
@@ -74,7 +77,6 @@ $fields = array(
 );
 
 function exit2($msg, $status='400 Bad Request') {
-	header('Content-Type: text/plain; charset=utf-8');
 	header('Status: '.$status);
 	exit($status."\n".$msg."\n");
 }
@@ -166,8 +168,11 @@ if ($comment) {
 			gb::log(LOG_NOTICE, 'skipped duplicate comment from '.var_export($comment->email,1));
 			gb::event('was-duplicate-comment', $comment);
 			if (isset($input['gb-referrer'])) {
+				$dest = new GBURL($input['gb-referrer']);
+				$dest->fragment = 'comments';
+				$dest['skipped-duplicate-comment'] = $comment->id;
 				header('Status: 304 Not Modified');
-				header('Location: '.$input['gb-referrer'].'#skipped-duplicate-reply');
+				header('Location: '.$dest);
 				exit(0);
 			}
 			else {
@@ -182,17 +187,16 @@ if ($comment) {
 		
 		# done
 		if (isset($input['gb-referrer'])) {
-			$suffix = '#comment-'.$comment->id;
+			gb::log($input['gb-referrer']);
+			$dest = new GBURL($input['gb-referrer']);
+			$dest->fragment = 'comment-'.$comment->id;
 			if (!$comment->approved) {
-				$suffix = '#comments';
-				if (strpos($input['gb-referrer'], 'comment-pending-approval') === false) {
-					$suffix = (strpos($input['gb-referrer'], '?') === false ? '?' : '&')
-						. 'comment-pending-approval='.$comment->id
-						. $suffix;
-				}
+				$dest->fragment = 'comments';
+				$dest['comment-pending-approval'] = $comment->id;
 			}
 			header('Status: 303 See Other');
-			header('Location: '.$input['gb-referrer'].$suffix);
+			gb::log('Location: '.$dest);
+			header('Location: '.$dest);
 		}
 		else {
 			exit2("new comment: {$comment->id}\n", '200 OK');
@@ -212,7 +216,6 @@ if ($comment) {
 			.' from '.var_export($comment->name,1).' <'.var_export($comment->email,1).'>'
 			.' to '.$post->cachename());
 		
-		header('Content-Type: text/plain; charset=utf-8');
 		header('Status: 500 Internal Server Error');
 		echo '$input => ';var_export($input);echo "\n";
 		flush();

@@ -136,8 +136,12 @@ class json {
 					return '{}';
 				
 				if ($type === 'object' || ($var && array_keys($var) !== range(0, count($var)-1))) {
-					if ($type === 'object')
-						$var = get_object_vars($var);
+					if ($type === 'object') {
+						if (method_exists($var, '__sleep'))
+							$var = array_intersect_key(get_object_vars($var), array_flip($var->__sleep()));
+						else
+							$var = get_object_vars($var);
+					}
 					if (!$var)
 						return '{}';
 					$s = '';

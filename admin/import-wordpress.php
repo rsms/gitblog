@@ -262,7 +262,8 @@ class WordpressImporter {
 		$data .= "\n".$obj->body."\n";
 		
 		# write
-		gb_atomic_write($dstpath, $data, 0664);
+		file_put_contents($dstpath, $data, LOCK_EX);
+		@chmod($dstpath, 0664);
 		
 		# add to commit cache
 		gb::add($obj->name);

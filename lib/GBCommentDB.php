@@ -25,7 +25,9 @@ class GBCommentDB extends JSONStore {
 		$c->comments =& $this->data;
 		$it = new GBCommentsIterator($c);
 		foreach ($it as $comment) {
+			# todo: use __sleep for this
 			unset($comment->id);
+			unset($comment->post);
 			unset($comment->_countTotal);
 			unset($comment->_countApproved);
 			unset($comment->_countApprovedTopo);

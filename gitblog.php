@@ -120,6 +120,15 @@ class gb {
 	static public $is_categories = false;
 	static public $is_feed = false;
 	
+	/**
+	 * A universal list of error messages (simple strings) which occured during
+	 * the current request handling.
+	 * 
+	 * Themes should take care of this and display these error messages where
+	 * appropriate.
+	 */
+	static public $errors = array();
+	
 	/** True if some part of gitblog (inside the gitblog directory) is the initial invoker */
 	static public $is_internal_call = false;
 	
@@ -2256,6 +2265,18 @@ class GBComment {
 			return h($this->name);
 	}
 	
+	function avatarURL($size=48, $fallback_url='') {
+		$s = 'http://www.gravatar.com/avatar.php?gravatar_id='
+			.md5($this->email) 
+			.'&size='.$size;
+		if ($fallback_url) {
+			if ($fallback_url{0} !== '/')
+				$fallback_url = gb::$theme_url . $fallback_url;
+			$s .= '&default='. urlencode($fallback_url);
+		}
+		return $s;
+	}
+	
 	function removeURL($post=null) {
 		if ($post === null) {
 			if ($this->post !== null) {
@@ -2273,7 +2294,9 @@ class GBComment {
 		if ($this->id === null)
 			throw new UnexpectedValueException('$this->id is null');
 		return gb::$site_url .'gitblog/helpers/rm-comment.php?object='
-			.urlencode($post->cachename()).'&amp;comment='.$this->id;
+			.urlencode($post->cachename())
+			.'&comment='.$this->id
+			.'&referrer='.urlencode(gb::url());
 	}
 	
 	function commentURL($post=null) {
@@ -2523,7 +2546,7 @@ function gb_nonce_field($context='', $referrer=true, $id_prefix='', $name='gb-no
 	$html = '<input type="hidden" id="' . $id_prefix.$name . '" name="' . $name 
 		. '" value="' . $nonce . '" />';
 	if ($referrer)
-		$html .= '<input type="hidden" name="gb-referrer" value="'. h($_SERVER['REQUEST_URI']) . '" />';
+		$html .= '<input type="hidden" name="gb-referrer" value="'. h(gb::url()) . '" />';
 	return $html;
 }
 
@@ -2664,12 +2687,13 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		# constant (not authed).
 	}
 	
-	# ugly hack because HTTP Digest is broken so domain does not work. In the
-	# case gb::$index_prefix is a sibling (or deeper) to gb::$index_prefix/gitblog/
-	# (i.e. if gb::$index_prefix is not the empty string) we need to send 
-	# authorization requests directly to index.php:
-	if ($gb_urlpath === '' && isset($_GET['gb-compat-authorize']))
-		gb::authentication_request();
+	# transfer errors from ?gb-error to gb::$errors
+	if (isset($_GET['gb-error']) && $_GET['gb-error']) {
+		if (is_array($_GET['gb-error']))
+			gb::$errors = array_merge(gb::$errors, $_GET['gb-error']);
+		else
+			gb::$errors[] = $_GET['gb-error'];
+	}
 	
 	if ($gb_urlpath) {
 		if (strpos($gb_urlpath, gb::$categories_prefix) === 0) {

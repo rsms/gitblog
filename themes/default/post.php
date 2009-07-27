@@ -24,7 +24,7 @@
 	<div id="comments">
 		<hr/>
 		<div class="wrapper">
-		<? if ($post->comments): ?>
+		<? if (count($post->comments)): ?>
 			<h2><?= $post->numberOfComments() ?></h2>
 			<ul>
 			<?
@@ -41,8 +41,7 @@
 					if ($comment->email === $post->author->email) echo ' post-author';
 			 		?>" id="comment-<?= $comment->id ?>">
 					<div class="avatar">
-						<img 
-							src="http://www.gravatar.com/avatar.php?gravatar_id=<?= md5($comment->email) ?>&amp;size=48&amp;default=<?= urlencode(gb::$theme_url . 'default-avatar.png') ?>" />
+						<img src="<?= h($comment->avatarURL(48, 'default-avatar.png')) ?>" />
 					</div>
 					<div class="message-wrapper">
 						<? if ($post->commentsOpen): ?>

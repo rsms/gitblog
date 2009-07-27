@@ -1,4 +1,4 @@
-* { margin:0; padding:0; }
+* { margin:0; padding:0; background-repeat:no-repeat; }
 body {
 	font-family:georgia,serif;
 	background-color:#fff;
@@ -33,6 +33,28 @@ h2 { font-size:19px; }
 		height:0;
 		border-top:1px solid #ccc;
 	}
+
+/* Errors from gb::$errors */
+#gb-errors { background-color:#fcc; color:#611; padding:10px; min-height:48px; border-bottom:4px solid #c00; }
+	#gb-errors a { border:none; background:transparent; }
+	#gb-errors a.close {
+		display:block; float:right;
+		width:16px; height:16px;
+		background-image:url(icons16.png);
+		background-position:0 -32px;
+	}
+	#gb-errors a.close:hover { background-position:0 -48px; }
+	#gb-errors a.close span { display:none; }
+	#gb-errors div.icon {
+		background-image:url(icons48.png);
+		background-position:0 -48px;
+		width:48px; height:48px;
+		float:left;
+		margin-left:-15px;
+	}
+	#gb-errors ul { display:block; float:left; margin:0; padding:0; list-style:none; }
+	#gb-errors li { font-family:'helvetica neue',helvetica,arial,sans-serif; font-size:16px; }
+	#gb-errors li.title { font-weight:bold; line-height:1; margin:0.2em 0; }
 
 /* Header */
 #header {
@@ -162,7 +184,6 @@ div.post { margin-top:20px; width:600px; }
 				display:block;
 				float:right;
 				background-image:url(icons16.png);
-				background-repeat:no-repeat;
 				background-position:right -64px;
 				background-color:transparent;
 				padding-right:19px;
@@ -226,7 +247,6 @@ div.post { margin-top:20px; width:600px; }
 		li.comment div.avatar { float:left; width:48px; height:48px; margin:10px 0; }
 		li.pingback div.avatar {
 			background-image:url(icons48.png);
-			background-repeat:no-repeat;
 			background-position:0 0;
 		}
 			li.pingback div.avatar img { display:none; }
@@ -242,7 +262,6 @@ div.post { margin-top:20px; width:600px; }
 					border:none;
 					float:left;
 					background-color:transparent;
-					background-repeat:no-repeat;
 					background-position:0 0;
 					background-image:url(icons16.png);
 				}

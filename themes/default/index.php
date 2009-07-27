@@ -35,6 +35,24 @@ elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->pos
 	</head>
 	<? flush() ?>
 	<body>
+		<? if (gb::$errors): ?>
+		<div id="gb-errors">
+			<div class="wrapper">
+				<a class="close" 
+					href="javascript:document.getElementById('gb-errors').style.display='none'"
+					title="Hide this message"><span>X</span></a>
+				<div class="icon"></div>
+				<ul>
+					<li class="title">
+						<?= count(gb::$errors) === 1 ? 'An error occured' : counted(count(gb::$errors), '','errors occured') ?>
+					</li>
+				<? foreach (gb::$errors as $error): ?>
+					<li><?= h($error) ?></li>
+				<? endforeach ?>
+				</ul>
+			</div>
+		</div>
+		<? endif ?>
 		<div id="header">
 			<div class="wrapper">
 				<div class="date" title="Date published"><?= gmdate('F j, Y', $context_date) ?></div>

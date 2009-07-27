@@ -173,7 +173,8 @@ div.post { margin-top:20px; width:600px; }
 			div.post a.numcomments:hover { background-position:right -80px; }
 			div.post a.numcomments:link, div.post a.numcomments:visited { color:#777; }
 			div.post a.numcomments:link:hover, div.post a.numcomments:visited:hover { color:#000; }
-	div.post div.body { margin-bottom:30px; }
+	div.post div.body { margin-bottom:30px; overflow:hidden; }
+	div.post div.body object, div.post div.body img { max-width:600px; }
 	div.post div.body hr { border-top-style:dashed; }
 	div.post div.body blockquote {
 		padding-left:10px;

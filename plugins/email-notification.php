@@ -36,6 +36,10 @@ function email_notification_comment_mkbody($comment, $header='', $footer='') {
 	
 	$footer .= "\nDelete: ".$comment->removeURL(null, false)."\n";
 	
+	$ipv4_addr = $comment->ipAddress;
+	if (preg_match('/([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/', $comment->ipAddress, $m))
+		$ipv4_addr = $m[1];
+	
 	# compile message
 	$msg = <<<MESSAGE
 {$header}{$indented_comment_body}
@@ -45,7 +49,7 @@ On "{$comment->post->title}" $comment_url
 Author:     $comment->name ($author_origin)
 Email:      $comment->email
 URI:        $comment->uri
-Whois:      http://ws.arin.net/whois/?queryinput=$comment->ipAddress
+Whois:      http://www.db.ripe.net/whois?searchtext=$ipv4_addr
 Date:       $comment->date
 
 View all comments on this post: $comments_url

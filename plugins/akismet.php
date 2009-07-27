@@ -144,7 +144,7 @@ class akismet {
 	static function check_comment($comment) {
 		# already approved?
 		if ($comment->approved) {
-			gb::log(LOG_INFO, 'aksimet: skipping check since comment is already approved');
+			gb::log(LOG_INFO, 'skipping check since comment is already approved');
 			return $comment;
 		}
 		
@@ -174,24 +174,24 @@ class akismet {
 				$params[$key] = $value;
 		
 		# POST
-		gb::log(LOG_NOTICE, 'aksimet: checking comment');
+		gb::log(LOG_NOTICE, 'checking comment');
 		$reqbody = http_build_query($params);
 		$response = self::http_post($reqbody, '/1.1/comment-check', self::$key.'.'.self::$host);
 		
 		# parse response
 		if ($response[1] === 'true') {
-			gb::log(LOG_NOTICE, 'aksimet: comment classed as spam');
+			gb::log(LOG_NOTICE, 'comment classed as spam');
 			gb::$settings['akismet']['spam_count'] = intval(gb::$settings['akismet']['spam_count']) + 1;
 			$comment->approved = false;
 			gb::event('did-spam-comment', $comment);
 		}
 		elseif ($response[1] === 'false') {
-			gb::log(LOG_NOTICE, 'aksimet: comment classed as ham');
+			gb::log(LOG_NOTICE, 'comment classed as ham');
 			$comment->approved = true;
 			gb::event('did-ham-comment', $comment);
 		}
 		else {
-			gb::log(LOG_WARNING, 'akismet: unexpected response from /1.1/comment-check: '.$response[1]);
+			gb::log(LOG_WARNING, 'unexpected response from /1.1/comment-check: '.$response[1]);
 		}
 		
 		# forward
@@ -208,7 +208,7 @@ function akismet_init($context) {
 		return false;
 	}
 	
-	gb::log(LOG_DEBUG, 'akismet: loaded from '.__FILE__);
+	gb::log(LOG_DEBUG, 'loaded from '.__FILE__);
 	
 	if ($context === 'admin') {
 		GBFilter::add('pre-comment', array('akismet','check_comment'));

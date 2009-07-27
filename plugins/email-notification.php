@@ -103,9 +103,10 @@ function email_notification_send($subject, $message, $to_addr=null, $to_name=nul
 	
 	# send
 	if (!mail($to, $subject, $message, $headers)) {
-		gb::log(LOG_ERR, 'email-notification: failed to send email to '.$to);
+		gb::log(LOG_ERR, 'failed to send email to '.$to);
 		return false;
 	}
+	gb::log('sent email to '.$to);
 	return true;
 }
 

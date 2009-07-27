@@ -165,7 +165,9 @@ class gb {
 			return true;
 		if ($prefix === null) {
 			$bt = debug_backtrace();
-			$bt = $bt[$btoffset];
+			while (!isset($bt[$btoffset]) && $btoffset >= 0)
+				$btoffset--;
+			$bt = isset($bt[$btoffset]) ? $bt[$btoffset] : $bt[$btoffset-1];
 			$prefix = '['.(isset($bt['file']) ? gb_relpath(gb::$site_dir, $bt['file']).':'.$bt['line'] : '?').'] ';
 		}
 		$msg = $prefix;
@@ -234,7 +236,7 @@ class gb {
 			else {
 				$u->port = $u->secure ? 443 : 80;
 			}
-			$u->query = isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : '';
+			$u->query = $_GET;
 			$u->path = $u->query ? substr(@$_SERVER['REQUEST_URI'], 0, strpos($_SERVER['REQUEST_URI'],'?')) 
 				: rtrim(@$_SERVER['REQUEST_URI'],'?');
 			self::$current_url = $u;
@@ -303,17 +305,16 @@ class gb {
 	static public $orig_err_html = null;
 	
 	static function catch_errors($handler=null, $filter=null) {
-		if (self::$orig_err_handler !== null)
-			return; # already catching
 		if ($handler === null)
 			$handler = array('gb', 'catch_error');
 		self::$orig_err_html = ini_set('html_errors', '0');
 		if ($filter === null)
-			$filter = E_ALL & ~E_NOTICE;
+			$filter = E_ALL;
 		self::$orig_err_handler = set_error_handler($handler, $filter);
 	}
 
 	static function end_catch_errors() {
+		set_error_handler(array('gb', 'catch_error'), E_ALL);
 		if (self::$orig_err_handler)
 			set_error_handler(self::$orig_err_handler);
 		ini_set('html_errors', self::$orig_err_html);
@@ -1051,7 +1052,7 @@ class PHPException extends RuntimeException {
 	}
 }
 
-class GBURL {
+class GBURL implements ArrayAccess, Countable {
 	public $scheme;
 	public $host;
 	public $secure;
@@ -1060,25 +1061,35 @@ class GBURL {
 	public $query;
 	public $fragment;
 	
+	static function parse($str) {
+		return new self($str);
+	}
+	
 	function __construct($url=null) {
 		if ($url !== null) {
 			$p = @parse_url($url);
 			if ($p === false)
 				throw new InvalidArgumentException('unable to parse URL '.var_export($url,1));
-			foreach ($p as $k => $v)
-				$this->$k = $v;
+			foreach ($p as $k => $v) {
+				if ($k === 'query')
+					parse_str($v, $this->query);
+				else
+					$this->$k = $v;
+			}
 			$this->secure = $this->scheme === 'https';
 			if ($this->port === null)
 				$this->port = $this->scheme === 'https' ? 443 : ($this->scheme === 'http' ? 80 : null);
 		}
 	}
 	
-	function __toString($scheme=true, $host=true, $port=true, $path=true, $query=true) {
+	function __toString($scheme=true, $host=true, $port=true, $path=true, $query=true, $fragment=true) {
 		$s = '';
 		
 		if ($scheme !== false) {
-			if ($scheme === true)
-				$s = $this->scheme . '://';
+			if ($scheme === true) {
+				if ($this->scheme)
+					$s = $this->scheme . '://';
+			}
 			else
 				$s = $scheme . '://';
 		}
@@ -1089,8 +1100,10 @@ class GBURL {
 			else
 				$s .= $host;
 			
-			if ($port === true && $this->port !== null && ($this->secure === true && $this->port !== 443) 
-			|| ($this->secure === false && $this->port !== 80))
+			if ($port === true && $this->port !== null && (
+				($this->secure === true && $this->port !== 443) 
+				|| ($this->secure === false && $this->port !== 80)
+			))
 				$s .= ':' . $this->port;
 			elseif ($port !== true && $port !== false)
 				$s .= ':' . $port;
@@ -1101,32 +1114,41 @@ class GBURL {
 				$s .= $this->path;
 			else
 				$s .= $path;
-			
-			if ($query === true && $this->query)
-				$s .= '?'.$this->query;
-			elseif ($query !== true && $query !== false && $query)
-				$s .= '?'.$query;
 		}
+			
+		if ($query === true && $this->query)
+			$s .= '?'.(is_string($this->query) ? $this->query : http_build_query($this->query));
+		elseif ($query !== true && $query !== false && $query)
+			$s .= '?'.(is_string($query) ? $query : http_build_query($query));
+		
+		if ($fragment === true && $this->fragment)
+			$s .= '#'.$this->fragment;
+		elseif ($fragment !== true && $fragment !== false && $fragment)
+			$s .= '#'.$fragment;
 		
 		return $s;
 	}
-}
 
-/** Atomic write */
-function gb_atomic_write($filename, $data, $chmod=null) {
-	$tempnam = tempnam(dirname($filename), basename($filename));
-	$f = fopen($tempnam, 'w');
-	fwrite($f, $data);
-	fclose($f);
-	if ($chmod !== null)
-		chmod($tempnam, $chmod);
-	if (!rename($tempnam, $filename)) {
-		unlink($tempnam);
-		return false;
+	function __sleep() {
+		$this->query = http_build_query($this->query);
+		return get_object_vars($this);
 	}
-	return true;
+	
+	function __wakeup() {
+		$v = $this->query;
+		$this->query = array();
+		parse_str($v, $this->query);
+	}
+	
+	# ArrayAccess
+	function offsetGet($k) { return $this->query[$k]; }
+	function offsetSet($k, $v) { $this->query[$k] = $v; }
+	function offsetExists($k) { return isset($this->query[$k]); }
+	function offsetUnset($k) { unset($this->query[$k]); }
+	
+	# Countable
+	function count() { return count($this->query); }
 }
-
 
 /** Boiler plate popen */
 function gb_popen($cmd, $cwd=null, $env=null) {

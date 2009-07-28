@@ -17,9 +17,6 @@ class gb {
 	/** URL prefix for the feed */
 	static public $feed_prefix = 'feed';
 
-	/** URL prefix for authorization requests */
-	static public $authorize_prefix = 'authorize';
-
 	/**
 	 * URL prefix (strftime pattern).
 	 * Need to specify at least year and month. Day, time and so on is optional.
@@ -2994,9 +2991,51 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
 
 # -----------------------------------------------------------------------------
 # Request handler
+/**
+ * Global variables:
+ * 
+ *  - $gb_request_uri
+ *    Always available when parsing the request and contains the requested
+ *    path -- anything after gb::$index_prefix. For example: "2009/07/some-post"
+ *    when the full url (aquireable through gb::url()) might be
+ *    "http://host/blog/2009/07/some-post"
+ * 
+ *  - $post
+ *    Available for requests of posts and pages in which case its value is an
+ *    instance of GBExposedContent (or a subclass thereof). However; the value
+ *    is false if gb::$is_404 is set.
+ * 
+ *  - $postspage
+ *    Available for requests which involve pages of content: the home page,
+ *    feed (gb::$feed_prefix), content filed under a category/ies
+ *    (gb::$categories_prefix), content taged with certain tags
+ *    (gb::$tags_prefix).
+ * 
+ *  - $tags
+ *    Available for requests listing content taged with certain tags
+ *    (gb::$tags_prefix).
+ * 
+ *  - $categories
+ *    Available for requests listing content taged with certain tags
+ *    (gb::$categories_prefix).
+ * 
+ * Events:
+ * 
+ *  - "will-parse-request"
+ *    Posted before gitblog parses the request. For example, altering the
+ *    global variable $gb_request_uri will cause gitblog to handle a
+ *    different request than initially intended.
+ * 
+ *  - "will-handle-request"
+ *    Posted after the request has been parsed but before gitblog handles it.
+ * 
+ * When observing these events, the Global variables and the gb::$is_*
+ * properties should provide good grounds for taking descisions and/or changing
+ * the outcome.
+ */
 
 if (isset($gb_handle_request) && $gb_handle_request) {
-	$gb_urlpath = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
+	$gb_request_uri = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
 	
 	# verify integrity and config
 	gb::verify();
@@ -3023,27 +3062,32 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 	# load plugins
 	gb::load_plugins('online');
 	
-	if ($gb_urlpath) {
-		if (strpos($gb_urlpath, gb::$categories_prefix) === 0) {
+	gb::event('will-parse-request');
+	
+	if ($gb_request_uri) {
+		if (strpos($gb_request_uri, gb::$categories_prefix) === 0) {
 			# category(ies)
-			$categories = array_map('urldecode', explode(',', substr($gb_urlpath, strlen(gb::$categories_prefix))));
-			$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
-			$postspage = GBExposedContent::findByCategories($categories, $pageno);
+			$categories = array_map('urldecode', explode(',', 
+				substr($gb_request_uri, strlen(gb::$categories_prefix))));
+			$postspage = GBExposedContent::findByCategories($categories, 
+				isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0);
 			gb::$is_categories = true;
 			gb::$is_404 = $postspage === false;
 		}
-		elseif (strpos($gb_urlpath, gb::$tags_prefix) === 0) {
+		elseif (strpos($gb_request_uri, gb::$tags_prefix) === 0) {
 			# tag(s)
-			$tags = array_map('urldecode', explode(',', substr($gb_urlpath, strlen(gb::$tags_prefix))));
-			$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
-			$postspage = GBExposedContent::findByTags($tags, $pageno);
+			$tags = array_map('urldecode', explode(',',
+				substr($gb_request_uri, strlen(gb::$tags_prefix))));
+			$postspage = GBExposedContent::findByTags($tags,
+				isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0);
 			gb::$is_tags = true;
 			gb::$is_404 = $postspage === false;
 		}
-		elseif (strpos($gb_urlpath, gb::$feed_prefix) === 0) {
+		elseif (strpos($gb_request_uri, gb::$feed_prefix) === 0) {
 			# feed
 			$postspage = GBPost::pageByPageno(0);
 			gb::$is_feed = true;
+			gb::event('will-handle-request');
 			# if the theme has a "feed.php" file, include that one
 			if (is_file(gb::$theme_dir.'/feed.php')) {
 				require gb::$theme_dir.'/feed.php';
@@ -3054,13 +3098,9 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 			}
 			exit(0);
 		}
-		elseif (strpos($gb_urlpath, gb::$authorize_prefix) === 0) {
-			# authorization (login)
-			gb::authentication_request();
-		}
-		elseif (($strptime = strptime($gb_urlpath, gb::$posts_prefix)) !== false) {
+		elseif (($strptime = strptime($gb_request_uri, gb::$posts_prefix)) !== false) {
 			# post
-			$post = GBPost::find(urldecode($gb_urlpath), gb::$is_preview, $strptime);
+			$post = GBPost::find(urldecode($gb_request_uri), gb::$is_preview, $strptime);
 			if ($post === false)
 				gb::$is_404 = true;
 			elseif ($post->draft === true || $post->published->time > time())
@@ -3072,7 +3112,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		}
 		else {
 			# page
-			$post = GBPage::find(urldecode($gb_urlpath), gb::$is_preview);
+			$post = GBPage::find(urldecode($gb_request_uri), gb::$is_preview);
 			if ($post === false)
 				gb::$is_404 = true;
 			else
@@ -3082,11 +3122,12 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 	}
 	else {
 		# posts
-		$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
-		$postspage = GBPost::pageByPageno($pageno);
+		$postspage = GBPost::pageByPageno(isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0);
 		gb::$is_posts = true;
 		gb::$is_404 = $postspage === false;
 	}
+	
+	gb::event('will-handle-request');
 	
 	# from here on, the caller will have to do the rest
 }

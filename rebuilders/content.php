@@ -49,7 +49,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 		if (substr($name, 0, 14) !== 'content/posts/')
 			return false;
 		
-		GBPost::parsePostName($name, $date, $slug, $fnext);
+		GBPost::parsePathspec($name, $date, $slug, $fnext);
 		
 		# date missing means malformed pathname
 		if ($date === false) {
@@ -67,7 +67,7 @@ class GBPostsRebuilder extends GBContentRebuilder {
 			$obj = $this->_onComment($name, $id, GBPost::mkCachename($date, $slug));
 		}
 		else {
-			$obj = $this->_onObject(GBPost::find($date, $slug), 'GBPost', $name, $id, $slug);
+			$obj = $this->_onObject(GBPost::findByDateAndSlug($date, $slug), 'GBPost', $name, $id, $slug);
 			if (!$obj)
 				return false;
 			self::$posts[] = $obj;

@@ -37,6 +37,14 @@ class gb {
 	static public $index_prefix = 'index.php/';
 	
 	/**
+	 * When this query string key is set and the client is authorized, the work
+	 * copy of a viewed post is displayed rather than the live version.
+	 * 
+	 * i.e. gb::$is_preview is set to true.
+	 */
+	static public $preview_query_key = 'preview';
+	
+	/**
 	 * Log messages of priority >=$log_filter will be sent to syslog.
 	 * Disable logging by setting this to -1.
 	 * See the "Logging" section in gitblog.php for more information.
@@ -60,7 +68,7 @@ class gb {
 	# --------------------------------------------------------------------------
 	# Constants
 	
-	static public $version = '0.1.1';
+	static public $version = '0.1.2';
 	
 	/** Absolute path to the gitblog directory */
 	static public $dir;
@@ -119,6 +127,17 @@ class gb {
 	static public $is_tags = false;
 	static public $is_categories = false;
 	static public $is_feed = false;
+	
+	/**
+	 * Preview mode -- work content is loaded rather than live versions.
+	 * 
+	 * This is automatically set to true by the request handler (end of this
+	 * file) when all of the following are true:
+	 * 
+	 *  - gb::$preview_query_key is set in the query string (i.e. "?preview")
+	 *  - Client is authorized (gb::$authorized is non-false)
+	 */
+	static public $is_preview = false;
 	
 	/**
 	 * A universal list of error messages (simple strings) which occured during
@@ -498,40 +517,16 @@ class gb {
 		return array(proc_close($ps['handle']), $output, $errors);
 	}
 	
+	/** Glob with PCRE skip filter which defaults to skipping directories. */
+	static function glob($pattern, $skip='/\/$/') {
+		foreach (glob($pattern, GLOB_MARK|GLOB_BRACE) as $path)
+			if ( ($skip && !preg_match($skip, $path)) || !$skip )
+				return $path;
+		return null;
+	}
+	
 	static function pathToTheme($file='') {
 		return gb::$site_dir.'/theme/'.$file;
-	}
-	
-	static function pathToCachedContent($dirname, $slug) {
-		return gb::$site_dir.'/.git/info/gitblog/content/'.$dirname.'/'.$slug;
-	}
-	
-	static function pathToPostsPage($pageno) {
-		return gb::$site_dir.sprintf('/.git/info/gitblog/content-paged-posts/%011d', $pageno);
-	}
-	
-	static function pathToPost($path, $strptime=null) {
-		$st = ($strptime !== null) ? $strptime : strptime($path, gb::$posts_prefix);
-		$cachename = gmstrftime(gb::$posts_cn_pattern, gb_mkutctime($st)).$st['unparsed'].gb::$content_cache_fnext;
-		return self::pathToCachedContent('posts', $cachename);
-	}
-	
-	static function pageBySlug($slug) {
-		$path = self::pathToCachedContent('pages', $slug.gb::$content_cache_fnext);
-		$data = @file_get_contents($path);
-		return $data === false ? false : unserialize($data);
-	}
-	
-	static function postBySlug($slug, $strptime=null) {
-		$path = self::pathToPost($slug, $strptime);
-		$data = @file_get_contents($path);
-		return $data === false ? false : unserialize($data);
-	}
-	
-	static function postsPageByPageno($pageno) {
-		$path = self::pathToPostsPage($pageno);
-		$data = @file_get_contents($path);
-		return $data === false ? false : unserialize($data);
 	}
 	
 	static function tags($indexname='tags-by-popularity') {
@@ -1450,7 +1445,9 @@ class GBDateTime {
 			. self::formatTimezoneOffset($this->offset, $tzformat);
 	}
 	
-	function age($abs_threshold=31536000, $abs_format='%B %e, %Y', $suffix=' ago', $compared_to=null) {
+	function age($abs_threshold=31536000, $abs_format='%B %e, %Y', $suffix=' ago', 
+		$compared_to=null, $momentago='A second')
+	{
 		if ($compared_to === null)
 			$diff = time() - $this->time;
 		elseif (is_int($compared_to))
@@ -1461,7 +1458,9 @@ class GBDateTime {
 		if ($diff >= $abs_threshold)
 			return $this->utcformat($abs_format);
 		
-		if ($diff < 50)
+		if ($diff < 5)
+			return $momentago.$suffix;
+		elseif ($diff < 50)
 			return $diff.' '.($diff === 1 ? 'second' : 'seconds').$suffix;
 		elseif ($diff < 3000) {
 			$diff = (int)round($diff / 60);
@@ -1590,7 +1589,7 @@ class GBContent {
 		return $bw;
 	}
 	
-	function reload($data, $commits) {
+	function reload($data, $commits=null) {
 		$this->mimeType = GBMimeType::forFilename($this->name);
 	}
 	
@@ -1639,7 +1638,77 @@ class GBExposedContent extends GBContent {
 		$this->body = $body;
 	}
 	
-	function reload($data, $commits) {
+	/* Get path to cached content where the slug is static. */
+	static function pathToCached($subdir, $slug) {
+		return gb::$site_dir.'/.git/info/gitblog/content/'.$subdir.'/'.$slug;
+	}
+	
+	/** Find path to work content where the slug is static. Returns null if not found. */
+	static function pathToWork($subdir, $slug_fnpattern) {
+		$base = gb::$site_dir.'/content/'.$subdir.'/'.$slug_fnpattern;
+		return gb::glob($base . '*', '/(\.comments|\/)$/');
+	}
+	
+	static function pathspecFromAbsPath($path) {
+		return substr($path, strlen(gb::$site_dir)+1);
+	}
+	
+	static function find($slug, $subdir='', $class='GBExposedContent', $work_version=null) {
+		if ($work_version === null)
+			$work_version = gb::$is_preview;
+		if ($work_version === true) {
+			# find path to raw content
+			if (($path = self::pathToWork($subdir, $slug)) === null)
+				return false;
+			
+			# find cached
+			$cached = self::find($slug, $subdir, $class, false);
+			
+			# load work
+			return self::loadWork($path, $cached, $class, null, $slug);
+		}
+		else {
+			$path = self::pathToCached($subdir, $slug . gb::$content_cache_fnext);
+			$data = @file_get_contents($path);
+			return $data === false ? false : unserialize($data);
+		}
+	}
+	
+	static function loadWork($path, $post=false, $class='GBExposedContent', $id=null, $slug=null) {
+		if ($post === false)
+			$post = new $class(self::pathspecFromAbsPath($path), $id, $slug);
+		
+		# load rebuild plugins before calling reload
+		gb::load_plugins('rebuild');
+	
+		# reload post with work data
+		$post->reload(file_get_contents($path));
+	
+		# set publish and modified date
+		$post->published = new GBDateTime(filectime($path));
+		$post->modified = new GBDateTime(filemtime($path));
+		
+		# set author if needed
+		if (!$post->author) {
+			# GBUserAccount have the same properties as the regular class-less author
+			# object, so it's safe to just pass it on here, as a clone.
+			if (gb::$authorized) {
+				$post->author = clone gb::$authorized;
+				unset($post->passhash);
+			}
+			elseif (($padmin = GBUserAccount::getAdmin())) {
+				$post->author = clone $padmin;
+				unset($post->passhash);
+			}
+			else {
+				$post->author = (object)array('name' => '', 'email' => '');
+			}
+		}
+	
+		return $post;
+	}
+	
+	function reload($data, $commits=null) {
 		parent::reload($data, $commits);
 		
 		$bodystart = strpos($data, "\n\n");
@@ -1652,7 +1721,7 @@ class GBExposedContent extends GBContent {
 		
 		# extract base date from name
 		if (!$commits && $this instanceof GBPost)
-			GBPost::parsePostName($this->name, $this->published, $this->slug, $fnext);
+			GBPost::parsePathspec($this->name, $this->published, $this->slug, $fnext);
 		
 		if ($bodystart > 0)
 			self::parseMetaHeaders(substr($data, 0, $bodystart), $this->meta);
@@ -2051,9 +2120,12 @@ class GBPage extends GBExposedContent {
 		return 'content/pages/'.$slug.gb::$content_cache_fnext;
 	}
 	
-	static function find($slug) {
-		$path = gb::$site_dir.'/.git/info/gitblog/'.self::mkCachename($slug);
-		return @unserialize(file_get_contents($path));
+	static function pathToCached($slug) {
+		return parent::pathToCached('pages', $slug . gb::$content_cache_fnext);
+	}
+	
+	static function find($slug, $work_version=null) {
+		return parent::find($slug, 'pages', $class='GBPage', $work_version);
 	}
 	
 	static function urlTo($slug) {
@@ -2072,27 +2144,105 @@ class GBPost extends GBExposedContent {
 			. str_replace('%2F', '/', urlencode($this->slug));
 	}
 	
+	function cachename() {
+		return self::mkCachename($this->published, $this->slug);
+	}
+	
 	static function mkCachename($published, $slug) {
 		# Note: the path prefix is a dependency for GBContentFinalizer::finalize
 		return 'content/posts/'.$published->utcformat(gb::$posts_cn_pattern).$slug.gb::$content_cache_fnext;
 	}
 	
-	function cachename() {
-		return self::mkCachename($this->published, $this->slug);
+	static function cachenameFromURI($slug, &$strptime) {
+		if ($strptime === null || $strptime === false)
+			$strptime = strptime($slug, gb::$posts_prefix);
+		return gmstrftime(gb::$posts_cn_pattern, gb_mkutctime($strptime))
+			.$strptime['unparsed'];
 	}
 	
-	static function find($published, $slug) {
+	static function pageByPageno($pageno) {
+		$path = self::pathToPage($pageno);
+		$data = @file_get_contents($path);
+		return $data === false ? false : unserialize($data);
+	}
+	
+	static function pathToPage($pageno) {
+		return gb::$site_dir . sprintf('/.git/info/gitblog/content-paged-posts/%011d', $pageno);
+	}
+	
+	static function pathToCached($slug, $strptime=null) {
+		$path = self::cachenameFromURI($slug, $strptime);
+		return GBExposedContent::pathToCached('posts', $path . gb::$content_cache_fnext);
+	}
+	
+	/** Find path to work content of a post. Returns null if not found. */
+	static function pathToWork($slug, $strptime=null) {
+		$cachename = self::cachenameFromURI($slug, $strptime);
+		$basedir = gb::$site_dir.'/content/posts/';
+		$glob_skip = '/(\.comments|\/)$/';
+		
+		# first, try if the post resides under the cachename, but in the workspace:
+		$path = $basedir . $cachename;
+		if (is_file($path))
+			return $path;
+		
+		# try any file with the cachename as prefix
+		if ( ($path = gb::glob($path . '*', $glob_skip)) )
+			return $path;
+		
+		# next, try a wider glob search
+		# todo: optimise: find minimum time resolution by examining $posts_cn_pattern
+		#                 for now we will assume the default resolution/granularity of 1 month.
+		$path = $basedir
+			. gmstrftime('{%Y,%y,%G,%g}{?,/}%m', gb_mkutctime($strptime))
+			. '{*,*/*,*/*/*,*/*/*/*}' . $strptime['unparsed'] . '*';
+		if ( ($path = gb::glob($path, $glob_skip)) )
+			return $path;
+		
+		# we're out of luck :(
+		return null;
+	}
+	
+	static function findByDateAndSlug($published, $slug) {
 		$path = gb::$site_dir.'/.git/info/gitblog/'.self::mkCachename($published, $slug);
 		return @unserialize(file_get_contents($path));
 	}
 	
+	static function find($slug, $work_version=null, $strptime=null) {
+		if ($work_version === null)
+			$work_version = gb::$is_preview;
+		if ($work_version) {
+			# find path to raw content
+			if (($path = self::pathToWork($slug, $strptime)) === null)
+				return false;
+			
+			# parse pathspec, producing date and actual slug needed to look up cached
+			self::parsePathspec(self::pathspecFromAbsPath($path), $date, $slug, $fnext);
+			
+			# try to find a cached version
+			$post = self::findByDateAndSlug($date, $slug);
+			
+			# load work
+			return self::loadWork($path, $post, 'GBPost', null, $slug);
+		}
+		else {
+			$path = self::pathToCached($slug, $strptime);
+			$data = @file_get_contents($path);
+			return $data === false ? false : unserialize($data);
+		}
+	}
+	
 	/**
-	 * content/posts/2008-08-29-reading-a-book.html
-	 *  date: GBDateTime with granularity restricted by gb::$posts_cn_pattern
-	 *  slug: "reading-a-book"
-	 *  fnext: "html"
+	 * Parse a pathspec for a post into date, slug and file extension.
+	 * 
+	 * Example:
+	 * 
+	 *  content/posts/2008-08/29-reading-a-book.html
+	 *    date: GBDateTime(2008-08-29T00:00:00Z) (resolution restricted by gb::$posts_cn_pattern)
+	 *    slug: "reading-a-book"
+	 *    fnext: "html"
 	 */
-	static function parsePostName($pathspec, &$date, &$slug, &$fnext) {
+	static function parsePathspec($pathspec, &$date, &$slug, &$fnext) {
 		# cut away prefix "content/posts/"
 		$name = substr($pathspec, 14);
 		
@@ -2107,19 +2257,27 @@ class GBPost extends GBExposedContent {
 		}
 		
 		# parse date and slug
-		static $subchars = array('.','_','/');
-		$name = str_replace($subchars, '-', $name);
-		$st = strptime($name, '%Y-%m-%d');
-		if ($st === false) {
-			$st = strptime($name, '%Y-%m');
-			if ($st === false) {
-				$st = strptime($name, '%Y');
-				if ($st === false)
-					throw new UnexpectedValueException('unable to parse date from '.var_export($pathspec,1));
+		static $subchars = '._/';
+		static $repchars = '---';
+		static $ptimes = array(
+			'%Y-%m-%d' => 10, '%y-%m-%d' => 8, '%G-%m-%d' => 10, '%g-%m-%d' => 8,
+			'%Y-%m' => 7, '%y-%m' => 5, '%G-%m' => 7, '%g-%m' => 5,
+			'%Y' => 4, '%y' => 2, '%G' => 4, '%g' => 2
+		);
+		$nametest = strtr($name, $subchars, $repchars);
+		foreach ($ptimes as $pattern => $patter_len) {
+			if (($st = strptime($nametest, $pattern)) !== false) {
+				$slug = ltrim(substr($name, $patter_len), $subchars . '-');
+				break;
 			}
 		}
+		
+		# failed to parse	
+		if ($st === false)
+			throw new UnexpectedValueException('unable to parse date from '.var_export($pathspec,1));
+		
 		$date = gmstrftime('%FT%T+00:00', gb_mkutctime($st));
-		$slug = ltrim($st['unparsed'], '-');
+		#$slug = ltrim($st['unparsed'], '-');
 		$date = new GBDateTime($date.'T00:00:00Z');
 	}
 }
@@ -2843,9 +3001,6 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 	# verify integrity and config
 	gb::verify();
 	
-	# load plugins
-	gb::load_plugins('online');
-	
 	# authed?
 	if (isset($_COOKIE['gb-chap']) && $_COOKIE['gb-chap']) {
 		gb::authenticate(false);
@@ -2860,6 +3015,13 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		else
 			gb::$errors[] = $_GET['gb-error'];
 	}
+	
+	# preview mode?
+	if (isset($_GET[gb::$preview_query_key]) && gb::$authorized)
+		gb::$is_preview = true;
+	
+	# load plugins
+	gb::load_plugins('online');
 	
 	if ($gb_urlpath) {
 		if (strpos($gb_urlpath, gb::$categories_prefix) === 0) {
@@ -2880,7 +3042,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		}
 		elseif (strpos($gb_urlpath, gb::$feed_prefix) === 0) {
 			# feed
-			$postspage = gb::postsPageByPageno(0);
+			$postspage = GBPost::pageByPageno(0);
 			gb::$is_feed = true;
 			# if the theme has a "feed.php" file, include that one
 			if (is_file(gb::$theme_dir.'/feed.php')) {
@@ -2898,7 +3060,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		}
 		elseif (($strptime = strptime($gb_urlpath, gb::$posts_prefix)) !== false) {
 			# post
-			$post = gb::postBySlug(urldecode($gb_urlpath), $strptime);
+			$post = GBPost::find(urldecode($gb_urlpath), gb::$is_preview, $strptime);
 			if ($post === false)
 				gb::$is_404 = true;
 			elseif ($post->draft === true || $post->published->time > time())
@@ -2910,7 +3072,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 		}
 		else {
 			# page
-			$post = gb::pageBySlug(urldecode($gb_urlpath));
+			$post = GBPage::find(urldecode($gb_urlpath), gb::$is_preview);
 			if ($post === false)
 				gb::$is_404 = true;
 			else
@@ -2921,7 +3083,7 @@ if (isset($gb_handle_request) && $gb_handle_request) {
 	else {
 		# posts
 		$pageno = isset($_REQUEST['page']) ? intval($_REQUEST['page']) : 0;
-		$postspage = gb::postsPageByPageno($pageno);
+		$postspage = GBPost::pageByPageno($pageno);
 		gb::$is_posts = true;
 		gb::$is_404 = $postspage === false;
 	}

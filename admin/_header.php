@@ -8,7 +8,7 @@ header('Content-Type: application/xhtml+xml; charset=utf-8');
 		<title><?= gb_title() ?></title>
 		<link href="<?= GITBLOG_ADMIN_URL ?>screen.css" type="text/css" rel="stylesheet" media="screen" />
 	</head>
-	<? flush(); ?>
+	<? gb_flush(); ?>
 	<body>
 		<div id="head">
 			<h1><?= h(gb::$site_title) ?></h1>

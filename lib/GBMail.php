@@ -110,7 +110,10 @@ class GBMail {
 		return $r;
 	}
 	
-	function send() {
+	function send($deferred=false) {
+		if ($deferred && gb::defer(array($this, 'send'), false))
+			return true;
+		
 		$return_value = true;
 		
 		$r = $this->rawRecipients();
@@ -127,13 +130,13 @@ class GBMail {
 		# since PHPMailer is one ugly piece of software
 		$orig_error_reporting = error_reporting(E_ALL ^ E_NOTICE);
 		
-		gb::log('sending email to %s with subject %s', $to, var_export($this->mailer->Subject, 1));
+		gb::log('sending email to %s with subject %s', $to, r($this->mailer->Subject));
 		if(!$this->mailer->Send()) {
 			gb::log(LOG_ERR, 'failed to send email to %s: %s', $to, $this->mailer->ErrorInfo);
 			$return_value = false;
 		}
 		else {
-			gb::log('sent email to %s with subject %s', $to, var_export($this->mailer->Subject, 1));
+			gb::log('sent email to %s with subject %s', $to, r($this->mailer->Subject));
 		}
 		
 		# reset error reporting

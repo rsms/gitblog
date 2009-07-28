@@ -33,7 +33,7 @@ elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->pos
 		<link rel="stylesheet" type="text/css" href="<?= gb::$theme_url ?>style.css" media="screen" />
 		<link rel="alternate" type="application/atom+xml" href="<?= h(gb::url_to('feed')) ?>" title="Atom feed" />
 	</head>
-	<? flush() ?>
+	<? gb_flush() ?>
 	<body>
 		<? if (gb::$errors): ?>
 		<div id="gb-errors">

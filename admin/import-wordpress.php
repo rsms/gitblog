@@ -60,7 +60,7 @@ class WordpressImporter {
 				. '<div class="breaker"></div>'
 			. '</div>'
 			. '<script type="text/javascript" charset="utf-8">setTimeout(\'window.scrollBy(0,999999);\',50)</script>';
-		flush();
+		gb_flush();
 	}
 	
 	function report($msg) {

@@ -202,7 +202,9 @@ class gb {
 			$fnc = self::$log_cb;
 			$fnc($priority, $msg);
 		}
-		return syslog($priority, $msg) ? $msg : false;
+		if (syslog($priority, $msg))
+		 	return $msg;
+		return error_log($msg, 4) ? $msg : false;
 	}
 	
 	static function openlog($ident=null, $options=LOG_PID, $facility=LOG_USER) {
@@ -464,6 +466,90 @@ class gb {
 	}
 	
 	# --------------------------------------------------------------------------
+	# defer -- Delayed execution
+	
+	static public $deferred = null;
+	static public $deferred_time_limit = 30;
+	
+	/**
+	 * Schedule $callable for delayed execution.
+	 * 
+	 * $callable will be executed after the response has been sent to the client.
+	 * This is useful for expensive operations which do not need to say
+	 * something to the client.
+	 * 
+	 * At the first call to defer, deferring will be "activated". This means that
+	 * output buffering is enabled, keepalive disabled and user-abort is ignored.
+	 * You can check to see if deferring is enabled by doing a truth check on
+	 * gb::$deferred
+	 * 
+	 * Use deferring wth caution.
+	 * 
+	 * A good example of when delayed execution is a good idea, is how the
+	 * email-notification plugin defers the mail action (this is actually part of
+	 * GBMail but this plugin makes good use of it).
+	 * 
+	 * Events:
+	 * 
+	 *  - "did-activate-deferring"
+	 *    Posted when defer is activated.
+	 * 
+	 */
+	static function defer($callable /* [$arg, .. ] */) {
+		if (self::$deferred === null) {
+			if (headers_sent())
+				return false;
+			ob_start();
+			header('Transfer-Encoding: identity');
+			header('Connection: close');
+			self::$deferred = array();
+			register_shutdown_function(array('gb','run_deferred'));
+			ignore_user_abort(true);
+			gb::event('did-activate-deferring');
+		}
+		self::$deferred[] = array($callable, array_slice(func_get_args(), 1));
+		return true;
+	}
+	
+	static function run_deferred() {
+		try {
+			# allow for self::$deferred_time_limit more seconds of processing
+			global $gb_time_started;
+			$time_spent = time()-$gb_time_started;
+			@set_time_limit(self::$deferred_time_limit + $time_spent);
+			
+			if (headers_sent()) {
+				# issue warning if output already started
+				gb::log(LOG_WARNING,
+					'defer: output already started -- using interleaved execution');
+			}
+			else {
+				# tell client the request is done
+				$size = ob_get_length();
+				header('Content-Length: '.$size);
+				ob_end_flush();
+			}
+			
+			# flush any pending output
+			flush();
+			
+			# call deferred code
+			foreach (self::$deferred as $f) {
+				try {
+					call_user_func_array($f[0], $f[1]);
+				}
+				catch (Exception $e) {
+					gb::log(LOG_ERR, 'deferred %s failed with %s: %s', 
+						json_encode($f), get_class($e), $e->__toString());
+				}
+			}
+		}
+		catch (Exception $e) {
+			gb::log(LOG_ERR, 'run_deferred failed with %s: %s', get_class($e), $e->__toString());
+		}
+	}
+	
+	# --------------------------------------------------------------------------
 	# GitBlog
 	
 	static public $rebuilders = array();
@@ -670,7 +756,18 @@ class gb {
 		self::exec('reset '.$flags.' '.$commitargs.' --'.$pathspec);
 	}
 	
-	static function commit($message, $author=null, $pathspec=null) {
+	static function commit($message, $author=null, $pathspec=null, $deferred=false) {
+		if ($deferred && gb::defer(array('gb', 'commit'), $message, $author, $pathspec, false)) {
+			$pathspec = $pathspec ? r($pathspec) : '';
+			gb::log('deferred commit -m %s --author %s %s',
+				escapeshellarg($message), escapeshellarg($author), $pathspec);
+			if (!$pathspec) {
+				gb::log(LOG_WARNING,
+					'deferred commits without pathspec might cause unexpected changesets');
+			}
+			return true;
+		}
+		
 		if ($pathspec) {
 			if (is_array($pathspec))
 				$pathspec = implode(' ', array_map('escapeshellarg',$pathspec));
@@ -1258,6 +1355,14 @@ class GBURL implements ArrayAccess, Countable {
 	function count() { return count($this->query); }
 }
 
+/** Human-readable representation of $var */
+function r($var) {
+	$r = json_encode($var);
+	if ($r === null)
+		$r = print_r($var, true);
+	return $r;
+}
+
 /** Boiler plate popen */
 function gb_popen($cmd, $cwd=null, $env=null) {
 	$fds = array(array("pipe", "r"), array("pipe", "w"), array("pipe", "w"));
@@ -1340,6 +1445,10 @@ function gb_hash($data) {
 	return base_convert(hash_hmac('sha1', $data, gb::$secret), 16, 36);
 }
 
+function gb_flush() {
+	if (gb::$deferred === null)
+		flush();
+}
 
 /**
  * Calculate relative path.
@@ -3012,6 +3121,11 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
  *    when the full url (aquireable through gb::url()) might be
  *    "http://host/blog/2009/07/some-post"
  * 
+ *  - $gb_time_started
+ *    Always available and houses the microtime(true) when gitblog started to
+ *    execute. This is used by various internal mechanisms, so please do not
+ *    alter the value or Bad Things (TM) might happen.
+ * 
  *  - $post
  *    Available for requests of posts and pages in which case its value is an
  *    instance of GBExposedContent (or a subclass thereof). However; the value
@@ -3040,6 +3154,10 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
  * 
  *  - "will-handle-request"
  *    Posted after the request has been parsed but before gitblog handles it.
+ * 
+ *  - "did-handle-request"
+ *    Posted after the request have been handled but before any deferred code
+ *    is executed.
  * 
  * When observing these events, the Global variables and the gb::$is_*
  * properties should provide good grounds for taking descisions and/or changing
@@ -3142,6 +3260,7 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 	}
 	
 	gb::event('will-handle-request');
+	register_shutdown_function(array('gb','event'), 'did-handle-request');
 	
 	# from here on, the caller will have to do the rest
 }

@@ -230,7 +230,7 @@ if ($comment) {
 		
 		header('Status: 500 Internal Server Error');
 		echo '$input => ';var_export($input);echo "\n";
-		flush();
+		gb_flush();
 		throw $e;
 	}
 }

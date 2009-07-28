@@ -95,7 +95,7 @@ catch (Exception $e) {
 	gb::log(LOG_ERR, 'failed to remove comment %s from %s', $input['comment'], $post->cachename());
 	header('Status: 500 Internal Server Error');
 	echo '$input => ';var_export($input);echo "\n";
-	flush();
+	gb_flush();
 	throw $e;
 }
 

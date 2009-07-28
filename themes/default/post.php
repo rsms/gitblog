@@ -232,4 +232,4 @@
 	</div>
 	<div class="breaker"></div>
 </div>
-<? flush() ?>
+<? gb_flush() ?>

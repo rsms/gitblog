@@ -76,7 +76,7 @@ function email_notification_did_add_comment($comment) {
 	
 	$body = email_notification_comment_mkbody($comment);
 	$to = email_notification_recipient($comment);
-	GBMail::compose($subject, $body, $to)->send();
+	GBMail::compose($subject, $body, $to)->send(true);
 }
 
 
@@ -86,7 +86,7 @@ function email_notification_did_spam_comment($comment) {
 	$subject = '['.gb::$site_title.'] Spam comment on "'.$comment->post->title.'"';
 	$body = email_notification_comment_mkbody($comment);
 	$to = email_notification_recipient($comment);
-	GBMail::compose($subject, $body, $to)->send();
+	GBMail::compose($subject, $body, $to)->send(true);
 }
 
 

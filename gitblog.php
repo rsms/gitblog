@@ -2990,8 +2990,20 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
 
 
 # -----------------------------------------------------------------------------
-# Request handler
 /**
+ * Request handler.
+ * 
+ * Activated by setting $gb_handle_request = true before loading gitblog.php.
+ * This construction is intended for themes.
+ * 
+ * Example of a theme:
+ * 
+ *   <?
+ *   $gb_handle_request = true;
+ *   require './gitblog/gitblog.php';
+ *   # send response based on gb::$is_* properties ...
+ *   ?>
+ * 
  * Global variables:
  * 
  *  - $gb_request_uri
@@ -3032,9 +3044,11 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
  * When observing these events, the Global variables and the gb::$is_*
  * properties should provide good grounds for taking descisions and/or changing
  * the outcome.
+ * 
+ * Before the request is parsed, any activated "online" plugins will be given
+ * a chance to initialize.
  */
-
-if (isset($gb_handle_request) && $gb_handle_request) {
+if (isset($gb_handle_request) && $gb_handle_request === true) {
 	$gb_request_uri = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
 	
 	# verify integrity and config

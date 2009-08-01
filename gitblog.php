@@ -1,6 +1,7 @@
 <?
 error_reporting(E_ALL);
 $gb_time_started = microtime(true);
+date_default_timezone_set(@date_default_timezone_get());
 
 /**
  * Configuration.

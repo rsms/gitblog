@@ -3,7 +3,7 @@ require_once '_base.php';
 function gb_log_html($priority, $msg) {
 	echo '<p class="logmsg '.($priority === LOG_WARNING ? 'warning' : ($priority < LOG_WARNING ? 'error' : ''))
 		.'">'.h($msg).'</p>';
-	gb_flush);
+	gb_flush();
 }
 gb::$log_cb = 'gb_log_html';
 gb::authenticate();

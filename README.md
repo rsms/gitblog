@@ -89,7 +89,7 @@ Have a look in the file `gitblog/gitblog.php` -- scroll down a few lines and you
 
 ## Authors
 
-- Rasmus Andersson <rasmus notion.se>
+- Rasmus Andersson &lt;rasmus notion.se&gt;
 
 
 ## History

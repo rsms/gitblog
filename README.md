@@ -6,6 +6,7 @@ Post-action hooks in git are used to manage an intermediate cache which consist 
 
 Licensed under MIT means free to use for everyone. See LICENSE for more information.
 
+
 ## Features
 
 - Fully git-based -- no mysql or similar involved
@@ -16,15 +17,15 @@ Licensed under MIT means free to use for everyone. See LICENSE for more informat
 - Hierarchical comments
 - Remote editing (git push/pull)
 - Wordpress import
+- Plugins
 
 ### Work in progress
 
-- Plugins
+- Web administration
 
 ### Planned
 
 - Pingback
-- Web administration
 - Search
 
 
@@ -88,7 +89,7 @@ Have a look in the file `gitblog/gitblog.php` -- scroll down a few lines and you
 
 ## Authors
 
-- Rasmus Andersson &lt;rasmus notion se&gt;
+- Rasmus Andersson <rasmus notion.se>
 
 
 ## History

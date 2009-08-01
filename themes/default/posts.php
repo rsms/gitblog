@@ -55,7 +55,7 @@
 	<? foreach ($postspage->posts as $post): ?>
 		<div class="post">
 			<?= $post->commentsLink() ?>
-			<h1><a href="<?= h($post->url()) ?>"><?= h($post->title) ?></a></h1>
+			<h2><a href="<?= h($post->url()) ?>"><?= h($post->title) ?></a></h2>
 			<p class="meta">
 				<?= $post->published->age() ?>
 				by <?= h($post->author->name) . $post->tagLinks(', tagged ') . $post->categoryLinks(', filed under ')  ?>

@@ -1921,11 +1921,11 @@ class GBExposedContent extends GBContent {
 	}
 	
 	function commentsLink($prefix='', $suffix='', $template='<a href="%u" class="numcomments" title="%t">%n</a>') {
-		if (!$this->comments)
+		if (!$this->comments || !($count = is_int($this->comments) ? $this->comments : $this->comments->countApproved()))
 		 	return '';
 		return strtr($template, array(
 			'%u' => h($this->url()).'#comments',
-			'%n' => is_int($this->comments) ? $this->comments : $this->comments->countApproved(),
+			'%n' => $count,
 			'%t' => $this->numberOfComments()
 		));
 	}

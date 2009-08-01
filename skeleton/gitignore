@@ -1,6 +1,7 @@
 # general
 *~
 *.old
+*.swp
 
 # mac specific
 .DS_Store

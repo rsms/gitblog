@@ -91,7 +91,7 @@ elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->pos
 			<div id="error404">
 				<div class="wrapper">
 					<h1>404 Not Found</h1>
-					The page <b><?= h(gb::url()->__toString(false)) ?></b> does not exist.
+					The page <b><?= h(gb::url()->toString(false)) ?></b> does not exist.
 				</div>
 			</div>
 			<?

@@ -1239,7 +1239,11 @@ class GBURL implements ArrayAccess, Countable {
 		}
 	}
 	
-	function __toString($scheme=true, $host=true, $port=true, $path=true, $query=true, $fragment=true) {
+	function __toString() {
+		return $this->toString();
+	}
+	
+	function toString($scheme=true, $host=true, $port=true, $path=true, $query=true, $fragment=true) {
 		$s = '';
 		
 		if ($scheme !== false) {

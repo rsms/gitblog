@@ -1,5 +1,6 @@
 # general
 *~
+*.old
 
 # mac specific
 .DS_Store
@@ -7,5 +8,4 @@
 ._*
 
 # gitblog specific
-/gitblog
 /site.json

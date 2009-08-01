@@ -224,7 +224,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 			$parentName = substr($cobj->name, 0, -9); # .comments
 			$parentNameLen = strlen($parentName);
 			foreach (self::$dirtyObjects as $parentObj)
-				if (substr($parentObj->name, 0, $parentNameLen) === $parentName)
+				if (gb_filenoext($parentObj->name) === $parentName)
 					$parentObj->comments = $cobj;
 		}
 		# assure GBExposedContent objects with dirty comments are added to dirtyObjects

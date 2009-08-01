@@ -3181,7 +3181,7 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 			}
 			exit(0);
 		}
-		elseif ( gb::$posts_prefix === '' || ($strptime = strptime($gb_request_uri, gb::$posts_prefix)) !== false) {
+		elseif (gb::$posts_prefix === '' || ($strptime = strptime($gb_request_uri, gb::$posts_prefix)) !== false) {
 			# post
 			$post = GBPost::find(urldecode($gb_request_uri), gb::$is_preview, $strptime);
 			if ($post === false)

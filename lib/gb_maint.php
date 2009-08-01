@@ -110,8 +110,14 @@ class gb_maint {
 			$added[] = gb::add('.gitmodules');
 		
 		# commit any modifications
-		if ($added)
-			gb::commit('added '.implode(', ',$added), GBUserAccount::getAdmin()->gitAuthor(), $added);
+		if ($added) {
+			try {
+				gb::commit('added '.implode(', ',$added), GBUserAccount::getAdmin()->gitAuthor(), $added);
+			}
+			catch (GitError $e) {
+				if (strpos($e->getMessage('no changes added to commit')) === false)
+					throw $e;
+			}
 	}
 	
 	
@@ -136,7 +142,7 @@ class gb_maint {
 		self::repair_repo_setup();
 		
 		# assure gitblog submodule is set up
-		$dotgitmodules = gb::$dir . '/.gitmodules';
+		$dotgitmodules = gb::$site_dir . '/.gitmodules';
 		if (!is_file($dotgitmodules) || 
 		    !preg_match('/\[submodule[\s\t ]+"gitblog"\]/', file_get_contents($dotgitmodules)))
 		{

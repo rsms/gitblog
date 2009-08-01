@@ -118,6 +118,7 @@ class gb_maint {
 				if (strpos($e->getMessage('no changes added to commit')) === false)
 					throw $e;
 			}
+		}
 	}
 	
 	

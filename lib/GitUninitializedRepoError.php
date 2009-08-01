@@ -1,0 +1,4 @@
+<?
+class GitUninitializedRepoError extends GitError {
+}
+?>

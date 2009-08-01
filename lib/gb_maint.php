@@ -8,22 +8,53 @@ class gb_maint {
 		$roundtrip_temp = false;
 		$dotgitmodules = gb::$dir . '/.gitmodules';
 		$did_have_dotgitmodules = is_file($dotgitmodules);
+		$added = array();
+		$origin_url = 'git://github.com/rsms/gitblog.git';
 		
 		# first, find the origin url if any
-		try {
-			$origin_url = gb::exec('config remote.origin.url', null, gb::$dir.'/.git', gb::$dir);
-			$origin_url = trim($origin_url);
-			if (!$origin_url)
-				$origin_url = 'git://github.com/rsms/gitblog.git';
+		$broken_gitblog_repo = false;
+		if (is_dir(gb::$dir.'/.git')) {
+			try {
+				gb::log('deducing remote.origin.url for existing gitblog');
+				$s = trim(gb::exec('config remote.origin.url', null, gb::$dir.'/.git', gb::$dir));
+				if ($s)
+					$origin_url = $s;
+			}
+			catch (GitError $e) {
+				gb::log(LOG_WARNING, 'failed to read config remote.origin.url: %s', $e->getMessage());
+				$broken_gitblog_repo = true;
+			}
 		}
-		catch (GitError $e) {
-			# if gitblog is not a repo, rename existing and implicitly clone upstream
-			if (!@rename(gb::$dir, gb::$dir.'.old')) {
-				gb::log(LOG_WARNING, 'failed to move %s to %s', gb::$dir, gb::$dir.'.old');
-				$roundtrip_temp = sys_get_temp_dir() . '/' 
-					. preg_replace('/[^a-zA-Z0-9_-\.]+/', '-', trim(gb::$dir, '/'));
-				gb::log('temporarily moving %s to %s', gb::$dir, $roundtrip_temp);
-				rename(gb::$dir, $roundtrip_temp);
+		
+		# if gitblog is not a repo or broken, rename existing and clone a fresh copy from upstream
+		if ($broken_gitblog_repo) {
+			$stash_dir = gb::$dir.'.old';
+			$i = 1;
+			while (file_exists($stash_dir))
+				$stash_dir = gb::$dir.'.old'.($i++);
+			
+			gb::log('moving broken gitblog %s to %s', gb::$dir, $stash_dir);
+			if (!rename(gb::$dir, $stash_dir)) {
+				# Note: This is tricky. If we get here, it probably means we are unable to
+				# write in dirname(gb::$dir) and gb::$site_dir which we will try to do
+				# further down, where we clone a new copy, which will most likely fail
+				# because we can not create a new directory called "gitblog" due to lack of
+				# priveleges.
+				#
+				# Now, one solution would be to:
+				#
+				#   git clone origin /tmp/xy
+				#   mkdir ./gitblog/old
+				#   mv ./gitblog/(?!old)+ ./gitblog/old/
+				#   mv /tmp/xy/* ./gitblog/
+				#   rm -rf ./gitblog/old
+				#
+				# But as this is a very thin use case, almost vanishingly small since
+				# the gitblog itself can not function w/o write rights, we die hard:
+				gb::log(LOG_CRIT,
+					'unable to replace gitblog with gitblog submodule (mv %s %s) -- directory not writable? Aborting.',
+					gb::$dir, $stash_dir);
+				exit;
 			}
 		}
 		
@@ -35,10 +66,10 @@ class gb_maint {
 			if ($gitignore2 !== $gitignore) {
 				gb::log('removing "/gitblog" from %s', $gitignore_path);
 				file_put_contents($gitignore_path, $gitignore2, LOCK_EX);
+				$added[] = gb::add('.gitignore');
 			}
 			
-			# register (and clone if needed) the gitblog submodule
-			# this might take some time
+			# register (and clone if needed) the gitblog submodule. This might take some time.
 			gb::exec('submodule --quiet add -b '
 				. escapeshellarg(self::$branch).' -- '
 				. escapeshellarg($origin_url) . ' gitblog');
@@ -66,11 +97,12 @@ class gb_maint {
 			throw $e;
 		}
 		
-		# if .submodules did not exist, track it
-		if (!$did_have_dotgitmodules) {
-			gb::add('.gitmodules');
-			gb::commit('added .gitmodules', GBUserAccount::getAdmin()->gitAuthor(), '.gitmodules');
-		}
+		# if .submodules did not exist when we started, track it
+		if (!$did_have_dotgitmodules)
+			$added[] = gb::add('.gitmodules');
+		
+		# commit any modifications
+		gb::commit('added '.implode(', ',$added), GBUserAccount::getAdmin()->gitAuthor(), $added);
 	}
 	
 	

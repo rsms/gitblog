@@ -576,9 +576,9 @@ class gb {
 		if ($r[0] != 0) {
 			$msg = trim($r[1]."\n".$r[2]);
 			if (strpos($r[2], 'Not a git repository') !== false)
-				throw new GitUninitializedRepoError($msg);
+				throw new GitUninitializedRepoError($msg, $r[0], $cmd);
 			else
-				throw new GitError($msg);
+				throw new GitError($msg, $r[0], $cmd);
 		}
 		return $r[1];
 	}
@@ -726,6 +726,7 @@ class gb {
 	
 	static function add($pathspec, $forceIncludeIgnored=true) {
 		self::exec(($forceIncludeIgnored ? 'add --force ' : 'add ').escapeshellarg($pathspec));
+		return $pathspec;
 	}
 	
 	static function reset($pathspec=null, $commitobj=null, $flags='-q') {
@@ -998,22 +999,55 @@ if (gb::$site_title === null) {
 }
 
 #------------------------------------------------------------------------------
-# Setup autoload
+# Setup autoload and exception handler
 
 ini_set('include_path', ini_get('include_path') . ':' . gb::$dir . '/lib');
 
-/** @ignore */
-function __autoload($c) {
-	# we use include instead of include_once since it's alot faster
-	# and the probability of including an allready included file is
-	# very small.
-	if((include $c . '.php') === false) {
-		$t = debug_backtrace();
-		if(@$t[1]['function'] != 'class_exists')
-			trigger_error("failed to load class $c");
+# use the SPL autoloader
+spl_autoload_register();
+
+function gb_exception_handler($e) {
+	$msg = GBException::format($e);
+	if (ini_get('html_errors')) {
+		$cls = get_class($e);
+		$msg = <<<HTML
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+		<title>Error: $cls</title>
+		<style type="text/css" media="screen">
+			html,body { margin:0; padding:0; }
+			body { background-color:#fff; color:#666; font-family:sans-serif; }
+			h1 { padding:.8em 0 .5em 30px; font-weight:normal; color:#777; background:#333; margin:0; }
+			h2 { background-color:#fcc; color:#721; margin:0; padding:.2em 30px; }
+			h2 span.code { color:#c99; font-weight:normal; }
+			p.message { background:#ffc; color:#220; padding:2em 30px; margin:0; }
+			p.message code { display:block; margin:1.5em 0 0 0; }
+			p.location { padding:0.5em 30px; margin:0; background:#444; color:#fff; font-family:monospace; font-size:140%; }
+			p.location span.prefix { color:#999; font-size:50%; padding-right:4px; }
+			div.trace { padding:1em 30px; margin:0; font-size:120%; }
+			code.frame { padding:0; }
+			pre.context { font-size:10px; margin-left:55px; margin-bottom:0; 
+				border-left:1px solid #ccc; padding:0 0 0 4px; }
+			code.frame pre.context { margin-left:25px; }
+			pre.context span {  display:inline-block; }
+			pre.context span.c { color:#999; }
+			pre.context span.f { color:#000; padding:3px 0; }
+			code.frame span.function { color:#06a; }
+			code.frame span.location { color:#000; }
+		</style>
+	</head>
+	<body>
+		<h1>An unrecoverable error occured</h1>
+		$msg
+	</body>
+</html>
+HTML;
 	}
+	exit($msg);
 }
-ini_set('unserialize_callback_func', '__autoload');
+set_exception_handler('gb_exception_handler');
 
 # PATH patches: macports git. todo: move to admin/setup.php
 $_ENV['PATH'] .= ':/opt/local/bin';
@@ -1175,30 +1209,6 @@ class JSONDict implements ArrayAccess, Countable {
 # settings.json
 gb::$settings = new JSONDict(gb::$site_dir.'/settings.json', gb::$dir.'/skeleton/settings.json');
 
-class PHPException extends RuntimeException {
-	function __construct($msg=null, $errno=0, $file=null, $line=-1, $cause=null) {
-		if ($msg instanceof Exception) {
-			if (is_string($errno) && $file == null && $line == -1 && $cause == null) {
-				$this->cause = $msg;
-				$msg = $errno;
-				$errno = 0;
-			}
-			else {
-				$line = $msg->getLine();
-				$file = $msg->getFile();
-				$errno = $msg->getCode();
-				$msg = $msg->getMessage();
-				if (isset($msg->errorInfo))
-					$this->errorInfo = $msg->errorInfo;
-			}
-		}
-		parent::__construct($msg, $errno);
-		if ($file != null)  $this->file = $file;
-		if ($line != -1)    $this->line = $line;
-		if ($cause != null) $this->cause = $cause;
-	}
-}
-
 class GBURL implements ArrayAccess, Countable {
 	public $scheme;
 	public $host;
@@ -1301,10 +1311,7 @@ class GBURL implements ArrayAccess, Countable {
 
 /** Human-readable representation of $var */
 function r($var) {
-	$r = json_encode($var);
-	if ($r === null)
-		$r = print_r($var, true);
-	return $r;
+	return print_r($var, true);
 }
 
 /** Boiler plate popen */
@@ -1449,12 +1456,6 @@ function gb_tokenize_html($html) {
 	return preg_split('/(<.*>|\[.*\])/Us', $html, -1, 
 		PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY);
 }
-
-#------------------------------------------------------------------------------
-# Exceptions
-
-class GitError extends Exception {}
-class GitUninitializedRepoError extends GitError {}
 
 #------------------------------------------------------------------------------
 
@@ -2911,7 +2912,7 @@ function gb_site_title($link=true, $linkattrs='') {
 }
 
 function h($s) {
-	return filter_var($s, FILTER_SANITIZE_SPECIAL_CHARS);
+	return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 }
 
 function gb_nonce_field($context='', $referrer=true, $id_prefix='', $name='gb-nonce') {

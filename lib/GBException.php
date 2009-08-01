@@ -88,7 +88,7 @@ class GBException extends Exception {
 		$tracestr = $includingTrace ? self::formatTrace($e, $html, $skip) : false;
 		$code = $e->getCode();
 		$message = ($e instanceof self) ? 
-			$e->formatMessage($html) : ($html ? nl2br(h($this->getMessage())) : $this->getMessage());
+			$e->formatMessage($html) : ($html ? nl2br(h($e->getMessage())) : $e->getMessage());
 		
 		try {
 			$context = '';

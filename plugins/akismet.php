@@ -1,4 +1,14 @@
 <?
+/*
+ * Name:        Akismet
+ * Version:     0.1
+ * Author:      Rasmus Andersson
+ * Author URI:  http://gitblog.se/
+ * Description: Stop comment spam and trackback spam. You need to set
+ *              "akismet/api_key" in settings.json to a valid API key. Read
+ *              more here: http://akismet.com/personal/
+ */
+
 /**
  * Akismet spam helper.
  * 
@@ -120,7 +130,7 @@ class akismet {
 			. "Host: $host\r\n"
 			. "Content-Type: application/x-www-form-urlencoded; charset=utf-8\r\n"
 			. "Content-Length: " . strlen($body) . "\r\n"
-			. "User-Agent: WordPress/2.8 | Akismet/2.0\r\n"
+			. 'User-Agent: Gitblog/'.gb::$version." , Akismet/2.0\r\n"
 			. "\r\n"
 			. $body;
 
@@ -202,6 +212,7 @@ class akismet {
 	}
 }
 
+# plugin initialization
 function akismet_init($context) {
 	akismet::init();
 	

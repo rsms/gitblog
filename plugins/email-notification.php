@@ -1,4 +1,12 @@
 <?
+/*
+ * Name:        Email notification
+ * Version:     0.1
+ * Author:      Rasmus Andersson
+ * Author URI:  http://gitblog.se/
+ * Description: Sends emails when things happen, like when new comments are added.
+ */
+
 function email_notification_recipient($comment) {
 	$recipient = gb::$settings->get('email-notification/recipient');
 	if (is_array($recipient) || strpos($recipient, '@') !== false)

@@ -3,7 +3,7 @@
  * Name:        Code blocks
  * Version:     0.1
  * Author:      Rasmus Andersson
- * Author URI:  http://hunch.se/
+ * Author URI:  http://gitblog.se/
  * Description: Enables syntax highlight of <code> blocks using Pygments, if
  *              available.
  */

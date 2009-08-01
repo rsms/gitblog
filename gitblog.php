@@ -3196,8 +3196,10 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 			# empty prefix and 404 -- try page
 			if (gb::$is_404 === true && gb::$posts_prefix === '') {
 				$post = GBPage::find(urldecode($gb_request_uri), gb::$is_preview);
-				if ($post !== false)
+				if ($post !== false) {
 					gb::$title[] = $post->title;
+					gb::$is_404 = false;
+				}
 				gb::$is_post = false;
 				gb::$is_page = true;
 			}

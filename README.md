@@ -17,7 +17,7 @@ Licensed under MIT means free to use for everyone. See LICENSE for more informat
 - Hierarchical comments
 - Remote editing (git push/pull)
 - Wordpress import
-- [Plugins](docs/plugins.md)
+- [Plugins](http://github.com/rsms/gitblog/blob/master/docs/plugins.md)
 
 ### Work in progress
 

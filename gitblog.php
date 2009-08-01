@@ -3118,6 +3118,7 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
  */
 if (isset($gb_handle_request) && $gb_handle_request === true) {
 	$gb_request_uri = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
+	$strptime = null;
 	
 	# verify integrity and config
 	gb::verify();
@@ -3180,9 +3181,7 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 			}
 			exit(0);
 		}
-		elseif ( ($strptime = (gb::$posts_prefix === '')) 
-		      || ($strptime = strptime($gb_request_uri, gb::$posts_prefix)) !== false)
-		{
+		elseif ( gb::$posts_prefix === '' || ($strptime = strptime($gb_request_uri, gb::$posts_prefix)) !== false) {
 			# post
 			$post = GBPost::find(urldecode($gb_request_uri), gb::$is_preview, $strptime);
 			if ($post === false)
@@ -3220,6 +3219,7 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 		gb::$is_404 = $postspage === false;
 	}
 	
+	unset($strptime);
 	gb::event('will-handle-request');
 	register_shutdown_function(array('gb','event'), 'did-handle-request');
 	

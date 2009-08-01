@@ -39,6 +39,7 @@ class GBRebuilder {
 	static function rebuild($forceFullRebuild=false) {
 		gb::log(LOG_NOTICE, 'rebuilding cache'.($forceFullRebuild ? ' (forcing full rebuild)':''));
 		$time_started = microtime(1);
+		$failures = array();
 		
 		# Load rebuild plugins
 		gb::load_plugins('rebuild');
@@ -76,16 +77,27 @@ class GBRebuilder {
 				catch (RuntimeException $e) {
 					gb::log(LOG_ERR, 'failed to rebuild object %s %s: %s',
 						var_export($name,1), $e->getMessage(), $e->getTraceAsString());
+					$failures[] = array($rebuilder, $name);
 				}
 			}
 		}
 		
 		# Let rebuilders finalize
-		foreach ($rebuilders as $rebuilder)
-			$rebuilder->finalize();
+		foreach ($rebuilders as $rebuilder) {
+			try {
+				$rebuilder->finalize();
+			}
+			catch (RuntimeException $e) {
+				gb::log(LOG_ERR, 'rebuilder %s %x failed to finalize',
+					get_class($rebuilder), spl_object_hash($rebuilder));
+				$failures[] = array($rebuilder, null);
+			}
+		}
 		
 		gb::log(LOG_NOTICE, 'cache updated -- time spent: %s', 
 			gb_format_duration(microtime(1)-$time_started));
+		
+		return $failures;
 	}
 }
 ?>

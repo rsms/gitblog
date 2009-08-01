@@ -65,7 +65,7 @@ class gb {
 	# --------------------------------------------------------------------------
 	# Constants
 	
-	static public $version = '0.1.2';
+	static public $version = '0.1.3';
 	
 	/** Absolute path to the gitblog directory */
 	static public $dir;
@@ -367,7 +367,7 @@ class gb {
 	
 	static function load_plugins($context) {
 		if (self::$site_state === null)
-			gb::verifyIntegrity();
+			gb::verify_integrity();
 		
 		# bail out if no plugins
 		if (!isset(self::$site_state['plugins']))
@@ -475,13 +475,13 @@ class gb {
 	 * Schedule $callable for delayed execution.
 	 * 
 	 * $callable will be executed after the response has been sent to the client.
-	 * This is useful for expensive operations which do not need to say
-	 * something to the client.
+	 * This is useful for expensive operations which do not need to send
+	 * anything to the client.
 	 * 
 	 * At the first call to defer, deferring will be "activated". This means that
 	 * output buffering is enabled, keepalive disabled and user-abort is ignored.
 	 * You can check to see if deferring is enabled by doing a truth check on
-	 * gb::$deferred
+	 * gb::$deferred. The event "did-activate-deferring" is also posted.
 	 * 
 	 * Use deferring wth caution.
 	 * 
@@ -556,10 +556,14 @@ class gb {
 	static public $gitQueryCount = 0;
 	
 	/** Execute a git command */
-	static function exec($cmd, $input=null) {
+	static function exec($cmd, $input=null, $gitdir=null, $worktree=null) {
 		# build cmd
-		$cmd = 'git --git-dir='.escapeshellarg(gb::$site_dir.'/.git')
-			.' --work-tree='.escapeshellarg(gb::$site_dir)
+		if ($gitdir === null)
+			$gitdir = gb::$site_dir.'/.git';
+		if ($worktree === null)
+			$worktree = gb::$site_dir;
+		$cmd = 'git --git-dir='.escapeshellarg($gitdir)
+			.' --work-tree='.escapeshellarg($worktree)
 			.' '.$cmd;
 		#var_dump($cmd);
 		gb::log(LOG_DEBUG, 'exec$ '.$cmd);
@@ -784,69 +788,21 @@ class gb {
 		return true;
 	}
 	
-	static function syncSiteState() {
-		# verify repo setup, which also makes sure the repo setup (hooks, config,
-		# etc) is up to date:
-		self::verifyRepoSetup();
-		
-		# no previous state?
-		if (!gb::$site_state)
-			gb::$site_state = json_decode(file_get_contents(gb::$dir.'/skeleton/site.json'), true);
-		
-		# Set current values
-		gb::$site_state['url'] = gb::$site_url;
-		gb::$site_state['version'] = gb::$version;
-		gb::$site_state['posts_pagesize'] = gb::$posts_pagesize;
-		
-		# Encode
-		$json = json::pretty(gb::$site_state)."\n";
-		$path = gb::$site_dir.'/site.json';
-		
-		# Write site url for hooks
-		$bytes_written = file_put_contents(gb::$site_dir.'/.git/info/gitblog-site-url',
-			gb::$site_url, LOCK_EX);
-		
-		# Write site.json
-		$bytes_written += file_put_contents($path, $json, LOCK_EX);
-		chmod($path, 0664);
-		gb::log(LOG_NOTICE, 'wrote site state to %s (%d bytes)', $path, $bytes_written);
-		return $bytes_written;
+	static function version_parse($s) {
+		if (is_int($s))
+			return $s;
+		$v = array_map('intval', explode('.', $s));
+		if (count($v) < 3)
+			$v = array(0,0,0);
+		list($a, $i, $b) = $v;
+		return ($a << 16) + ($i << 8) + $b;
+	}
+
+	static function version_format($v) {
+		return sprintf('%d.%d.%d', $v >> 16, ($v << 16) >> 24, ($v << 24) >> 24);
 	}
 	
-	static function upgrade($fromVersion) {
-		gb::log(LOG_NOTICE, 'upgrading cache from gitblog '.$fromVersion.' -> gitblog '.gb::$version);
-		self::syncSiteState();
-		
-		# parse versions
-		$fromv = array_map('intval', explode('.', $fromVersion));
-		if (count($fromv) < 3)
-			$fromv = array(0,0,0);
-		list($fromma, $frommi, $fromb) = $fromv;
-		$from = ($fromma << 16) + ($frommi << 8) + $fromb;
-		list($toma, $tomi, $tob) = array_map('intval', explode('.', gb::$version));
-		$to = ($toma << 16) + ($tomi << 8) + $tob;
-		
-		# <0.1.1  -->  *
-		if ($from < 0x000101) {
-			# introduced in 0.1.1:
-			
-			# remote pushing
-			gb::exec('config receive.denyCurrentBranch ignore');
-			gb::exec('config core.sharedRepository 1');
-			foreach (array('post-commit', 'post-update') as $name) {
-				copy(gb::$dir.'/skeleton/hooks/'.$name, gb::$site_dir.'/.git/hooks/'.$name);
-				@chmod(gb::$site_dir.'/.git/hooks/'.$name, 0774);
-			}
-			
-			# ignore site.json
-			if (substr(file_get_contents(gb::$site_dir.'/.gitignore'), '/site.json') === false)
-				file_put_contents(gb::$site_dir.'/.gitignore', "\n/site.json\n", FILE_APPEND);
-		}
-		
-		GBRebuilder::rebuild(true);
-		gb::log(LOG_NOTICE, 'upgrade of %s to gitblog %s complete', gb::$site_dir, gb::$version);
-		return true;
-	}
+	
 	
 	static function loadSiteState() {
 		$data = @file_get_contents(gb::$site_dir.'/site.json');
@@ -865,18 +821,6 @@ class gb {
 		return true;
 	}
 	
-	static function verifyRepoSetup() {
-		gb::exec('config receive.denyCurrentBranch ignore');
-		gb::exec('config core.sharedRepository 1');
-		foreach (array('post-commit', 'post-update') as $name) {
-			$dst = gb::$site_dir.'/.git/hooks/'.$name;
-			if (!file_exists($dst)) {
-				copy(gb::$dir.'/skeleton/hooks/'.$name, $dst);
-				@chmod($dst, 0774);
-			}
-		}
-	}
-	
 	/**
 	 * Verify integrity of the site, automatically taking any actions to restore
 	 * it if broken.
@@ -888,7 +832,7 @@ class gb {
 	 *   2  gitdir is missing and need to be created (git init).
 	 *   3  upgrade performed
 	 */
-	static function verifyIntegrity() {
+	static function verify_integrity() {
 		$r = 0;
 		if (!is_dir(gb::$site_dir.'/.git/info/gitblog')) {
 			if (!is_dir(gb::$site_dir.'/.git')) {
@@ -896,7 +840,7 @@ class gb {
 				return 2; 
 			}
 			# 1: gitblog cache updated
-			self::syncSiteState();
+			gb_maint::sync_site_state();
 			GBRebuilder::rebuild(true);
 			return 1;
 		}
@@ -909,26 +853,18 @@ class gb {
 			&& strpos(gb::$site_url, '://localhost') === false
 			&& strpos(gb::$site_url, '://127.0.0.1') === false) || !gb::$site_state['url'] )
 		{
-			return self::syncSiteState() === false ? -1 : 0;
+			return gb_maint::sync_site_state() === false ? -1 : 0;
 		}
 		elseif (gb::$site_state['version'] !== gb::$version) {
-			return self::upgrade(gb::$site_state['version']) ? 0 : -1;
+			return gb_maint::upgrade(gb::$site_state['version']) ? 0 : -1;
 		}
 		elseif (gb::$site_state['posts_pagesize'] !== gb::$posts_pagesize) {
-			self::syncSiteState();
+			gb_maint::sync_site_state();
 			GBRebuilder::rebuild(true);
 			return 1;
 		}
 		
 		return 0;
-	}
-	
-	static function verify() {
-		if (self::verifyIntegrity() === 2) {
-			header("Location: ".gb::$site_url."gitblog/admin/setup.php");
-			exit(0);
-		}
-		gb::verify_config();
 	}
 	
 	static function verify_config() {
@@ -937,6 +873,14 @@ class gb {
 			header('Content-Type: text/plain; charset=utf-8');
 			exit("\n\ngb::\$secret is not set or too short.\n\nPlease edit your gb-config.php file.\n");
 		}
+	}
+	
+	static function verify() {
+		if (self::verify_integrity() === 2) {
+			header("Location: ".gb::$site_url."gitblog/admin/setup.php");
+			exit(0);
+		}
+		gb::verify_config();
 	}
 }
 

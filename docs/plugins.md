@@ -1,13 +1,10 @@
 # Plugins
 
+Gitblog have support for plugins written in PHP. These plugins are simple PHP files which will be loaded and then a specially named function will be calles. You can learn more by reading the section "Loading and activation" further down this document.
+
+There are a few different types of *execution contexts* in which a plugin can be loaded.
+
 ## Execution contexts
-
-- rebuild
-
-- request
-
-- admin
-
 
 ### rebuild
 
@@ -40,9 +37,9 @@ Examples:
 
 ## Loading and activation
 
-Plugins are simple PHP files (or possibly other executable files, depending on what kind of plugin it is) which are installed by putting the file into one of the *search paths*. Plugins are enabled by editing the "plugins" section of `site.json`.
+Plugins are simple PHP files (or possibly other executable files, depending on what kind of plugin it is) which are installed by putting the file into one of the *search paths*. Plugins are enabled by editing the "plugins" section of [site.json](docs/site.json.md).
 
-A special function is called after the plugin has been loaded. This function should setup the plugin and respond with a true value if it did initialize or a false value if it did not. Returning a false value might cause the plugin init function to be called again, later when something in gitblog might have become available. When these different load points are, is currently undefined.
+A special function is called after the plugin has been loaded. This function should setup the plugin and respond with a `true` value if it did initialize or a `false` value if it did not. Returning a `false` value might cause the plugin init function to be called again later when something in gitblog might have become available. Where these different load points are located, is currently undocumented here but is described in-line in the code (most notably in the file [lib/GBRebuilder.php](lib/GBRebuilder.php)).
 
 Currently *rebuild* plugins will be offered initialization once the rebuild task starts, then again when all rebuilder classes have instantiated to allow for modifying these instances or previously loaded rebuilders.
 

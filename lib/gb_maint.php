@@ -70,9 +70,17 @@ class gb_maint {
 			}
 			
 			# register (and clone if needed) the gitblog submodule. This might take some time.
-			gb::exec('submodule --quiet add -b '
-				. escapeshellarg(self::$branch).' -- '
-				. escapeshellarg($origin_url) . ' gitblog');
+			try {
+				gb::exec('submodule --quiet add -b '
+					. escapeshellarg(self::$branch).' -- '
+					. escapeshellarg($origin_url) . ' gitblog');
+				# add gitblog
+				$added[] = gb::add('gitblog');
+			}
+			catch (GitError $e) {
+				if (strpos($e->getMessage(), 'already exists in the index') === false)
+					throw $e;
+			}
 			
 			# move back old shallow gitblog dir
 			if ($roundtrip_temp) {
@@ -98,11 +106,12 @@ class gb_maint {
 		}
 		
 		# if .submodules did not exist when we started, track it
-		if (!$did_have_dotgitmodules)
+		if (!$did_have_dotgitmodules && is_file(gb::$site_dir.'/.gitmodules'))
 			$added[] = gb::add('.gitmodules');
 		
 		# commit any modifications
-		gb::commit('added '.implode(', ',$added), GBUserAccount::getAdmin()->gitAuthor(), $added);
+		if ($added)
+			gb::commit('added '.implode(', ',$added), GBUserAccount::getAdmin()->gitAuthor(), $added);
 	}
 	
 	

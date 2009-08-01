@@ -232,7 +232,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 			$parentName = substr($cobj->name, 0, -9); # .comments
 			$parentNameLen = strlen($parentName);
 			foreach (self::$objects as $parentObj) {
-				if (substr($parentObj->name, 0, $parentNameLen) === $parentName) {
+				if (gb_filenoext($parentObj->name) === $parentName) {
 					if (!in_array($parentObj, self::$dirtyObjects, true))
 						self::$dirtyObjects[$parentObj->id] = $parentObj;
 					$parentObj->comments = $cobj;

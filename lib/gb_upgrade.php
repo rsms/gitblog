@@ -37,7 +37,7 @@ class gb_upgrade {
 		gb::log('%s gitblog %s -> %s in %d stages',
 			($is_upgrade ? 'upgrading' : 'downgrading'), $froms, $tos, count($stages));
 		
-		foreach ($stages as $v => $stagefunc)
+		foreach ($stages as $v => $stagefunc) {
 			gb::log('%s -> %s (%s)',
 				gb::version_format($v ? $v-1 : $v), gb::version_format($v), $stagefunc[1]);
 			$stages[$v] = call_user_func($stagefunc, $from, $to);

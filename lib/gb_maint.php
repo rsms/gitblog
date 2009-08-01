@@ -62,7 +62,7 @@ class gb_maint {
 			# remove "/gitblog" ignore from .gitignore
 			$gitignore_path = gb::$site_dir.'/.gitignore';
 			$gitignore = file_get_contents($gitignore_path);
-			$gitignore2 = preg_replace('/^(?:\r?\n)\/gitblog[\t\s ]*\r?\n$/m', '', $gitignore);
+			$gitignore2 = preg_replace('/(?:\r?\n)\/gitblog([\t\s \r\n]+|^)/m', '$1', $gitignore);
 			if ($gitignore2 !== $gitignore) {
 				gb::log('removing "/gitblog" from %s', $gitignore_path);
 				file_put_contents($gitignore_path, $gitignore2, LOCK_EX);

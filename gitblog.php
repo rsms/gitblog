@@ -3146,6 +3146,7 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 	gb::load_plugins('online');
 	
 	gb::event('will-parse-request');
+	register_shutdown_function(array('gb','event'), 'did-handle-request');
 	
 	if ($gb_request_uri) {
 		if (strpos($gb_request_uri, gb::$categories_prefix) === 0) {
@@ -3171,15 +3172,10 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 			$postspage = GBPost::pageByPageno(0);
 			gb::$is_feed = true;
 			gb::event('will-handle-request');
-			# if the theme has a "feed.php" file, include that one
-			if (is_file(gb::$theme_dir.'/feed.php')) {
-				require gb::$theme_dir.'/feed.php';
-			}
-			# otherwise we'll handle the feed
-			else {
-				require gb::$dir.'/helpers/feed.php';
-			}
-			exit(0);
+			# if we got this far it means no event observers took over this task, so
+			# we run the built-in feed (Atom) code:
+			require gb::$dir.'/helpers/feed.php';
+			exit;
 		}
 		elseif (gb::$posts_prefix === '' || ($strptime = strptime($gb_request_uri, gb::$posts_prefix)) !== false) {
 			# post
@@ -3223,7 +3219,6 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 	
 	unset($strptime);
 	gb::event('will-handle-request');
-	register_shutdown_function(array('gb','event'), 'did-handle-request');
 	
 	# from here on, the caller will have to do the rest
 }

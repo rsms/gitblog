@@ -1004,8 +1004,10 @@ if (gb::$site_title === null) {
 
 ini_set('include_path', ini_get('include_path') . ':' . gb::$dir . '/lib');
 
-# use the SPL autoloader
-spl_autoload_register();
+# Lazy class loader
+function __autoload($classname) {
+	require $classname . '.php';
+}
 
 function gb_exception_handler($e) {
 	$msg = GBException::format($e);

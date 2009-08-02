@@ -339,7 +339,6 @@ class gb {
 	static function catch_errors($handler=null, $filter=null) {
 		if ($handler === null)
 			$handler = array('gb', 'catch_error');
-		self::$orig_err_html = ini_set('html_errors', '0');
 		if ($filter === null)
 			$filter = E_ALL;
 		self::$orig_err_handler = set_error_handler($handler, $filter);
@@ -349,7 +348,6 @@ class gb {
 		set_error_handler(array('gb', 'catch_error'), E_ALL);
 		if (self::$orig_err_handler)
 			set_error_handler(self::$orig_err_handler);
-		ini_set('html_errors', self::$orig_err_html);
 		self::$orig_err_handler = null;
 	}
 	
@@ -3121,6 +3119,9 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
 if (isset($gb_handle_request) && $gb_handle_request === true) {
 	$gb_request_uri = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
 	$strptime = null;
+	
+	# errors are hard
+	gb::catch_errors();
 	
 	# verify integrity and config
 	gb::verify();

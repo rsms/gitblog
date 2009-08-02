@@ -32,7 +32,7 @@ class gb_upgrade {
 		$froms = gb::version_format($from);
 		$tos = gb::version_format($to);
 		$is_upgrade = $from < $to;
-		$stages = gb_upgrade_build_stages($from, $to);
+		$stages = self::build_stages($from, $to);
 		
 		gb::log('%s gitblog %s -> %s in %d stages',
 			($is_upgrade ? 'upgrading' : 'downgrading'), $froms, $tos, count($stages));

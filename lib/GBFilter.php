@@ -519,6 +519,8 @@ GBFilter::add('body.html', 'gb_force_balance_tags', 70);
 function gb_filter_post_reload_content(GBExposedContent $c) {
 	if ($c->body)
 		$c->body = trim($c->body);
+	if ($c->excerpt)
+		$c->excerpt = trim($c->excerpt);
 	return $c;
 }
 
@@ -534,7 +536,7 @@ function gb_filter_post_reload_content_html(GBExposedContent $c) {
 		}
 		$c->body = GBFilter::apply('body.html', $c->body);
 	}
-	if (isset($c->excerpt))
+	if ($c->excerpt)
 		$c->excerpt = GBFilter::apply('body.html', $c->excerpt);
 	return $c;
 }

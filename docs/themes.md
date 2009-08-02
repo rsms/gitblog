@@ -2,7 +2,7 @@
 
 *This document is early work in progress*
 
-A theme is simply a PHP script including `gitblog.php`.
+A theme is simply a PHP script including [gitblog.php](../gitblog.php).
 
 Example of an extremely simple theme:
 
@@ -27,5 +27,5 @@ Example of an extremely simple theme:
 
 The theme index.php is then placed (hardlinked or symlinked) into your document root.
 
-Have a closer look at the default theme in `themes/default/` as it uses most of the 
+Have a closer look at the default theme in [themes/default](../themes/default) as it uses most of the 
 functionality of Gitblog and contains comments.

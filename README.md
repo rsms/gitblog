@@ -4,7 +4,7 @@ A git-based blog/cms platform for PHP, meant as a replacement for Wordpress.
 
 Post-action hooks in git are used to manage an intermediate cache which consist only of structured data (no formatting), allowing dynamic presentation. This is one of the biggest differences tech-wise in comparison to Jekyll and similar tools.
 
-Licensed under MIT means free to use for everyone. See LICENSE for more information.
+Licensed under MIT means free to use for everyone. See [LICENSE](http://github.com/rsms/gitblog/blob/master/LICENSE) for more information.
 
 
 ## Features
@@ -22,6 +22,7 @@ Licensed under MIT means free to use for everyone. See LICENSE for more informat
 ### Work in progress
 
 - Web administration
+- Markdown support
 
 ### Planned
 
@@ -55,6 +56,8 @@ Make some changes, be creative!
 
 To demonstrate that the "working tree" is indeed a working area and not the live stage, reload your web browser and see that the "Hello world" post is still not modified.
 
+> **Tip:** You can view your work in progress by being signed in and appending `?preview` to the url.
+
 Now, let's commit the changes, pusing them live:
 
 	$ git commit -m 'Updated my awesome hello-world post' content
@@ -63,9 +66,15 @@ Reload your web browser and... voila!
 
 > **Warnings when committing?** If you see `error: Could not access 'HEAD@{1}'` on stderr when committing, do not worry. This is an issue that currently do not affect gitblog, but we're looking into what causes it.
 
+
 ### Importing a Wordpress blog
 
 If you have a Wordpress blog you would like to import, there is a built-in tool which does it for you! Just visit `/my-blog/gitblog/admin/import-wordpress.php` and follow the simple instructions.
+
+
+## Documentation
+
+The [docs directory](http://github.com/rsms/gitblog/tree/master/docs) contains a number of documents covering different parts of Gitblog.
 
 
 ## Requirements

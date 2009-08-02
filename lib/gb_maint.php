@@ -191,7 +191,7 @@ class gb_maint {
 		
 		# Encode site.json
 		$json = json::pretty(gb::$site_state)."\n";
-		$path = gb::$site_dir.'/site.json';
+		$path = gb::data_path('site.json');
 		
 		# Write site.json
 		$bytes_written += file_put_contents($path, $json, LOCK_EX);

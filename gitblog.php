@@ -365,30 +365,26 @@ class gb {
 	static public $plugins_loaded = array();
 	
 	static function load_plugins($context) {
-		if (self::$site_state === null)
-			gb::verify_integrity();
+		$plugin_config = self::data('plugins');
+		$plugins = $plugin_config[$context];
 		
-		# bail out if no plugins
-		if (!isset(self::$site_state['plugins']))
-			return false;
-		$plugins = self::$site_state['plugins'];
-		if (!isset($plugins[$context]))
-			return false;
-		$plugins = $plugins[$context];
+		if (!is_array($plugins))
+			return;
 		
 		# loaded list
-		if (isset(self::$plugins_loaded[$context]))
+		if (isset(self::$plugins_loaded[$context])) {
 			$loaded =& self::$plugins_loaded[$context];
+		}
 		else {
 			$loaded = array();
 			self::$plugins_loaded[$context] =& $loaded;
 		}
 		
-		if (!is_array($plugins))
-			return;
-		
 		# load plugins
 		foreach ($plugins as $path) {
+			if (!$path)
+				continue;
+			
 			# expand gitblog plugins
 			if ($path{0} !== '/')
 				$path = gb::$dir . '/plugins/'.$path;
@@ -403,7 +399,7 @@ class gb {
 				require $path;
 			
 			# call plugin_init
-			$name = str_replace(array('-', '.'), '_', substr(basename($path), 0, -4)); # assume .php
+			$name = str_replace(array('-', '.'), '_', substr(basename($path), 0, -4)); # assume .xxx
 			$init_func_name = $name.'_init';
 			$loaded[$path] = $init_func_name($context);
 		}
@@ -546,6 +542,33 @@ class gb {
 		catch (Exception $e) {
 			gb::log(LOG_ERR, 'run_deferred failed with %s: %s', get_class($e), $e->__toString());
 		}
+	}
+	
+	# --------------------------------------------------------------------------
+	# data -- arbitrary key-value storage
+	
+	/**
+	 * Path to directory in which data is stored. If it's a relative path, 
+	 * it's relative to gb::$site_dir.
+	 */
+	static public $data_dir = 'data';
+	
+	static public $data_store_class = 'JSONDict';
+	static public $data_stores = array();
+	
+	static function data($name) {
+		if (isset($data_stores[$name]))
+			return $data_stores[$name];
+		$cls = self::$data_store_class;
+		$store = new $cls($name);
+		$data_stores[$name] = $store;
+		return $store;
+	}
+	
+	static function data_path($name) {
+		return (gb_isabspath(self::$data_dir) ? 
+				self::$data_dir : self::$site_dir . '/' . self::$data_dir)
+			. '/' . $name;
 	}
 	
 	# --------------------------------------------------------------------------
@@ -802,19 +825,17 @@ class gb {
 		return sprintf('%d.%d.%d', $v >> 16, ($v << 16) >> 24, ($v << 24) >> 24);
 	}
 	
-	
-	
-	static function loadSiteState() {
-		$data = @file_get_contents(gb::$site_dir.'/site.json');
+	/** Load the site state */
+	static function load_site_state() {
+		$path = self::data_path('site.json');
+		$data = @file_get_contents($path);
 		if ($data === false)
 			return false;
 		gb::$site_state = json_decode($data, true);
 		if (gb::$site_state === null || is_string(gb::$site_state)) {
 			self::log(LOG_WARNING, 'syntax error in site.json -- moved to site.json.broken and creating new');
-			if (!rename(gb::$site_dir.'/site.json', gb::$site_dir.'/site.json.broken')) {
-				self::log(LOG_WARNING, 'failed to move "%s" to "%s"', 
-					gb::$site_dir.'/site.json', gb::$site_dir.'/site.json.broken');
-			}
+			if (!rename($path, $path.'.broken'))
+				self::log(LOG_WARNING, 'failed to move "%s" to "%s"', $path, $path.'.broken');
 			gb::$site_state = null;
 			return false;
 		}
@@ -846,7 +867,7 @@ class gb {
 		}
 		
 		# load site.json
-		$r = self::loadSiteState();
+		$r = self::load_site_state();
 		
 		# check site state
 		if ( $r === false || (gb::$site_state['url'] !== gb::$site_url
@@ -1023,17 +1044,25 @@ $_ENV['PATH'] .= ':/opt/local/bin';
 #------------------------------------------------------------------------------
 # Utilities
 
+/** Dictionary backed by a JSON file */
 class JSONDict implements ArrayAccess, Countable {
 	public $file;
 	public $skeleton_file;
 	public $cache;
 	public $storage;
 	
-	function __construct($file, $skeleton_file=null) {
-		$this->file = $file;
+	function __construct($name_or_path, $is_path=false, $skeleton_file=null) {
+		$this->file = ($is_path === false) ? gb::data_path($name_or_path).'.json' : $name_or_path;
 		$this->cache = null;
 		$this->storage = null;
 		$this->skeleton_file = $skeleton_file;
+	}
+	
+	/** Retrieve the underlying JSONStore storage */
+	function storage() {
+		if ($this->storage === null)
+			$this->storage = new JSONStore($this->file, $this->skeleton_file);
+		return $this->storage;
 	}
 	
 	/**
@@ -1131,13 +1160,6 @@ class JSONDict implements ArrayAccess, Countable {
 		}
 	}
 	
-	/** Retrieve the underlying JSONStore storage */
-	function storage() {
-		if ($this->storage === null)
-			$this->storage = new JSONStore($this->file, $this->skeleton_file);
-		return $this->storage;
-	}
-	
 	function offsetGet($k) {
 		if ($this->cache === null)
 			$this->cache = $this->storage()->get();
@@ -1172,9 +1194,6 @@ class JSONDict implements ArrayAccess, Countable {
 		return var_export($this->cache ,1);
 	}
 }
-
-# settings.json
-gb::$settings = new JSONDict(gb::$site_dir.'/settings.json', gb::$dir.'/skeleton/settings.json');
 
 class GBURL implements ArrayAccess, Countable {
 	public $scheme;
@@ -1283,6 +1302,11 @@ class GBURL implements ArrayAccess, Countable {
 /** Human-readable representation of $var */
 function r($var) {
 	return print_r($var, true);
+}
+
+/** Ture $path is an absolute path */
+function gb_isabspath($path) {
+	return ($path && $path{0} === '/');
 }
 
 /** Boiler plate popen */

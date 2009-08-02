@@ -1,6 +1,9 @@
 {
-	"plugins": {
-		"rebuild": [ "code-blocks.php" ],
-		"admin": [ "akismet.php", "email-notification.php" ]
-	}
+	"rebuild": [
+		"code-blocks.php"
+	],
+	"admin": [
+		"akismet.php",
+		"email-notification.php"
+	]
 }

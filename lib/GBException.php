@@ -85,7 +85,7 @@ class GBException extends Exception {
 	public static function format(Exception $e, $includingTrace=true, $html=null, $skip=null, $context_lines=2) {
 		if ($html === null)
 			$html = ini_get('html_errors') ? true : false;
-		$tracestr = $includingTrace ? self::formatTrace($e, $html, $skip) : false;
+		$tracestr = $includingTrace ? self::formatTrace($e, $html, $skip, $context_lines) : false;
 		$code = $e->getCode();
 		$message = ($e instanceof self) ? 
 			$e->formatMessage($html) : ($html ? nl2br(h($e->getMessage())) : $e->getMessage());
@@ -130,16 +130,11 @@ class GBException extends Exception {
 			if ($previous && $previous instanceof Exception) {
 				# never include trace from caused php exception, because it is the same as it's parent.
 				$inc_prev_trace = !($previous instanceof PHPException);
-				
-				if ($html) {
-					$str .= '<b>Caused by:</b><div style="margin-left:15px">'
-						. self::format($previous, $inc_prev_trace, $html, $skip)
-						. '</div>';
-				}
-				else {
-					$str .= "\nCaused by:\n  " 
-						. str_replace("\n", "\n  ", self::format($previous, $inc_prev_trace, $html, $skip))."\n";
-				}
+				$prev_fmt = self::format($previous, $inc_prev_trace, $html, $skip, $context_lines);
+				if ($html)
+					$str .= '<b>Caused by:</b><div style="margin-left:15px">'.$prev_fmt.'</div>';
+				else
+					$str .= "\nCaused by:\n  ".str_replace("\n", "\n  ", $prev_fmt)."\n";
 			}
 		
 			if ($html)
@@ -171,35 +166,40 @@ class GBException extends Exception {
 	public static function formatTrace(Exception $e, $html=null, $skip=null, $context_lines=2) {
 		if ($html === null)
 			$html = ini_get('html_errors') ? true : false;
+		
 		try {
 			$trace = $e->getTrace();
 			$traceLen = count($trace);
 			$str = '';
-		
-			if($e instanceof PHPException)
-				$skip = is_array($skip) ? array_merge($skip, array('PHPException::rethrow')) : array('PHPException::rethrow');
-		
-			if($traceLen > 0) {
+			
+			if ($traceLen > 0) {
 				if($html)
 					$str .= "<div class=\"trace\">";
 				
-				if($skip) {
+				if ($e instanceof PHPException) {
+					$skip = is_array($skip) ? array_merge($skip, array('PHPException::rethrow')) : array('PHPException::rethrow');
+					foreach($trace as $i => $ti) {
+						if (isset($ti['type']) && $ti['class'].'::'.$ti['function'] === 'gb::catch_error') {
+							array_splice($trace, 0, $i+2);
+							break;
+						}
+					}
+				}
+				
+				if ($skip) {
 					$traceTmp = $trace;
 					$trace = array();
 					foreach($traceTmp as $i => $ti) {
-						if(in_array($ti['function'], $skip))
+						if ( in_array($ti['function'], $skip) || (isset($ti['type']) && in_array($ti['class'].'::'.$ti['function'], $skip)) )
 							continue;
-						if(isset($ti['type']))
-							if(in_array($ti['class'].'::'.$ti['function'], $skip))
-								continue;
 						$trace[] = $ti;
 					}
 				}
 				
 				foreach($trace as $i => $ti) {
-					$str .= ($html ? '<code class="frame">' : '')
+					$str .= ($html ? '<div class="frame">' : '')
 						. self::formatFrame($ti, $html, $context_lines)
-						. ($html ? "</code><br />\n" : "\n");
+						. ($html ? "</div><br />\n" : "\n");
 				}
 				$str .= $html ? "</div>\n" : "\n";
 			}
@@ -297,6 +297,46 @@ class GBException extends Exception {
 	
 	/** @return string */
 	public function __toString() { return self::format($this, false, false); }
+	
+	static public function formatHTMLDocument(Exception $e, $includingTrace=true, $skip=null, $context_lines=2) {
+		$msg = self::format($e, $includingTrace, true, $skip, $context_lines);
+		$cls = get_class($e);
+		$msg = <<<HTML
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+		<title>Error: $cls</title>
+		<style type="text/css" media="screen">
+			html,body { margin:0; padding:0; }
+			body { background-color:#f0ffff; color:#666; font-family:'helvetica neue',helvetica,sans-serif; font-size:16px; }
+			h1 { padding:.8em 0 .5em 30px; font-weight:normal; color:#777; background:#333; margin:0; }
+			h2 { background-color:#fcc; color:#721; margin:0; padding:.2em 30px; }
+			h2 span.code { color:#c99; font-weight:normal; }
+			p.message { background:#fff; color:#220; padding:1.5em 30px; margin:0; }
+			p.message code { display:block; margin:1.5em 0 0 0; }
+			p.location { padding:0.5em 30px; margin:0; background:#36a; color:#fff; font-family:monospace; font-size:18px; }
+			p.location span.prefix { color:#9cf; font-size:9px; padding-right:4px; float:right; line-height:22px; }
+			div.trace { padding:1em 30px; margin:0; font-size:13px; }
+			div.frame { padding:0; font-family:monospace; }
+			pre.context { font-size:10px; margin-left:55px; margin-bottom:0; 
+				border-left:1px solid #ccc; padding:0 0 0 4px; }
+			div.frame pre.context { margin-left:25px; }
+			pre.context span { display:inline-block; }
+			pre.context span.c { color:#8aa; }
+			pre.context span.f { color:#000; padding:3px 0; }
+			div.frame span.function { color:#06a; }
+			div.frame span.location { color:#000; }
+		</style>
+	</head>
+	<body>
+		<h1>An unrecoverable error occured</h1>
+		$msg
+	</body>
+</html>
+HTML;
+		return $msg;
+	}
 }
 
 GBException::$is_php53 = version_compare(PHP_VERSION, '5.3.0', '>=');

@@ -1008,44 +1008,10 @@ function __autoload($classname) {
 }
 
 function gb_exception_handler($e) {
-	$msg = GBException::format($e);
-	if (ini_get('html_errors')) {
-		$cls = get_class($e);
-		$msg = <<<HTML
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-	<head>
-		<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-		<title>Error: $cls</title>
-		<style type="text/css" media="screen">
-			html,body { margin:0; padding:0; }
-			body { background-color:#fff; color:#666; font-family:sans-serif; }
-			h1 { padding:.8em 0 .5em 30px; font-weight:normal; color:#777; background:#333; margin:0; }
-			h2 { background-color:#fcc; color:#721; margin:0; padding:.2em 30px; }
-			h2 span.code { color:#c99; font-weight:normal; }
-			p.message { background:#ffc; color:#220; padding:2em 30px; margin:0; }
-			p.message code { display:block; margin:1.5em 0 0 0; }
-			p.location { padding:0.5em 30px; margin:0; background:#444; color:#fff; font-family:monospace; font-size:140%; }
-			p.location span.prefix { color:#999; font-size:50%; padding-right:4px; }
-			div.trace { padding:1em 30px; margin:0; font-size:120%; }
-			code.frame { padding:0; }
-			pre.context { font-size:10px; margin-left:55px; margin-bottom:0; 
-				border-left:1px solid #ccc; padding:0 0 0 4px; }
-			code.frame pre.context { margin-left:25px; }
-			pre.context span {  display:inline-block; }
-			pre.context span.c { color:#999; }
-			pre.context span.f { color:#000; padding:3px 0; }
-			code.frame span.function { color:#06a; }
-			code.frame span.location { color:#000; }
-		</style>
-	</head>
-	<body>
-		<h1>An unrecoverable error occured</h1>
-		$msg
-	</body>
-</html>
-HTML;
-	}
+	if (ini_get('html_errors'))
+		$msg = GBException::formatHTMLDocument($e);
+	else
+		$msg = GBException::format($e, true, false, null, 0);
 	exit($msg);
 }
 set_exception_handler('gb_exception_handler');

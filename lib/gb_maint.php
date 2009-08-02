@@ -112,7 +112,7 @@ class gb_maint {
 		# commit any modifications
 		if ($added) {
 			try {
-				gb::commit('added '.implode(', ',$added), GBUser::admin()->gitAuthor(), $added);
+				gb::commit('added '.implode(', ',$added), GBUser::findAdmin()->gitAuthor(), $added);
 			}
 			catch (GitError $e) {
 				if (strpos($e->getMessage('no changes added to commit')) === false)

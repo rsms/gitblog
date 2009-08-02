@@ -113,7 +113,7 @@ class FileDB {
 		if ($did_write && $this->autocommitToRepo) {
 			gb::log('committing changes to '.$this->file);
 			if (!($author = $this->autocommitToRepoAuthor))
-				$author = GBUser::admin()->gitAuthor();
+				$author = GBUser::findAdmin()->gitAuthor();
 			$m = $this->autocommitToRepoMessage ? $this->autocommitToRepoMessage : 'autocommit:'.$this->file;
 			gb::add($this->file);
 			gb::commit($m, $author);

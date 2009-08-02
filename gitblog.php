@@ -521,11 +521,14 @@ class gb {
 	static public $data_store_class = 'JSONDict';
 	static public $data_stores = array();
 	
-	static function data($name) {
+	static function data($name, $default=null) {
 		if (isset(self::$data_stores[$name]))
 			return self::$data_stores[$name];
 		$cls = self::$data_store_class;
 		$store = new $cls($name);
+		if ($default)
+			foreach ($default as $k => $v)
+				$store[$k] = $v;
 		self::$data_stores[$name] = $store;
 		return $store;
 	}
@@ -1752,7 +1755,7 @@ class GBExposedContent extends GBContent {
 				$post->author = clone gb::$authorized;
 				unset($post->passhash);
 			}
-			elseif (($padmin = GBUser::admin())) {
+			elseif (($padmin = GBUser::findAdmin())) {
 				$post->author = clone $padmin;
 				unset($post->passhash);
 			}

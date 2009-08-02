@@ -49,7 +49,7 @@ class WordpressImporter {
 	
 	function __construct() {
 		$this->importedObjectsCount = 0;
-		#$this->defaultAuthorEmail = GBUser::admin() ? GBUser::admin()->email : '';
+		#$this->defaultAuthorEmail = GBUser::findAdmin() ? GBUser::findAdmin()->email : '';
 		$this->defaultAuthorEmail = '';
 	}
 	
@@ -172,7 +172,7 @@ class WordpressImporter {
 				$this->report('Creating commit...');
 				try {
 					gb::commit($message.' from Wordpress blog '.$channel_name,
-						GBUser::admin()->gitAuthor());
+						GBUser::findAdmin()->gitAuthor());
 					$this->report('Committed to git repository');
 				}
 				catch (GitError $e) {

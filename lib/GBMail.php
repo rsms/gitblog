@@ -2,11 +2,11 @@
 /**
  * Email.
  * 
- * The settings reside under the key "email" in settings.json.
+ * Configuration is stored in data/email.json.
  * 
- * Example settings.json for Google Mail SMTP delivery:
+ * Example of Google Mail SMTP delivery:
  * 
- *   "email": {
+ *   {
  *     "admin": ["Your Self", "you@domain.com"],
  *     "smtp": {
  *       "secure": "ssl",
@@ -47,13 +47,13 @@ class GBMail {
 	}
 	
 	function authorizedFromAddress() {
-		$addr = gb::$settings->get('email/sender');
+		$addr = self::$conf['sender'];
 		if ($addr === null)
-			$addr = gb::$settings->get('email/smtp/username');
+			$addr = self::$conf->get('smtp/username');
 		if ($addr === null)
-			$addr = gb::$settings->get('email/admin', self::$default_from);
+			$addr = self::$conf->get('admin', self::$default_from);
 		if ($addr === null)
-			$addr = gb::$settings->get('email/reply_to');
+			$addr = self::$conf['reply_to'];
 		$addr = self::normalizeRecipient($addr);
 		if ($addr[1])
 			return $addr;
@@ -110,8 +110,14 @@ class GBMail {
 		return $r;
 	}
 	
-	function send($deferred=false) {
-		if ($deferred && gb::defer(array($this, 'send'), false))
+	/**
+	 * Send the mail.
+	 * 
+	 * $deferred defaults to true if delivery subsystem is SMTP, otherwise
+	 * default is false (not using delay execution).
+	 */
+	function send($deferred=null) {
+		if ((($deferred === null && $this->mailer->Mailer === 'smtp') || $deferred) && gb::defer(array($this, 'send'), false))
 			return true;
 		
 		$return_value = true;
@@ -176,10 +182,11 @@ class GBMail {
 	}
 	
 	static public $default_from;
+	static public $conf;
 	
 	static function setDefaultConfig() {
 		$siteurl = new GBURL(gb::$site_url);
-		$admin = GBUser::admin();
+		$admin = GBUser::findAdmin();
 		gb::$settings['email'] = array(
 			'admin' => array($admin ? $admin->name : $siteurl->host,
 				$admin ? $admin->email : 'root@'.$siteurl->host)
@@ -188,8 +195,20 @@ class GBMail {
 	
 	static function mkmailer() {
 		# setup conf
-		if (!is_array(gb::$settings['email']))
-			self::setDefaultConfig();
+		$siteurl = new GBURL(gb::$site_url);
+		$admin = GBUser::findAdmin();
+		$default_name = $admin ? $admin->name : $siteurl->host;
+		$default_address = $admin ? $admin->email : 'root@'.$siteurl->host;
+		self::$conf = gb::data('email', array(
+			'admin' => array($default_name, $default_address),
+			'from' => array(gb::$site_title, 'noreply@'.$siteurl->host),
+			'smtp.example-gmail' => array(
+				'secure'   => 'ssl',
+				'host'     => 'smtp.gmail.com:465',
+				'username' => $default_address,
+				'password' => 'secret'
+			)
+		));
 		
 		# since PHPMailer is one ugly piece of software
 		$orig_error_reporting = error_reporting(E_ALL ^ E_NOTICE);
@@ -199,11 +218,9 @@ class GBMail {
 		$e->From = '';
 		$e->FromName = '';
 		$e->PluginDir = gb::$dir . '/lib/PHPMailer/';
-		$conf = gb::$settings['email'];
 		
 		# SMTP
-		if (isset($conf['smtp'])) {
-			$c = $conf['smtp'];
+		if (($c = self::$conf['smtp']) !== null) {
 			$e->IsSMTP(); # enable SMTP
 			
 			# authenitcation?
@@ -268,19 +285,16 @@ class GBMail {
 		$e->CharSet = 'utf-8';
 		
 		# Default from
-		if (isset($conf['from'])) {
-			list($e->From, $e->FromName) = self::normalizeRecipient($conf['from']);
-		}
+		if (($from = self::$conf['from']))
+			list($e->From, $e->FromName) = self::normalizeRecipient($from);
 		
 		# Default sender
-		if (isset($conf['sender']))
-			list($e->Sender, $discard) = self::normalizeRecipient($conf['sender']);
-		elseif (isset($conf['admin']))
-			list($e->Sender, $discard) = self::normalizeRecipient($conf['admin']);
+		if (($sender = self::$conf['sender']) || ($sender = self::$conf['admin']))
+			list($e->Sender, $discard) = self::normalizeRecipient($sender);
 		
 		# default priority
-		if (isset($conf['priority']))
-			$e->Priority = intval($conf['priority']);
+		if (($priority = self::$conf['priority']))
+			$e->Priority = intval($priority);
 		
 		# reset error reporting
 		error_reporting($orig_error_reporting);

@@ -4,9 +4,9 @@
  * Version:     0.1
  * Author:      Rasmus Andersson
  * Author URI:  http://gitblog.se/
- * Description: Stop comment spam and trackback spam. You need to set
- *              "akismet/api_key" in settings.json to a valid API key. Read
- *              more here: http://akismet.com/personal/
+ * Description: Stop comment spam and trackback spam. You need to set "api_key"
+ *              in data/plugins/akismet.json to a valid API key. Read more
+ *              here: http://akismet.com/personal/
  */
 
 /**
@@ -27,10 +27,19 @@ class akismet {
 	static public $port = 80;
 	static public $data;
 	
-	static function init() {
-		self::$data = gb::data('plugins/akismet');
+	static function init($context) {
+		self::$data = gb::data('plugins/'.gb_filenoext(basename(__FILE__)), array('api_key' => ''));
 		if (!self::$key)
 			self::$key = self::$data['api_key'];
+		if (!self::$key) {
+			gb::log(LOG_WARNING, 'akismet not loaded since "api_key" is not set in %s', self::$data->file);
+			return false;
+		}
+		if ($context === 'admin') {
+			GBFilter::add('pre-comment', array(__CLASS__,'check_comment'));
+			return true;
+		}
+		return false;
 	}
 
 	static function verify_key($key, $ip=null) {
@@ -73,14 +82,14 @@ class akismet {
 	// seconds; use $cache_timeout = 0 to force an update.
 	// Returns the same associative array as akismet_check_server_connectivity()
 	static function get_server_connectivity( $cache_timeout = 86400 ) {
-		$servers = gb::$settings->get('akismet/available_servers');
-		if ( (time() - gb::$settings->get('akismet/connectivity_time') < $cache_timeout) && $servers !== null )
+		$servers = self::$data['available_servers'];
+		if ( (time() - self::$data['connectivity_time'] < $cache_timeout) && $servers )
 			return $servers;
 
 		// There's a race condition here but the effect is harmless.
 		$servers = self::check_server_connectivity();
-		gb::$settings->put('akismet/available_servers', $servers);
-		gb::$settings->put('akismet/connectivity_time', time());
+		self::$data['available_servers'] = $servers;
+		self::$data['connectivity_time'] = time();
 		return $servers;
 	}
 
@@ -189,7 +198,7 @@ class akismet {
 		# parse response
 		if ($response[1] === 'true') {
 			gb::log('comment classed as spam');
-			gb::$settings->put('akismet/spam_count', intval(gb::$settings->get('akismet/spam_count', 0)) + 1);
+			self::$data['spam_count'] = intval(self::$data['spam_count']) + 1;
 			$comment->spam = true;
 			gb::event('did-spam-comment', $comment);
 		}
@@ -209,20 +218,7 @@ class akismet {
 
 # plugin initialization
 function akismet_init($context) {
-	akismet::init();
-	
-	if (!akismet::$key) {
-		gb::log(LOG_NOTICE, 
-			'akismet not loaded since "akismet" => "api_key" is not set in settings.json');
-		return false;
-	}
-	
-	gb::log(LOG_DEBUG, 'loaded from '.__FILE__);
-	
-	if ($context === 'admin') {
-		GBFilter::add('pre-comment', array('akismet','check_comment'));
-		return true;
-	}
+	return akismet::init($context);
 }
 
 ?>

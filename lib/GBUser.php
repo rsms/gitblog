@@ -47,7 +47,7 @@ class GBUser {
 		return chap::shadow($email, $passphrase, $context);
 	}
 	
-	static function admin() {
+	static function findAdmin() {
 		foreach (self::storage()->get() as $email -> $user) {
 			if ($user->admin === true)
 				return $user;

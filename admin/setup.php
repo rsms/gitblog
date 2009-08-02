@@ -92,7 +92,7 @@ if (isset($_POST['submit'])) {
 		# add users db
 		gb::add('gb-users.php');
 		try {
-			if (!gb::commit('gitblog created', GBUser::admin()->gitAuthor()))
+			if (!gb::commit('gitblog created', GBUser::findAdmin()->gitAuthor()))
 				$errors[] = 'failed to commit creation';
 		}
 		catch (Exception $e) {

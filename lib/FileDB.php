@@ -10,6 +10,7 @@ class FileDB {
 	public $skeleton_file;
 	public $createmode;
 	public $data = null;
+	public $mkdirs = true;
 	
 	function __construct($file, $skeleton_file=null, $createmode=0660) {
 		$this->file = $file;
@@ -37,6 +38,11 @@ class FileDB {
 					throw new RuntimeException('fopen('.var_export($this->file,1).', "r+") failed');
 			}
 			else {
+				if ($this->mkdirs) {
+					$dir = dirname($this->file);
+					if (!file_exists($dir))
+						mkdir($dir, $this->createmode | 0111, true);
+				}
 				if (($this->txFp = fopen($this->file, 'x+')) === false)
 					throw new RuntimeException('fopen('.var_export($this->file,1).', "x+") failed');
 				elseif ($this->createmode !== false)

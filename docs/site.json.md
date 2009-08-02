@@ -11,7 +11,7 @@ For instance, `site.json` contains the following information:
 
 - `posts_pagesize`: Page size for posts -- If this differs from `gb::$posts_pagesize` a rebuild need to be issued, causing the new pagesize to be used live.
 
-- `plugins`: Active plugins -- Dictionary of *context => list-of-plugins* which are loaded, depending on which *context* is executed. Read more in [docs/plugins.md](docs/plugins.md).
+- `plugins`: Active plugins -- Dictionary of *context => list-of-plugins* which are loaded, depending on which *context* is executed. Read more in [docs/plugins.md](../docs/plugins.md).
 
 This file will be automatically created by gitblog when needed.
 

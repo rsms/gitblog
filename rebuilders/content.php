@@ -377,11 +377,11 @@ class GBContentIndexRebuilder {
 	}
 	
 	function cachename() {
-		return GBObjectIndex::mkCachename($this->name);
+		return gb::index_cachename($this->name);
 	}
 	
 	function path() {
-		return GBObjectIndex::pathForName($this->name);
+		return gb::index_path($this->name);
 	}
 	
 	function sync() {

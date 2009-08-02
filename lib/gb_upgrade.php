@@ -21,9 +21,6 @@ class gb_upgrade {
 	}
 
 	static function perform($from, $to) {
-		# make sure things fail hard on errors
-		gb::catch_errors();
-		
 		# don't break on client abort
 		ignore_user_abort(true);
 		

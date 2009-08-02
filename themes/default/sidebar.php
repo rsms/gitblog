@@ -7,7 +7,7 @@
 	
 	<h2>Recent comments</h2>
 	<ol>
-	<? foreach (GBObjectIndex::getNamed('recent-comments') as $tuple): list($comment, $_post) = $tuple; ?>
+	<? foreach (gb::index('recent-comments') as $tuple): list($comment, $_post) = $tuple; ?>
 		<li><a href="<?= h($_post->url()) ?>#comment-<?= $comment->id ?>"><?= h($comment->name) ?> on <em><?= h($_post->title) ?></em></a></li>
 	<? endforeach ?>
 	</ol>

@@ -1,8 +1,9 @@
 <?
 class GBCommentDB extends JSONStore {
 	public $lastComment = false;
-	public $autocommitToRepo = true;
 	public $post = null;
+	public $autocommitToRepo = true;
+	public $autocommitToRepoMessage = 'comment autocommit';
 	
 	function __construct($file='/dev/null', $post=null, $skeleton_file=null, 
 	                     $createmode=0660, $autocommit=true, $pretty_output=true)
@@ -32,23 +33,9 @@ class GBCommentDB extends JSONStore {
 	}
 	
 	function commit() {
-		$did_write = parent::commit();
-		# commit to repo
-		if ($did_write && $this->autocommitToRepo) {
-			gb::add($this->file);
-			try {
-				$author = $this->lastComment ? $this->lastComment->gitAuthor() : GBUserAccount::getAdmin()->gitAuthor();
-				gb::log('committing changes to '.$this->file);
-				gb::commit('comment', $author);
-				$this->lastComment = false;
-			}
-			catch (GitError $e) {
-				gb::reset($this->file);
-				gb::log('failed to commit changes to '.$this->file.': '.$e->getMessage());
-				throw $e;
-			}
-		}
-		return $did_write;
+		$this->autocommitToRepoAuthor = $this->lastComment ? $this->lastComment->gitAuthor() : null;
+		return parent::commit();
+		$this->lastComment = false;
 	}
 	
 	function rollback($strict=true) {

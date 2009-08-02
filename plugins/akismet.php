@@ -25,17 +25,12 @@ class akismet {
 	static public $key;
 	static public $host = 'rest.akismet.com';
 	static public $port = 80;
+	static public $data;
 	
 	static function init() {
-		# check settings
-		if (!is_array(gb::$settings['akismet'])) {
-			gb::$settings['akismet'] = array(
-				'api_key' => '', 
-				'comment'=>'Please visit http://akismet.com/personal/ for information on how to activate this Akismet plugin.');
-		}
-		
+		self::$data = gb::data('plugins/akismet');
 		if (!self::$key)
-			self::$key = gb::$settings->get('akismet/api_key');
+			self::$key = self::$data['api_key'];
 	}
 
 	static function verify_key($key, $ip=null) {

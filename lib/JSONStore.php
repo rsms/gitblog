@@ -1,12 +1,12 @@
 <?
 /**
- * Simple MT-safe JSON database.
+ * Simple MT-safe JSON-based key-value storage.
  * 
  * With the restriction that the JSON object in the database must be an array
  * (vector or map) since this interface is built upon key-value pairs. Keys
  * must be strings, integers or floats. Values can be of any type.
  */
-class JSONStore extends FileDB {
+class JSONStore extends FileDB implements ArrayAccess, Countable {
 	public $autocommit = true;
 	public $pretty_output = true;
 	
@@ -25,7 +25,7 @@ class JSONStore extends FileDB {
 		$this->parseData();
 	}
 	
-	function throwJsonEncoderError($errno=false) {
+	function throwJSONError($errno=false, $compatmsg='JSON error') {
 		if (function_exists('json_last_error')) {
 			if ($errno === false)
 				$errno = json_last_error();
@@ -40,7 +40,7 @@ class JSONStore extends FileDB {
 			}
 		}
 		else {
-			throw new LogicException('json error');
+			throw new LogicException($compatmsg);
 		}
 	}
 	
@@ -49,13 +49,13 @@ class JSONStore extends FileDB {
 		if ($this->data === '')
 			$this->data = array();
 		elseif ( ($this->data = json_decode($this->data, true)) === null )
-			$this->throwJsonEncoderError();
+			$this->throwJSONError(false, 'Failed to parse '.gb_relpath(gb::$site_dir, $this->file));
 	}
 	
 	function encodeData() {
 		$this->data = $this->pretty_output ? json::pretty($this->data)."\n" : json_encode($this->data);
 		if ($this->data === null)
-			$this->throwJsonEncoderError();
+			$this->throwJSONError(false, 'Failed to encode $data ('.gettype($this->data).') as JSON');
 	}
 	
 	protected function txReadData() {
@@ -94,32 +94,48 @@ class JSONStore extends FileDB {
 		return $return_value;
 	}
 	
-	function get($key=null) {
-		$temptx = $this->txFp === false && $this->autocommit;
+	function get($key=null, $default=null) {
+		$temptx = $this->txFp === false && $this->autocommit && $this->data === null;
 		if ($temptx)
 			$this->begin();
 		if ($this->data === null)
 			$this->txReadData();
-		$v = $key !== null ? (isset($this->data[$key]) ? $this->data[$key] : null) : $this->data;
+		$v = $key !== null ? (isset($this->data[$key]) ? $this->data[$key] : $default) : $this->data;
 		if ($temptx)
 			$this->txEnd();
 		return $v;
 	}
 	
-	function __get($key) {
-		return $this->get($key);
+	function offsetGet($k) {
+		return $this->get($k);
 	}
 	
-	function __set($key, $value) {
-		return $this->set($key, $value);
+	function offsetSet($k, $v) {
+		$this->set($k, $v);
 	}
 	
-	function __isset($key) {
-		return $this->get($key) !== null;
+	function offsetExists($k) {
+		$temptx = $this->txFp === false && $this->autocommit;
+		if ($temptx)
+			$this->begin();
+		if ($this->data === null)
+			$this->txReadData();
+		$v = isset($this->data[$k]);
+		if ($temptx)
+			$this->txEnd();
+		return $v;
 	}
 	
-	function __unset($key) {
-		return $this->set($key, null);
+	function offsetUnset($k) {
+		$this->set($k, null);
+	}
+	
+	function count() {
+		return count($this->get());
+	}
+	
+	function __toString() {
+		return r($this->get());
 	}
 }
 

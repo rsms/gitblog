@@ -11,6 +11,10 @@ class FileDB {
 	public $createmode;
 	public $data = null;
 	public $mkdirs = true;
+	public $autocommitToRepo = false;
+	public $autocommitToRepoAuthor = null;
+	public $autocommitToRepoMessage = null;
+	public $readOnly = false;
 	
 	function __construct($file, $skeleton_file=null, $createmode=0660) {
 		$this->file = $file;
@@ -28,8 +32,16 @@ class FileDB {
 		$this->txExclusive = $exclusive;
 		
 		if (($this->txFp = @fopen($this->file, 'r+')) === false) {
-			if ($this->txFp === false && file_exists($this->file))
-				throw new RuntimeException($this->file.' is not writable or is a directory');
+			if (($this->txFp = @fopen($this->file, 'r')) !== false)
+				$this->readOnly = true;
+		}
+		
+		if ($this->txFp === false) {
+			if (file_exists($this->file)) {
+				if (is_dir($this->file))
+					throw new RuntimeException($this->file.' is a directory');
+				throw new RuntimeException($this->file.' is not readable');
+			}
 			if ($this->skeleton_file) {
 				copy($this->skeleton_file, $this->file);
 				if ($this->createmode !== false)
@@ -40,8 +52,11 @@ class FileDB {
 			else {
 				if ($this->mkdirs) {
 					$dir = dirname($this->file);
-					if (!file_exists($dir))
-						mkdir($dir, $this->createmode | 0111, true);
+					if (!file_exists($dir)) {
+						$mode = $this->createmode | 0111;
+						mkdir($dir, $mode, true);
+						chmod($dir, $mode);
+					}
 				}
 				if (($this->txFp = fopen($this->file, 'x+')) === false)
 					throw new RuntimeException('fopen('.var_export($this->file,1).', "x+") failed');
@@ -68,6 +83,8 @@ class FileDB {
 		if ($this->txFp === false)
 			throw new LogicException('transaction is not active');
 		if ($this->data !== null) {
+			if ($this->readOnly)
+				return false;
 			if (rewind($this->txFp) === false)
 				throw new RuntimeException('rewind(<txFp>) failed');
 			if (ftruncate($this->txFp, strlen($this->data)) === false)
@@ -91,6 +108,18 @@ class FileDB {
 		$this->txEnd($ex);
 		if ($ex)
 			throw $ex;
+		
+		# commit to repo
+		if ($did_write && $this->autocommitToRepo) {
+			gb::log('committing changes to '.$this->file);
+			if (!($author = $this->autocommitToRepoAuthor))
+				$author = GBUser::admin()->gitAuthor();
+			$m = $this->autocommitToRepoMessage ? $this->autocommitToRepoMessage : 'autocommit:'.$this->file;
+			gb::add($this->file);
+			gb::commit($m, $author);
+			# rollback() will handle gb::reset if needed
+		}
+		
 		return $did_write;
 	}
 	
@@ -99,6 +128,9 @@ class FileDB {
 			if ($strict)
 				throw new LogicException('transaction is not active');
 			return false;
+		}
+		if ($this->autocommitToRepo) {
+			try { gb::reset($this->file); } catch (Exception $y) {}
 		}
 		return $this->txEnd();
 	}

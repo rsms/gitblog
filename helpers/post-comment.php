@@ -29,7 +29,6 @@ ini_set('html_errors', '0');
 header('Content-Type: text/plain; charset=utf-8');
 header('Cache-Control: no-cache');
 
-gb::catch_errors();
 gb::verify();
 gb::authenticate(false);
 gb::load_plugins('admin');

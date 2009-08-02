@@ -74,11 +74,8 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# create admin account
 	if (!$errors) {
-		if (!GBUserAccount::create(trim($_POST['email']), $_POST['passphrase'], 
-			trim($_POST['name']), true))
-		{
-			$errors[] = 'Failed to create administrator user account';
-		}
+		$u = new GBUser(trim($_POST['email']), $_POST['passphrase'], trim($_POST['name']), true);
+		$u->save();
 	}
 	
 	# -------------------------------------------------------------------------
@@ -95,7 +92,7 @@ if (isset($_POST['submit'])) {
 		# add users db
 		gb::add('gb-users.php');
 		try {
-			if (!gb::commit('gitblog created', GBUserAccount::getAdmin()->gitAuthor()))
+			if (!gb::commit('gitblog created', GBUser::admin()->gitAuthor()))
 				$errors[] = 'failed to commit creation';
 		}
 		catch (Exception $e) {

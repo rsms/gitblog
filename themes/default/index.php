@@ -67,7 +67,7 @@ elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->pos
 							<? if (strpos(gb::url()->path, '/archive/')!==false) echo 'class="current"' ?>>Archive</a>
 					</li>
 					<li class="divider"></li>
-					<? foreach (GBObjectIndex::getNamed('pages') as $page): if ($page->hidden) continue; ?>
+					<? foreach (gb::index('pages') as $page): if ($page->hidden) continue; ?>
 						<li class="page">
 							<a href="<?= h($page->url()) ?>" <?= $page->isCurrent() ? 'class="current"':'' ?>><?= h($page->title) ?></a>
 						</li>

@@ -49,7 +49,7 @@ class WordpressImporter {
 	
 	function __construct() {
 		$this->importedObjectsCount = 0;
-		#$this->defaultAuthorEmail = GBUserAccount::getAdmin() ? GBUserAccount::getAdmin()->email : '';
+		#$this->defaultAuthorEmail = GBUser::admin() ? GBUser::admin()->email : '';
 		$this->defaultAuthorEmail = '';
 	}
 	
@@ -88,7 +88,6 @@ class WordpressImporter {
 	function import(DOMDocument $doc, $commitChannels=true) {
 		$this->doc = $doc;
 		$count = 0;
-		gb::catch_errors();
 		$exception = null;
 		$timer = microtime(1);
 		
@@ -104,7 +103,6 @@ class WordpressImporter {
 			$exception = $e;
 		}
 		
-		gb::end_catch_errors();
 		if ($exception !== null)
 			throw $exception;
 		
@@ -174,7 +172,7 @@ class WordpressImporter {
 				$this->report('Creating commit...');
 				try {
 					gb::commit($message.' from Wordpress blog '.$channel_name,
-						GBUserAccount::getAdmin()->gitAuthor());
+						GBUser::admin()->gitAuthor());
 					$this->report('Committed to git repository');
 				}
 				catch (GitError $e) {
@@ -240,7 +238,7 @@ class WordpressImporter {
 			'wp-id' => $obj->wpid
 		));
 		if ($obj->author && $obj->author->name)
-			$meta['author'] = GBUserAccount::formatGitAuthor($obj->author);
+			$meta['author'] = GBUser::formatGitAuthor($obj->author);
 		if ($obj instanceof WPPage)
 			$meta['order'] = $obj->order;
 		if ($obj->tags)

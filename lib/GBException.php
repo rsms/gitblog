@@ -179,7 +179,7 @@ class GBException extends Exception {
 				if ($e instanceof PHPException) {
 					$skip = is_array($skip) ? array_merge($skip, array('PHPException::rethrow')) : array('PHPException::rethrow');
 					foreach($trace as $i => $ti) {
-						if (isset($ti['type']) && $ti['class'].'::'.$ti['function'] === 'gb::catch_error') {
+						if (isset($ti['function']) && $ti['function'] === 'gb_throw_php_error') {
 							array_splice($trace, 0, $i+2);
 							break;
 						}

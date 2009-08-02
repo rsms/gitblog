@@ -288,7 +288,7 @@ class gb {
 		elseif (isset(self::$_authenticators[$context])) 
 			return self::$_authenticators[$context];
 		$users = array();
-		foreach (GBUserAccount::get() as $email => $account) {
+		foreach (GBUser::find() as $email => $account) {
 			# only include actual users
 			if (strpos($email, '@') !== false)
 				$users[$email] = $account->passhash;
@@ -317,7 +317,7 @@ class gb {
 		$auth = self::authenticator($context);
 		self::$authorized = null;
 		if (($authed = $auth->authenticate())) {
-			self::$authorized = GBUserAccount::get($authed);
+			self::$authorized = GBUser::find($authed);
 			return self::$authorized;
 		}
 		elseif ($force) {
@@ -328,35 +328,6 @@ class gb {
 			exit('<html><body>See Other <a href="'.$url.'"></a></body></html>');
 		}
 		return $authed;
-	}
-	
-	# --------------------------------------------------------------------------
-	# Error handling
-	
-	static public $orig_err_handler = null;
-	static public $orig_err_html = null;
-	
-	static function catch_errors($handler=null, $filter=null) {
-		if ($handler === null)
-			$handler = array('gb', 'catch_error');
-		if ($filter === null)
-			$filter = E_ALL;
-		self::$orig_err_handler = set_error_handler($handler, $filter);
-	}
-
-	static function end_catch_errors() {
-		set_error_handler(array('gb', 'catch_error'), E_ALL);
-		if (self::$orig_err_handler)
-			set_error_handler(self::$orig_err_handler);
-		self::$orig_err_handler = null;
-	}
-	
-	# int $errno , string $errstr [, string $errfile [, int $errline [, array $errcontext ]]]
-	static function catch_error($errno, $errstr, $errfile=null, $errline=-1, $errcontext=null) {
-		if(error_reporting() === 0)
-			return;
-		try { self::vlog(LOG_WARNING, array($errstr), 2); } catch (Exception $e) {}
-		throw new PHPException($errstr, $errno, $errfile, $errline);
 	}
 	
 	# --------------------------------------------------------------------------
@@ -547,28 +518,37 @@ class gb {
 	# --------------------------------------------------------------------------
 	# data -- arbitrary key-value storage
 	
-	/**
-	 * Path to directory in which data is stored. If it's a relative path, 
-	 * it's relative to gb::$site_dir.
-	 */
-	static public $data_dir = 'data';
-	
 	static public $data_store_class = 'JSONDict';
 	static public $data_stores = array();
 	
 	static function data($name) {
-		if (isset($data_stores[$name]))
-			return $data_stores[$name];
+		if (isset(self::$data_stores[$name]))
+			return self::$data_stores[$name];
 		$cls = self::$data_store_class;
 		$store = new $cls($name);
-		$data_stores[$name] = $store;
+		self::$data_stores[$name] = $store;
 		return $store;
 	}
 	
-	static function data_path($name) {
-		return (gb_isabspath(self::$data_dir) ? 
-				self::$data_dir : self::$site_dir . '/' . self::$data_dir)
-			. '/' . $name;
+	# --------------------------------------------------------------------------
+	# reading object indices
+	
+	static public $object_indices = array();
+	
+	static function index($name) {
+		if (isset(self::$object_indices[$name]))
+			return self::$object_indices[$name];
+		$obj = unserialize(file_get_contents(self::index_path($name)));
+		self::$object_indices[$name] = $obj;
+		return $obj;
+	}
+	
+	static function index_cachename($name) {
+		return $name.'.index';
+	}
+	
+	static function index_path($name) {
+		return gb::$site_dir.'/.git/info/gitblog/'.self::index_cachename($name);
 	}
 	
 	# --------------------------------------------------------------------------
@@ -639,11 +619,11 @@ class gb {
 	}
 	
 	static function tags($indexname='tags-by-popularity') {
-		return GBObjectIndex::getNamed($indexname);
+		return gb::index($indexname);
 	}
 	
 	static function categories($indexname='category-to-objs') {
-		return GBObjectIndex::getNamed($indexname);
+		return gb::index($indexname);
 	}
 	
 	static function urlToTags($tags) {
@@ -687,15 +667,29 @@ class gb {
 		
 		# Create empty standard directories
 		mkdir(gb::$site_dir.'/content/posts', $mkdirmode, true);
-		mkdir(gb::$site_dir.'/content/pages', $mkdirmode);
 		chmod(gb::$site_dir.'/content', $mkdirmode);
 		chmod(gb::$site_dir.'/content/posts', $mkdirmode);
+		mkdir(gb::$site_dir.'/content/pages', $mkdirmode);
 		chmod(gb::$site_dir.'/content/pages', $mkdirmode);
+		mkdir(gb::$site_dir.'/data', $mkdirmode);
+		chmod(gb::$site_dir.'/data', $mkdirmode);
 		
 		# Copy post-* hooks
 		foreach (array('post-commit', 'post-update') as $name) {
 			copy(gb::$dir.'/skeleton/hooks/'.$name, gb::$site_dir.'/.git/hooks/'.$name);
 			chmod(gb::$site_dir.'/.git/hooks/'.$name, 0774);
+		}
+		
+		# Copy default data sets
+		$data_skeleton_dir = gb::$dir.'/skeleton/data';
+		foreach (scandir($data_skeleton_dir) as $name) {
+			if ($name{0} !== '.') {
+				$path = $data_skeleton_dir.'/'.$name;
+				if (is_file($path)) {
+					copy($path, gb::$site_dir.'/data/'.$name);
+					chmod(gb::$site_dir.'/data/'.$name, 0664);
+				}
+			}
 		}
 		
 		# Enable remote pushing with a checked-out copy
@@ -827,7 +821,7 @@ class gb {
 	
 	/** Load the site state */
 	static function load_site_state() {
-		$path = self::data_path('site.json');
+		$path = self::$site_dir.'/data/site.json';
 		$data = @file_get_contents($path);
 		if ($data === false)
 			return false;
@@ -1008,6 +1002,18 @@ unset($s);
 unset($u);
 
 #------------------------------------------------------------------------------
+# Define error handler which throws PHPException s
+
+function gb_throw_php_error($errno, $errstr, $errfile=null, $errline=-1, $errcontext=null) {
+	if(error_reporting() === 0)
+		return;
+	try { gb::vlog(LOG_WARNING, array($errstr), 2); } catch (Exception $e) {}
+	throw new PHPException($errstr, $errno, $errfile, $errline);
+}
+
+set_error_handler('gb_throw_php_error', E_ALL);
+
+#------------------------------------------------------------------------------
 # Load configuration
 
 if (file_exists(gb::$site_dir.'/gb-config.php'))
@@ -1044,7 +1050,11 @@ $_ENV['PATH'] .= ':/opt/local/bin';
 #------------------------------------------------------------------------------
 # Utilities
 
-/** Dictionary backed by a JSON file */
+# These classes and functions are used in >=90% of all use cases -- that's why
+# they are defined inline here in gitblog.php and not put in lazy files inside
+# lib/.
+
+/** Dictionary backed by a JSONStore */
 class JSONDict implements ArrayAccess, Countable {
 	public $file;
 	public $skeleton_file;
@@ -1052,7 +1062,7 @@ class JSONDict implements ArrayAccess, Countable {
 	public $storage;
 	
 	function __construct($name_or_path, $is_path=false, $skeleton_file=null) {
-		$this->file = ($is_path === false) ? gb::data_path($name_or_path).'.json' : $name_or_path;
+		$this->file = ($is_path === false) ? gb::$site_dir.'/data/'.$name_or_path.'.json' : $name_or_path;
 		$this->cache = null;
 		$this->storage = null;
 		$this->skeleton_file = $skeleton_file;
@@ -1736,13 +1746,13 @@ class GBExposedContent extends GBContent {
 		
 		# set author if needed
 		if (!$post->author) {
-			# GBUserAccount have the same properties as the regular class-less author
+			# GBUser have the same properties as the regular class-less author
 			# object, so it's safe to just pass it on here, as a clone.
 			if (gb::$authorized) {
 				$post->author = clone gb::$authorized;
 				unset($post->passhash);
 			}
-			elseif (($padmin = GBUserAccount::getAdmin())) {
+			elseif (($padmin = GBUser::admin())) {
 				$post->author = clone $padmin;
 				unset($post->passhash);
 			}
@@ -1997,7 +2007,7 @@ class GBExposedContent extends GBContent {
 	}
 	
 	static function findByMetaIndex($tags, $indexname, $pageno) {
-		$index = GBObjectIndex::getNamed($indexname);
+		$index = gb::index($indexname);
 		$objs = self::_findByMetaIndex($tags, $index);
 		if (!$objs)
 			return false;
@@ -2694,152 +2704,11 @@ class GBComment {
 }
 
 
-class GBObjectIndex {
-	static public $loadcache = array();
-	
-	static function mkCachename($name) {
-		return $name.'.index';
-	}
-	
-	static function pathForName($name) {
-		return gb::$site_dir.'/.git/info/gitblog/'.self::mkCachename($name);
-	}
-	
-	static function getNamed($name) {
-		if (isset(self::$loadcache[$name]))
-			return self::$loadcache[$name];
-		gb::catch_errors();
-		$obj = unserialize(file_get_contents(self::pathForName($name)));
-		self::$loadcache[$name] =& $obj;
-		return $obj;
-	}
-}
-
-
-# -----------------------------------------------------------------------------
-# Users
-
-# todo: use JSONStore for GBUserAccount
-class GBUserAccount {
-	public $name;
-	public $email;
-	public $passhash;
-	
-	function __construct($name=null, $email=null, $passhash=null) {
-		$this->name = $name;
-		$this->email = $email;
-		$this->passhash = $passhash;
-	}
-	
-	static function __set_state($state) {
-		$o = new self;
-		foreach ($state as $k => $v)
-			$o->$k = $v;
-		return $o;
-	}
-	
-	static public $db = null;
-	
-	static function _reload() {
-		if (file_exists(gb::$site_dir.'/gb-users.php')) {
-			include gb::$site_dir.'/gb-users.php';
-			if (isset($db))
-				self::$db = $db;
-		}
-		else {
-			self::$db = array();
-		}
-	}
-	
-	static function sync() {
-		if (self::$db === null)
-			return;
-		$r = file_put_contents(gb::$site_dir.'/gb-users.php', 
-			'<? $db = '.var_export(self::$db, 1).'; ?>', LOCK_EX);
-		chmod(gb::$site_dir.'/gb-users.php', 0660);
-		return $r;
-	}
-	
-	static function passhash($email, $passphrase, $context='gb-admin') {
-		return chap::shadow($email, $passphrase, $context);
-	}
-	
-	static function create($email, $passphrase, $name, $admin=false) {
-		if (self::$db === null)
-			self::_reload();
-		$email = strtolower($email);
-		self::$db[$email] = new GBUserAccount($name, $email, self::passhash($email, $passphrase));
-		if ($admin && !self::setAdmin($email))
-			return false;
-		return self::sync() ? true : false;
-	}
-	
-	static function setAdmin($email) {
-		if (self::$db === null)
-			self::_reload();
-		$email = strtolower($email);
-		if (!isset(self::$db[$email])) {
-			trigger_error('no such user '.var_export($email,1));
-			return false;
-		}
-		self::$db['_admin'] = $email;
-		return true;
-	}
-	
-	static function &getAdmin() {
-		static $n = null;
-		if (self::$db === null)
-			self::_reload();
-		if (!isset(self::$db['_admin']))
-			return $n;
-		$email = self::$db['_admin'];
-		if (isset(self::$db[$email]))
-		 	return self::$db[$email];
-		return $n;
-	}
-	
-	static function &get($email=null) {
-		static $n = null;
-		if (self::$db === null)
-			self::_reload();
-		if ($email === null)
-			return self::$db;
-		$email = strtolower($email);
-		if (isset(self::$db[$email]))
-		 	return self::$db[$email];
-		return $n;
-	}
-	
-	static function formatGitAuthor($account, $fallback=null) {
-		if (!$account)
-			throw new InvalidArgumentException('first argument is empty');
-		$s = '';
-		if ($account->name)
-			$s = $account->name . ' ';
-		if ($account->email)
-			$s .= '<'.$account->email.'>';
-		if (!$s) {
-			if ($fallback === null)
-				throw new InvalidArgumentException('neither name nor email is set');
-			$s = $fallback;
-		}
-		return $s;
-	}
-	
-	function gitAuthor() {
-		return self::formatGitAuthor($this);
-	}
-	
-	function __toString() {
-		return $this->gitAuthor();
-	}
-}
-
 # -----------------------------------------------------------------------------
 # Nonce
 
 function gb_nonce_time($ttl) {
-	return (int)ceil(time() / ($ttl / 2));
+	return (int)ceil(time() / $ttl);
 }
 
 function gb_nonce_make($context='', $ttl=86400) {
@@ -3110,16 +2979,13 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 	$gb_request_uri = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
 	$strptime = null;
 	
-	# errors are hard
-	gb::catch_errors();
-	
 	# verify integrity and config
 	gb::verify();
 	
 	# authed?
 	if (isset($_COOKIE['gb-chap']) && $_COOKIE['gb-chap']) {
 		gb::authenticate(false);
-		# now, gb::$authorized (a GBUserAccount) is set (authed ok) or a CHAP
+		# now, gb::$authorized (a GBUser) is set (authed ok) or a CHAP
 		# constant (not authed).
 	}
 	

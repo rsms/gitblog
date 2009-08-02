@@ -112,7 +112,7 @@ class gb_maint {
 		# commit any modifications
 		if ($added) {
 			try {
-				gb::commit('added '.implode(', ',$added), GBUserAccount::getAdmin()->gitAuthor(), $added);
+				gb::commit('added '.implode(', ',$added), GBUser::admin()->gitAuthor(), $added);
 			}
 			catch (GitError $e) {
 				if (strpos($e->getMessage('no changes added to commit')) === false)
@@ -191,7 +191,7 @@ class gb_maint {
 		
 		# Encode site.json
 		$json = json::pretty(gb::$site_state)."\n";
-		$path = gb::data_path('site.json');
+		$path = gb::$site_dir.'/data/site.json';
 		
 		# Write site.json
 		$bytes_written += file_put_contents($path, $json, LOCK_EX);

@@ -179,7 +179,7 @@ class GBMail {
 	
 	static function setDefaultConfig() {
 		$siteurl = new GBURL(gb::$site_url);
-		$admin = GBUserAccount::getAdmin();
+		$admin = GBUser::admin();
 		gb::$settings['email'] = array(
 			'admin' => array($admin ? $admin->name : $siteurl->host,
 				$admin ? $admin->email : 'root@'.$siteurl->host)

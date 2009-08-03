@@ -199,6 +199,10 @@ class gb_maint {
 		$json = json::pretty(gb::$site_state)."\n";
 		$path = gb::$site_dir.'/data/site.json';
 		
+		# create data/ ?
+		if (!is_dir(gb::$site_dir.'/data'))
+			mkdir(gb::$site_dir.'/data', 0775);
+		
 		# Write site.json
 		$bytes_written += file_put_contents($path, $json, LOCK_EX);
 		chmod($path, 0664);

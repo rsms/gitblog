@@ -8,7 +8,7 @@
  *              available.
  */
 
-class code_blocks {
+class code_blocks_plugin {
 	static public $previous_failure = false;
 	static public $conf;
 	
@@ -118,9 +118,5 @@ class code_blocks {
 	
 		return $out;
 	}
-}
-
-function code_blocks_init($context) {
-	return code_blocks::init($context);
 }
 ?>

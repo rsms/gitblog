@@ -369,10 +369,9 @@ class gb {
 			if (!$loaded_but_not_inited)
 				require $path;
 			
-			# call plugin_init
+			# call name_plugin::init($context)
 			$name = str_replace(array('-', '.'), '_', substr(basename($path), 0, -4)); # assume .xxx
-			$init_func_name = $name.'_init';
-			$loaded[$path] = $init_func_name($context);
+			$loaded[$path] = call_user_func(array($name.'_plugin', 'init'), $context);
 		}
 	}
 	
@@ -3018,7 +3017,7 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 		gb::$is_preview = true;
 	
 	# load plugins
-	gb::load_plugins('online');
+	gb::load_plugins('request');
 	
 	gb::event('will-parse-request');
 	register_shutdown_function(array('gb','event'), 'did-handle-request');

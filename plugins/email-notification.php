@@ -7,7 +7,7 @@
  * Description: Sends emails when things happen, like when new comments are added.
  */
 
-class email_notification {
+class email_notification_plugin {
 	static public $data;
 	
 	static function init($context) {
@@ -109,9 +109,5 @@ MESSAGE;
 		$to = self::recipient($comment);
 		GBMail::compose($subject, $body, $to)->send(true);
 	}
-}
-
-function email_notification_init($context) {
-	return email_notification::init($context);
 }
 ?>

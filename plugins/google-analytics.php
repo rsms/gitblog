@@ -1,5 +1,5 @@
 <?
-class google_analytics {
+class google_analytics_plugin {
 	static public $conf;
 	
 	static function init($context) {
@@ -25,9 +25,4 @@ class google_analytics {
 			. '");pageTracker._trackPageview();} catch(err) {} //]]></script>';
 	}
 }
-
-function google_analytics_init($context) {
-	return google_analytics::init($context);
-}
-
 ?>

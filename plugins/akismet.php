@@ -21,7 +21,7 @@
  *    Posted when a comment have been verified as ham.
  * 
  */
-class akismet {
+class akismet_plugin {
 	static public $key;
 	static public $host = 'rest.akismet.com';
 	static public $port = 80;
@@ -215,10 +215,4 @@ class akismet {
 		return $comment;
 	}
 }
-
-# plugin initialization
-function akismet_init($context) {
-	return akismet::init($context);
-}
-
 ?>

@@ -19,7 +19,7 @@ Examples:
 
 ### request
 
-Plugins registered in this context are loaded for every public request to the blog interface. Please keep in mind the performance penelty introduced by PHP `require` which is used under the hood.
+Plugins registered in this context are loaded for every public request to the blog interface. Please keep in mind the performance penalty introduced by PHP `require` which is used under the hood.
 
 Examples:
 

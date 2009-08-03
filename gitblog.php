@@ -2771,6 +2771,15 @@ class gb_author_cookie {
 
 gb::$title = array(gb::$site_title);
 
+function gb_head() {
+	echo '<meta name="generator" content="Gitblog '.gb::$version."\" />\n";
+	gb::event('on-html-head');
+}
+
+function gb_footer() {
+	gb::event('on-html-footer');
+}
+
 function gb_title($glue=' — ', $html=true) {
 	$s = implode($glue, array_reverse(gb::$title));
 	return $html ? h($s) : $s;

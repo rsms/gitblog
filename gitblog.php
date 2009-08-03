@@ -525,10 +525,15 @@ class gb {
 			return self::$data_stores[$name];
 		$cls = self::$data_store_class;
 		$store = new $cls($name);
-		if ($default)
-			foreach ($default as $k => $v)
-				$store[$k] = $v;
 		self::$data_stores[$name] = $store;
+		if ($default) {
+			$d = $store->storage()->get();
+			if (!is_array($d))
+				$d = array();
+			foreach ($default as $k => $v)
+				if (!isset($d[$k]))
+					$store[$k] = $v;
+		}
 		return $store;
 	}
 	
@@ -889,7 +894,7 @@ class gb {
 	
 	static function verify_config() {
 		if (!gb::$secret || strlen(gb::$secret) < 62) {
-			header('Status: 503 Service Unavailable');
+			header('HTTP/1.1 503 Service Unavailable');
 			header('Content-Type: text/plain; charset=utf-8');
 			exit("\n\ngb::\$secret is not set or too short.\n\nPlease edit your gb-config.php file.\n");
 		}

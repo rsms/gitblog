@@ -7,7 +7,7 @@ $context_date = time();
 
 header('Content-Type: application/xhtml+xml; charset=utf-8');
 if (gb::$is_404)
-	header('Status: 404 Not Found');
+	header('HTTP/1.1 404 Not Found');
 elseif (gb::$is_post || gb::$is_page)
 	$context_date = $post->published->time;
 elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->posts) {

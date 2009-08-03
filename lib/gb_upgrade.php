@@ -94,7 +94,7 @@ class gb_upgrade {
 					. implode(', ',$added), GBUser::findAdmin()->gitAuthor(), $added);
 			}
 			catch (GitError $e) {
-				if (strpos($e->getMessage('no changes added to commit')) === false)
+				if (strpos($e->getMessage(), 'no changes added to commit') === false)
 					throw $e;
 			}
 		}

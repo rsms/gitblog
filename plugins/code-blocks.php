@@ -1,13 +1,15 @@
 <?
-/*
- * Name:        Code blocks
- * Version:     0.1
- * Author:      Rasmus Andersson
- * Author URI:  http://gitblog.se/
- * Description: Enables syntax highlight of <code> blocks using Pygments, if
- *              available.
+/**
+ * @name    Code blocks
+ * @version 0.1
+ * @author  Rasmus Andersson
+ * @uri     http://gitblog.se/
+ * 
+ * Enables highlighting of code inside <code> blocks by using Pygments, if
+ * available.
+ * 
+ * Learn more about Pygments: http://pygments.org/
  */
-
 class code_blocks_plugin {
 	static public $previous_failure = false;
 	static public $conf;
@@ -17,7 +19,8 @@ class code_blocks_plugin {
 			return false;
 		self::$conf = gb::data('plugins/'.gb_filenoext(basename(__FILE__)), array(
 			'classname' => '',
-			'tabsize' => 2
+			'tabsize' => 2,
+			'pygmentize' => 'pygmentize'
 		));
 		GBFilter::add('body.html', array(__CLASS__, 'filter'), 0);
 		return true;
@@ -31,23 +34,25 @@ class code_blocks_plugin {
 		if (self::$previous_failure === true)
 			return self::dummy_block($content);
 	
-		$cmd = 'pygmentize '.($lang ? '-l '.escapeshellarg($lang) : '-g')
+		$cmd = self::$conf['pygmentize'].' '.($lang ? '-l '.escapeshellarg($lang) : '-g')
 			.' -f html -O cssclass=,encoding='.$input_encoding
 			.(self::$conf['tabsize'] ? ',tabsize='.self::$conf['tabsize'] : '');
 		$st = gb::shell($cmd, $content);
 		if ($st === null || ($st[0] !== 0 && strpos($st[2], 'command not found') !== false)) {
-			# probably no pygments installed -- remember failure in order to speed up multiple calls
-			$code_blocks_previous_failure = true;
+			# probably no pygments installed.
+			# remember failure in order to speed up subsequent calls.
+			self::$previous_failure = true;
 			gb::log(LOG_WARNING,
-				'code-blocks plugin can not highlight code because it can not find pygmentize');
+				'unable to highlight code because %s can not be found',
+				self::$conf['pygmentize']);
 			return self::dummy_block($content);
 		}
 		# $st => array(int status, string out, string err)
 		if ($st[0] !== 0) {
 			if (strpos($st[2], 'guess_lexer') !== false)
-				gb::log(LOG_NOTICE, 'code-blocks plugin failed to guess language (pygments guess_lexer failed)');
+				gb::log(LOG_NOTICE, 'pygments failed to guess language');
 			else
-				gb::log(LOG_WARNING, 'code-blocks plugin failed to highlight code: '.$st[2]);
+				gb::log(LOG_WARNING, 'pygments failed to highlight code: '.$st[2]);
 			return self::dummy_block($content);
 		}
 		return $st[1];

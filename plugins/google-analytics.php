@@ -1,4 +1,13 @@
 <?
+/**
+ * @name    Google analytics
+ * @version 0.1
+ * @author  Rasmus Andersson
+ * @uri     http://gitblog.se/
+ * 
+ * Google analytics tracking.
+ * 
+ */
 class google_analytics_plugin {
 	static public $conf;
 	

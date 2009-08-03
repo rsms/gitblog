@@ -1,24 +1,24 @@
 <?
-/*
- * Name:        Akismet
- * Version:     0.1
- * Author:      Rasmus Andersson
- * Author URI:  http://gitblog.se/
- * Description: Stop comment spam and trackback spam. You need to set "api_key"
- *              in data/plugins/akismet.json to a valid API key. Read more
- *              here: http://akismet.com/personal/
+/**
+ * @name    Akismet
+ * @version 0.1
+ * @author  Rasmus Andersson
+ * @uri     http://gitblog.se/
+ * 
+ * Stop comment spam and trackback spam. You need to set "api_key" in
+ * data/plugins/akismet.json to a valid API key.
+ * 
+ * Learn more: http://akismet.com/personal/
  */
 
-/**
- * Akismet spam helper.
- * 
+/*
  * Events:
  * 
  *  - "did-spam-comment", $comment
- *    Posted when a comment have been caught as spam.
+ *    Posted when a comment has been classed as spam.
  * 
  *  - "did-ham-comment", $comment
- *    Posted when a comment have been verified as ham.
+ *    Posted when a comment has been classed as ham.
  * 
  */
 class akismet_plugin {

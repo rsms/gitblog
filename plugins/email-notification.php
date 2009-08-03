@@ -1,10 +1,11 @@
 <?
-/*
- * Name:        Email notification
- * Version:     0.1
- * Author:      Rasmus Andersson
- * Author URI:  http://gitblog.se/
- * Description: Sends emails when things happen, like when new comments are added.
+/**
+ * @name    Email notification
+ * @version 0.1
+ * @author  Rasmus Andersson
+ * @uri     http://gitblog.se/
+ * 
+ * Sends emails when things happen, like when new comments are added.
  */
 
 class email_notification_plugin {

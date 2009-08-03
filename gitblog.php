@@ -824,8 +824,12 @@ class gb {
 	static function load_site_state() {
 		$path = self::$site_dir.'/data/site.json';
 		$data = @file_get_contents($path);
-		if ($data === false)
-			return false;
+		if ($data === false) {
+			# version <= 0.1.3 ?
+			if (is_readable(gb::$site_dir.'/site.json'))
+				gb::$site_state = @json_decode(file_get_contents(gb::$site_dir.'/site.json'), true);
+			return gb::$site_state !== null;
+		}
 		gb::$site_state = json_decode($data, true);
 		if (gb::$site_state === null || is_string(gb::$site_state)) {
 			self::log(LOG_WARNING, 'syntax error in site.json -- moved to site.json.broken and creating new');

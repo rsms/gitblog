@@ -62,10 +62,10 @@
 			</p>
 			<div class="body">
 				<?= $post->body ?>
+				<? if ($post->excerpt): ?>
+					<p class="read-more"><a href="<?= h($post->url()) ?>#read-more">Continue reading...</a></p>
+				<? endif; ?>
 			</div>
-			<? if ($post->excerpt): ?>
-				<p class="read-more"><a href="<?= h($post->url()) ?>#read-more">Continue reading...</a></p>
-			<? endif; ?>
 		</div>
 		<div class="breaker"></div>
 	<? endforeach ?>

@@ -110,11 +110,6 @@ h2 { font-size:19px; }
 		src:local('Liberation Serif'), url('liberation-serif-regular.ttf') format('truetype');
 	}
 	@font-face {
-		font-family:'Liberation Serif';
-		font-style:italic;
-		src:local('Liberation Serif'), local('Liberation Serif Italic'), url('liberation-serif-italic.ttf') format('truetype');
-	}
-	@font-face {
 		/* Firefox 3.5 don't seem to be able to deduce "italic" style from font-style:italic above
 		 so we import the typeface under its ps name */
 		font-family:'Liberation Serif Italic';

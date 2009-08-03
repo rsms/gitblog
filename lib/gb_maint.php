@@ -200,8 +200,10 @@ class gb_maint {
 		$path = gb::$site_dir.'/data/site.json';
 		
 		# create data/ ?
-		if (!is_dir(gb::$site_dir.'/data'))
+		if (!is_dir(gb::$site_dir.'/data')) {
 			mkdir(gb::$site_dir.'/data', 0775);
+			chmod(gb::$site_dir.'/data', 0775);
+		}
 		
 		# Write site.json
 		$bytes_written += file_put_contents($path, $json, LOCK_EX);

@@ -62,10 +62,10 @@ elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->pos
 				</div>
 				<ul>
 					<li><a href="<?= gb::url_to() ?>" <? if (gb::$is_posts) echo 'class="current"' ?>>Home</a></li>
-					<li>
+					<!--li>
 						<a href="<?= gb::url_to('/archive/') ?>" 
 							<? if (strpos(gb::url()->path, '/archive/')!==false) echo 'class="current"' ?>>Archive</a>
-					</li>
+					</li-->
 					<li class="divider"></li>
 					<? foreach (gb::index('pages') as $page): if ($page->hidden) continue; ?>
 						<li class="page">

@@ -99,8 +99,8 @@ h2 { font-size:19px; }
 			}
 	
 	/*
-	 * Example of a simple way to add some character to your blog.
-	 * Comment out these lines for a plain black and white theme.
+	 * The following ~40 lines adds some character to your blog.
+	 * Remove these lines for a plain and simple black & white style.
 	 */
 	#header { background-color:#e4e2cd; border-color:#c2c0ae;
 		background-image:url(header-bg.png); background-position:center 0; }
@@ -144,6 +144,7 @@ h2 { font-size:19px; }
 		text-shadow:#efeee1 0 1px 0;
 	}
 	#header ul li a:hover { background-color:#fff; color:#006be4; }
+	/* End of the posh styling */
 	
 
 /* Main content */

@@ -26,9 +26,9 @@ echo '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
 		<id><?= h($post->url()) ?></id>
 		<published><?= $post->published ?></published>
 		<updated><?= $post->modified ?></updated>
-		<?= $post->tagLinks('<category scheme="'.gb::url_to('tags').'" term="%n" />',
+		<?= $post->tagLinks('', '', '<category scheme="'.gb::url_to('tags').'" term="%n" />',
 			"\n\t\t", "\n\t\t").($post->tags ? "\n" : '') ?>
-		<?= $post->categoryLinks('<category scheme="'.gb::url_to('categories').'" term="%n" />',
+		<?= $post->categoryLinks('', '', '<category scheme="'.gb::url_to('categories').'" term="%n" />',
 			"\n\t\t", "\n\t\t").($post->categories ? "\n" : '') ?>
 		<comments><?= $post->comments ?></comments>
 		<gb:version><?= $post->id ?></gb:version>

@@ -3,6 +3,18 @@
 class gb_maint {
 	static public $branch = 'stable';
 	
+	static function gitignore_sub($search_re, $replacement) {
+		$gitignore_path = gb::$site_dir.'/.gitignore';
+		$gitignore = file_get_contents($gitignore_path);
+		$gitignore2 = preg_replace($search_re, $replacement, $gitignore);
+		if ($gitignore2 !== $gitignore) {
+			gb::log('updating %s', $gitignore_path);
+			file_put_contents($gitignore_path, $gitignore2, LOCK_EX);
+			return true;
+		}
+		return false;
+	}
+	
 	static function add_gitblog_submodule() {
 		# Add gitblog submodule
 		$roundtrip_temp = false;
@@ -60,14 +72,8 @@ class gb_maint {
 		
 		try {
 			# remove "/gitblog" ignore from .gitignore
-			$gitignore_path = gb::$site_dir.'/.gitignore';
-			$gitignore = file_get_contents($gitignore_path);
-			$gitignore2 = preg_replace('/(?:\r?\n)\/gitblog([\t\s \r\n]+|^)/m', '$1', $gitignore);
-			if ($gitignore2 !== $gitignore) {
-				gb::log('removing "/gitblog" from %s', $gitignore_path);
-				file_put_contents($gitignore_path, $gitignore2, LOCK_EX);
+			if (self::gitignore_sub('/(?:\r?\n)\/gitblog([\t\s \r\n]+|^)/m', '$1'))
 				$added[] = gb::add('.gitignore');
-			}
 			
 			# register (and clone if needed) the gitblog submodule. This might take some time.
 			try {

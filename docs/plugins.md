@@ -8,22 +8,24 @@ There are a few different types of *execution contexts* in which a plugin can be
 
 ### rebuild
 
-Plugins registered in the *rebuild* context are loaded when a rebuild is taking place.
+Plugins registered in the *rebuild* context are loaded when a rebuild is taking place (i.e. when the repository is changed by for instance a commit or a patch).
 
 Examples:
 
-- Adding support for a new input format (i.e. markdown or similar)
+- Adding support for a new input format (e.g. ability to write posts in markdown).
 
-- Building custom indices (i.e. popular comments)
+- Building custom indices (e.g. popular comments).
 
 
 ### request
 
-Plugins registered in this context are loaded for every public request to the blog interface. Please keep in mind the performance penalty introduced by PHP `require` which is used under the hood.
+Plugins registered in this context are loaded for every public request to the blog interface (theme). Please keep in mind the performance penalty introduced by PHP `require` which is used under the hood.
 
 Examples:
 
-- Modifying behaviour based on who is visiting the site (i.e. alternate interface for mobile users)
+- Modifying behaviour based on who is visiting the site (i.e. alternate interface for mobile users).
+
+- Adding custom HTML and HTTP headers.
 
 
 ### admin

@@ -115,12 +115,21 @@ h2 { font-size:19px; }
 		src:local('Liberation Serif'), local('Liberation Serif Italic'), url('liberation-serif-italic.ttf') format('truetype');
 	}
 	@font-face {
+		/* Firefox 3.5 don't seem to be able to deduce "italic" style from font-style:italic above
+		 so we import the typeface under its ps name */
+		font-family:'Liberation Serif Italic';
+		font-style:italic;
+		src:local('Liberation Serif Italic'), url('liberation-serif-italic.ttf') format('truetype');
+	}
+	@font-face {
 		font-family:Inconsolata;
 		src:local(Inconsolata), url('inconsolata.ttf') format('opentype');
 	}
 	#header div.title div.name { text-shadow:#efeee1 0 1px 0; }
-	body, #header div.title div.description { font-family:'Liberation Serif'; }
+	body { font-family:'Liberation Serif'; }
+	#header div.title div.description { font-family:'Liberation Serif Italic'; }
 	div.post code, div.post pre, div.post tt, div.post samp { font-family:'Inconsolata'; }
+	div.post div.body blockquote { font-family:'Liberation Serif Italic'; }
 	#header div.title div.name a:link, #header div.title div.name a:visited { color:#2d2c25; }
 	#header div.title div.name a:link:hover, #header div.title div.name a:visited:hover { color:#000; }
 	#header div.title div.description { color:#8f8d7c; text-shadow:#efeee1 0 1px 0; }

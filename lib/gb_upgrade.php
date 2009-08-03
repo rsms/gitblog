@@ -29,17 +29,16 @@ class gb_upgrade {
 		# move site.json:plugins to data/plugins.json
 		$plugins = isset(gb::$site_state['plugins']) ? gb::$site_state['plugins'] : array();
 		gb::log('creating data:plugins');
-		gb::data('plugins')->set($plugins);
+		gb::data('plugins')->storage()->set($plugins);
 		unset(gb::$site_state['plugins']);
 		
 		# write data/site.json
-		gb::log('copying %s -> data:site', gb::$site_dir.'/site.json');
-		gb_maint::sync_site_state();
-		gb::log('removing old %s', gb::$site_dir.'/site.json');
+		gb::log('moving %s -> data:site', gb::$site_dir.'/site.json');
+		# gb_maint::sync_site_state() will be called after this method returns
 		@unlink(gb::$site_dir.'/site.json');
 		
 		# remove /site.json from .gitignore
-		if (self::gitignore_sub('/(?:\r?\n)\/site\.json([\t\s \r\n]+|^)/m', '$1')) {
+		if (gb_maint::gitignore_sub('/(?:\r?\n)\/site\.json([\t\s \r\n]+|^)/m', '$1')) {
 			gb::log('removed "/site.json" from .gitignore');
 			$added[] = gb::add('.gitignore');
 		}
@@ -55,7 +54,7 @@ class gb_upgrade {
 				$d = $d !== null ? array($d) : array();
 			if ($d) {
 				gb::log('copying %s:%s -> data:plugins/%s', gb::$site_dir.'/settings.json', $pluginn, $pluginn);
-				gb::data('plugins/'.$pluginn)->set($d);
+				gb::data('plugins/'.$pluginn)->storage()->set($d);
 			}
 		}
 		gb::log('removing old %s', gb::$site_dir.'/settings.json');
@@ -65,18 +64,20 @@ class gb_upgrade {
 		$users = array();
 		if (is_readable(gb::$site_dir.'/gb-users.php')) {
 			gb::log('loading %s', gb::$site_dir.'/gb-users.php');
-			class GBUserAccount {
+			eval('class GBUserAccount {
 				static function __set_state($state) {
 					return GBUser::__set_state($state);
 				}
-			}
+			}');
 			require gb::$site_dir.'/gb-users.php';
 			if (isset($db)) {
 				$admin = isset($db['_admin']) ? $db['_admin'] : '';
 				foreach ($db as $email => $user) {
-					$user->admin = ($email === $admin);
-					$users[$email] = $user;
-					gb::log('transponded user %s', $email);
+					if (is_object($user)) {
+						$user->admin = ($email === $admin);
+						$users[$email] = $user;
+						gb::log('transponded user %s', $email);
+					}
 				}
 			}
 		}
@@ -101,17 +102,17 @@ class gb_upgrade {
 	
 	static function build_stages($from, $to) {
 		$stages = array();
-		for ($v=$from; $v<=$to; $v++) {
-			$stagefunc = array(__CLASS__, sprintf('_%06x', $v));
-			if (function_exists($stagefunc))
-				$stages[$v] = $stagefunc;
+		for ($v=$from+1; $v<=$to; $v++) {
+			$f = array(__CLASS__, sprintf('_%06x', $v));
+			if (method_exists($f[0], $f[1]))
+				$stages[$v] = $f;
 		}
 		return $stages;
 	}
 
 	static function perform($from, $to) {
-		$from = gb::version_parse($from);
-		$to = gb::version_parse($to);
+		$from = gb::version_parse('0.1.3');
+		$to = gb::version_parse('0.1.4');
 		$froms = gb::version_format($from);
 		$tos = gb::version_format($to);
 		if ($from === $to)
@@ -126,10 +127,19 @@ class gb_upgrade {
 		ignore_user_abort(true);
 		
 		foreach ($stages as $v => $stagefunc) {
-			gb::log('%s -> %s (%s)',
-				gb::version_format($v ? $v-1 : $v), gb::version_format($v), $stagefunc[1]);
+			$prevvs = gb::version_format($v > 0 ? $v-1 : $v);
+			gb::log('%s -> %s (%s)', $prevvs, gb::version_format($v), $stagefunc[1], $v);
+			
+			# write prev version to site.json so next run will take off where we crashed, if we crash.
+			$orig_v = gb::$version;
+			gb::$version = $prevvs;
+			gb_maint::sync_site_state();
+			gb::$version = $orig_v;
+			
 			$stages[$v] = call_user_func($stagefunc, $from, $to);
 		}
+		
+		gb_maint::sync_site_state();
 		
 		return $stages;
 	}

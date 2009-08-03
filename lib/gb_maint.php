@@ -121,7 +121,7 @@ class gb_maint {
 				gb::commit('added '.implode(', ',$added), GBUser::findAdmin()->gitAuthor(), $added);
 			}
 			catch (GitError $e) {
-				if (strpos($e->getMessage('no changes added to commit')) === false)
+				if (strpos($e->getMessage(), 'no changes added to commit') === false)
 					throw $e;
 			}
 		}
@@ -179,7 +179,7 @@ class gb_maint {
 		
 		# no previous state?
 		if (!gb::$site_state)
-			gb::$site_state = json_decode(file_get_contents(gb::$dir.'/skeleton/site.json'), true);
+			gb::$site_state = array();
 		
 		# Set current values
 		gb::$site_state['url'] = gb::$site_url;

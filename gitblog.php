@@ -812,13 +812,12 @@ class gb {
 			return $s;
 		$v = array_map('intval', explode('.', $s));
 		if (count($v) < 3)
-			$v = array(0,0,0);
-		list($a, $i, $b) = $v;
-		return ($a << 16) + ($i << 8) + $b;
+			return 0;
+		return ($v[0] << 16) + ($v[1] << 8) + $v[2];
 	}
 
 	static function version_format($v) {
-		return sprintf('%d.%d.%d', $v >> 16, ($v << 16) >> 24, ($v << 24) >> 24);
+		return sprintf('%d.%d.%d', $v >> 16, ($v & 0x00ff00) >> 8, $v & 0x0000ff);
 	}
 	
 	/** Load the site state */

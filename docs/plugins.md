@@ -1,8 +1,8 @@
 # Plugins
 
-Gitblog have support for plugins written in PHP. These plugins are simple PHP files which will be loaded and then a specially named function will be calles. You can learn more by reading the section "Loading and activation" further down this document.
+Gitblog have support for plugins written in PHP. These plugins are simple PHP files which will be loaded and a special function called. You can learn more by reading the section "Loading and activation" further down this document.
 
-There are a few different types of *execution contexts* in which a plugin can be loaded.
+There are a few different types of *execution contexts* in which a plugin can be loaded and/or run in.
 
 ## Execution contexts
 

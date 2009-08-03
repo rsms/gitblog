@@ -1631,6 +1631,7 @@ class GBContent {
 	}
 	
 	function writeCache() {
+		gb::event('will-write-object-cache', $this);
 		$path = gb::$site_dir.'/.git/info/gitblog/'.$this->cachename();
 		$dirname = dirname($path);
 		
@@ -1645,10 +1646,12 @@ class GBContent {
 		}
 		$bw = file_put_contents($path, serialize($this), LOCK_EX);
 		chmod($path, 0664);
+		gb::event('did-write-object-cache', $this);
 		return $bw;
 	}
 	
 	function reload($data, $commits=null) {
+		gb::event('will-reload-object', $this, $commits);
 		$this->mimeType = GBMimeType::forFilename($this->name);
 	}
 	
@@ -1837,7 +1840,6 @@ class GBExposedContent extends GBContent {
 					unset($this->meta[$singular]);
 				}
 			}
-			
 		}
 		
 		# use meta for title if absent
@@ -1884,6 +1886,8 @@ class GBExposedContent extends GBContent {
 			GBFilter::apply('post-reload-'.$cls, $this);
 			GBFilter::apply('post-reload-'.$cls.'.'.$fnext, $this);
 		}
+		
+		gb::event('did-reload-object', $this);
 	}
 	
 	/**

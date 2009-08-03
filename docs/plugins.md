@@ -37,19 +37,40 @@ Examples:
 
 ## Loading and activation
 
-Plugins are simple PHP files (or possibly other executable files, depending on what kind of plugin it is) which are installed by putting the file into one of the *search paths*. Plugins are enabled by editing the "plugins" section of [site.json](../docs/site.json.md).
+Plugins are simple PHP files (or possibly other executable files, depending on what kind of plugin it is) which are installed by putting the file into one of the *search paths*. Plugins are enabled by `data/plugins.json`.
 
-A special function is called after the plugin has been loaded. This function should setup the plugin and respond with a `true` value if it did initialize or a `false` value if it did not. Returning a `false` value might cause the plugin init function to be called again later when something in gitblog might have become available. Where these different load points are located, is currently undocumented here but is described in-line in the code (most notably in the file [lib/GBRebuilder.php](../lib/GBRebuilder.php)).
+A class of the name <name of plugin> "_plugin" is expected to exists after the plugin file has been loaded. Next, the static method `init` is called on that class with a single argument `string $context`. The `init` method should return `true` if the plugin did initialize, otherwise `false` or nothing should be returned. Returning a `false` value might cause the plugin init method to be called again when something in gitblog might have become available.
+	
+> Where these different load points are located, is currently undocumented but is described in-line in the code (most notably in the file [lib/GBRebuilder.php](../lib/GBRebuilder.php)).
+> 
+> Currently *rebuild* plugins will be offered initialization once the rebuild task starts, then again when all rebuilder classes have instantiated to allow for modifying these instances or previously loaded rebuilders.
 
-Currently *rebuild* plugins will be offered initialization once the rebuild task starts, then again when all rebuilder classes have instantiated to allow for modifying these instances or previously loaded rebuilders.
+## Configuration and settings
 
+If a plugin need any sort of configuration and/or keep state it should use a `gb::data()` store, named like *"plugins/name-of-plugin"*.
 
-### Initialization function
+### Example
 
-	function nameofplugin_init($context) {
-		# initialize plugin
-		return true;
+`my-example.php`:
+
+	<?
+	/**
+	 * @name    My example
+	 * @version 1.0
+	 * @author  Fred Boll
+	 * @uri     http://fredboll.com/
+	 * 
+	 * This plugins doesn't really do anything but send a stupid log message.
+	 */
+	class my_example_plugin {
+		static function init($context) {
+			$conf = gb::data('plugins/my-example', array('key' => 'default value'));
+			gb::log('Yay! I can haz loaded in the %s context', $context);
+			gb::log('key => %s', $conf['key']);
+			return true;
+		}
 	}
 
-Where `nameofplugin` is the name of the plugin file, without filename extension. Any "." or "-" are converted to "\_" characters (i.e. "my-plug.in.php" -> "my\_plug\_in").
+> **Note:** The name of the plugin is constructed as follows: `$name = str_replace(array('-', '.'), '_', substr($filename, 0, -4))` and the class name is constructed like this: `$class = $name . '_plugin'`.
 
+Have a look at the [built-in plugins](../plugins) as they are pretty good for learn-by-example.

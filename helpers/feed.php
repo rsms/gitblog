@@ -39,7 +39,6 @@ echo '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
 			<p><a href="<?= h($post->url()) ?>#<?= $post->domID() ?>-more">Read more...</a></p>
 		<? endif; ?>]]></content>
 		<link rel="replies" type="text/html" href="<?= h($post->url()) ?>#comments" thr:count="<?= $post->comments ?>" />
-		<link rel="replies" type="application/atom+xml" href="<?= h(gb::url_to('feed')) ?>" thr:count="<?= $post->comments ?>" />
 		<thr:total><?= $post->comments ?></thr:total>
 	</entry>
 <? endforeach ?>

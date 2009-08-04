@@ -5,12 +5,18 @@ Posts and pages are classed as *content* and internally represented by the class
 A content object is compriced of a HTTP-like header and an optional body. Here's a quick example:
 
 	title: Example of a simple post
+	custom-field: Values can span over
+	  several rows.
 	
 	Hello <em>world</em>
 
+The header is terminated by two linebreaks (`LF LF` or `CR LF CR LF`).
+
 ## Header fields
 
-Header filed names are case-insensitive and values can wrap over several rows (if subsequent rows are indented with at least one space or tab). The field name and value are separated by a colon (`":"`) and all of them are optional and replaced by default or deduced values if not specified.
+Field names are case-insensitive and values can wrap over several rows (if subsequent rows are indented with at least one space or tab). The field name and value are separated by a colon (`":"`) and all of them are optional and replaced by default or deduced values if not specified.
+
+### Standard header fields
 
 <table>
 	<tr>
@@ -112,6 +118,9 @@ Header filed names are case-insensitive and values can wrap over several rows (i
 > **[1] Boolean values:** True values are `"true"`, `"yes"`, `"on"`, `"1"` or `""` (empty).
 > Anything else is considered a false value. Values are case-insensitive.
 
+
+### Ancillary header fields
+
 Ancillary header fields -- not defined in this table -- will be passed through and made 
 available in the `meta` property of `post` objects.
 
@@ -125,19 +134,20 @@ Example of presenting ancillary meta fields in a template:
 	</ul>
 
 Plugins can use non-reserved header fields for special purposes. In such case a rebuild 
-plugin should `unset` it's "special" fields from the post `meta` map:
+plugin is recommended to remove it's "special" fields from the `meta` map:
 
-	function on_reload_object($post) {
-		if (isset($post->meta['my-special-field'])) {
-			$special_field = $post->meta['my-special-field'];
-			unset($post->meta['my-special-field']);
+	class example_plugin {
+		static function init($context) {
+			gb::observe('did-reload-object', __CLASS__.'::will_reload_object');
 		}
-		# do something with $special_field
+		
+		static function did_reload_object($post) {
+			if (isset($post->meta['my-special-field'])) {
+				$special_field = $post->meta['my-special-field'];
+				unset($post->meta['my-special-field']);
+				# do something with $special_field ...
+			}
+		}
 	}
 
-This construction (or guide or contract) exists because the fields in the post `meta` map 
-should always be considered "harmless" metadata.
-
-Plugins can of course also *set* meta fields which later can be read by templates. However 
-as mentioned above, the `meta` map is defined as a sort of *opaque set of metadata* thus 
-no standard templates make use of it.
+Plugins can of course also *set* meta fields which later can be read by templates. However, the `meta` map is an *opaque set of metadata* in the eyes of gitblog core, thus no standard templates make use of it at the moment.

@@ -1888,11 +1888,14 @@ class GBExposedContent extends GBContent {
 				$this->published = $this->published->mergeString($mp);
 		}
 		
-		# handle draft meta tag
-		if (isset($this->meta['draft'])) {
-			$s = rtrim($this->meta['draft']);
-			unset($this->meta['draft']);
-			$this->draft = ($s === '' || gb_strbool($s));
+		# handle booleans
+		static $bools = array('draft' => 'draft', 'comments' => 'commentsOpen', 'pingback' => 'pingbackOpen');
+		foreach ($bools as $mk => $ok) {
+			if (isset($this->meta[$mk])) {
+				$s = trim($this->meta[$mk]);
+				unset($this->meta[$mk]);
+				$this->$ok = ($s === '' || gb_strbool($s));
+			}
 		}
 		
 		# apply filters

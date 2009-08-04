@@ -1384,11 +1384,22 @@ function gb_normalize_git_name($name) {
 function gb_parse_author($gitauthor) {
 	$gitauthor = trim($gitauthor);
 	$p = strpos($gitauthor, '<');
-	if ($p === 0)
-		return (object)array('name' => '', 'email' => trim($gitauthor, '<>'));
-	elseif ($p === false)
-		return (object)array('name' => $gitauthor, 'email' => '');
-	return (object)array('name' => rtrim(substr($gitauthor, 0, $p)), 'email' => trim(substr($gitauthor, $p+1), '<>'));
+	$name = '';
+	$email = '';
+	if ($p === 0) {
+		$email = trim($gitauthor, '<>');
+	}
+	elseif ($p === false) {
+		if (strpos($gitauthor, '@') !== false)
+			$email = $gitauthor;
+		else
+			$name = $gitauthor;
+	}
+	else {
+		$name = rtrim(substr($gitauthor, 0, $p));
+		$email = trim(substr($gitauthor, $p+1), '<>');
+	}
+	return (object)array('name' => $name, 'email' => $email);
 }
 
 /** Normalize $time (any format strtotime can handle) to a ISO timestamp. */

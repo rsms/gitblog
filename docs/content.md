@@ -140,7 +140,7 @@ All of these are optional and replaced by default values if not specified.
 	<tr valign="top">
 		<td>Charset</td>
 		<td>Encoding</td>
-		<td>Body character set (text encoding).</td>
+		<td>Title and body character set (text encoding).</td>
 		<td>
 			Defaults to <tt>UTF-8</tt>. If specified this overrides any other character set definition
 			(i.e. any charset set by <code>Content-type</code> or similar).
@@ -149,7 +149,7 @@ All of these are optional and replaced by default values if not specified.
 			cause a conversion which requires either the 
 			<a href="http://php.net/mbstring">Multibyte String</a> 
 			or the <a href="http://php.net/iconv">iconv</a> extension.
-			Does not set any property, but affects the <code>body</code> property.
+			Does not set any property, but affects the <code>title</code> and <code>body</code> properties.
 		</td>
 	</tr>
 </table>

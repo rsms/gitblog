@@ -1897,10 +1897,14 @@ class GBExposedContent extends GBContent {
 		
 		# convert body text encoding?
 		if ($charset && $charset !== 'utf-8' && $charset !== 'utf8' && $charset !== 'ascii') {
-			if (function_exists('mb_convert_encoding'))
+			if (function_exists('mb_convert_encoding')) {
+				$this->title = mb_convert_encoding($this->title, 'utf-8', $charset);
 				$this->body = mb_convert_encoding($this->body, 'utf-8', $charset);
-			elseif (function_exists('iconv'))
+			}
+			elseif (function_exists('iconv')) {
+				$this->title = iconv($charset, 'utf-8', $this->title);
 				$this->body = iconv($charset, 'utf-8', $this->body);
+			}
 			else {
 				gb::log(LOG_ERR,
 					'failed to convert text encoding of %s -- neither mbstring nor iconv extension is available.',

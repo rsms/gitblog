@@ -139,6 +139,7 @@ h2 { font-size:19px; }
 		text-shadow:#efeee1 0 1px 0;
 	}
 	#header ul li a:hover { background-color:#fff; color:#006be4; }
+	#header ul li a:hover, #header ul li a.current { text-shadow:none; }
 	/* End of the posh styling */
 	
 

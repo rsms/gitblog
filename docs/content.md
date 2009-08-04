@@ -64,11 +64,11 @@ Header filed names are case-insensitive and values can wrap over several rows (i
 			wide array of different formats and resolutions.<br/><br/>
 			
 			Unless a complete (resoluton of a second) date and time is specified, the aforementioned
-			merge algorithm is used. The logic is a s follows:<br/><br/>
+			merge algorithm is used. The logic is a s follows:
 			
 			<pre><code>&lt;date and/or time parsed from file system path&gt;
   [ &lt;-- &lt;missing date resolution, time and zone from initial commit&gt; ]
-  [ &lt;-- &lt;date and/or time and/or zone publish header field&gt; ]</code></pre><br/><br/>
+  [ &lt;-- &lt;date and/or time and/or zone publish header field&gt; ]</code></pre>
 			
 			The later in the list the higher the priority. Commit date does not override file system
 			path date, but completes it. If the date parsed from the filename expresses year and 

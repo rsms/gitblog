@@ -198,6 +198,7 @@ div.columns.c3 {}
 		height:0;
 		border-top:1px dashed #ccc;
 	}
+	#sidebar ol.recent-comments small { color:#999; }
 
 /* Posts */
 div.posts { width:600px; float:left; }

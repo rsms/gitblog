@@ -17,16 +17,16 @@ Header filed names are case-insensitive and values can wrap over several rows (i
 		<th>Name</th><th>Alias</th><th>Value</th><th>Notes</th>
 	</tr>
 	<tr>
-		<td>Title</td>
+		<td valign="top">Title</td>
 		<td></td>
-		<td>Title of object.</td>
-		<td>If not specified, the title will be deduced from the filename.</td>
+		<td valign="top">Title of object.</td>
+		<td valign="top">If not specified, the title will be deduced from the filename.</td>
 	</tr>
 	<tr>
-		<td>Author</td>
+		<td valign="top">Author</td>
 		<td></td>
-		<td>Name and/or email of author.</td>
-		<td>
+		<td valign="top">Name and/or email of author.</td>
+		<td valign="top">
 			Expects a git-style author format. (e.g. <tt>"Name Name &lt;e@ma.il&gt;"</tt>, 
 			<tt>"Name"</tt>, <tt>"e@ma.il"</tt>, etc). If the author is not given by a
 			header field, the author will be deduced by finding the initial commit for the
@@ -34,28 +34,28 @@ Header filed names are case-insensitive and values can wrap over several rows (i
 		</td>
 	</tr>
 	<tr>
-		<td>Category</td>
-		<td>Categories</td>
-		<td>One or more categories separated by comma.</td>
-		<td>
+		<td valign="top">Category</td>
+		<td valign="top">Categories</td>
+		<td valign="top">One or more categories separated by comma.</td>
+		<td valign="top">
 			Category names are case-insensitive and whitespace is trimmed (not stripped).
 			If not specified, the object is not filed under any category
 		</td>
 	</tr>
 	<tr>
-		<td>Tags</td>
-		<td>Tag</td>
-		<td>One or more tags separated by comma.</td>
-		<td>
+		<td valign="top">Tags</td>
+		<td valign="top">Tag</td>
+		<td valign="top">One or more tags separated by comma.</td>
+		<td valign="top">
 			Tag names are case-insensitive and whitespace is trimmed (not stripped).
 			If not specified, the object is not tagged with any tags.
 		</td>
 	</tr>
 	<tr>
-		<td>Publish</td>
-		<td>Published</td>
-		<td>Boolean[1] is published OR date and/or time when the object was or will be published.</td>
-		<td>
+		<td valign="top">Publish</td>
+		<td valign="top">Published</td>
+		<td valign="top">Boolean[1] is published OR date and/or time when the object was or will be published.</td>
+		<td valign="top">
 			Defaults to the date parsed from the object file system path combined with
 			(date and) time of the initial commit. If a date and/or time is specified without 
 			timezone information, UTC is assumed. Examples: <tt>May 4, 2009 14:30 CEST</tt>, 
@@ -66,10 +66,9 @@ Header filed names are case-insensitive and values can wrap over several rows (i
 			Unless a complete (resoluton of a second) date and time is specified, the aforementioned
 			merge algorithm is used. The logic is a s follows:<br/><br/>
 			
-			<code>&lt;date and/or time parsed from file system path&gt;
-				[ &lt;-- &lt;missing date resolution, time and zone from initial commit&gt; ]
-				[ &lt;-- &lt;date and/or time and/or zone publish header field&gt; ]
-			</code><br/><br/>
+			<pre><code>&lt;date and/or time parsed from file system path&gt;
+  [ &lt;-- &lt;missing date resolution, time and zone from initial commit&gt; ]
+  [ &lt;-- &lt;date and/or time and/or zone publish header field&gt; ]</code></pre><br/><br/>
 			
 			The later in the list the higher the priority. Commit date does not override file system
 			path date, but completes it. If the date parsed from the filename expresses year and 
@@ -78,34 +77,34 @@ Header filed names are case-insensitive and values can wrap over several rows (i
 		</td>
 	</tr>
 	<tr>
-		<td>Draft</td>
+		<td valign="top">Draft</td>
 		<td></td>
-		<td>Boolean[1] is draft (not published).</td>
-		<td>Defaults to false if not specified.</td>
+		<td valign="top">Boolean[1] is draft (not published).</td>
+		<td valign="top">Defaults to false if not specified.</td>
 	</tr>
 	<tr>
-		<td>Comments</td>
+		<td valign="top">Comments</td>
 		<td></td>
-		<td>Boolean[1] allow comments.</td>
-		<td>Defaults to true if not specified.</td>
+		<td valign="top">Boolean[1] allow comments.</td>
+		<td valign="top">Defaults to true if not specified.</td>
 	</tr>
 	<tr>
-		<td>Pingback</td>
+		<td valign="top">Pingback</td>
 		<td></td>
-		<td>Boolean[1] send and receive pingbacks.</td>
-		<td>Defaults to true if not specified.</td>
+		<td valign="top">Boolean[1] send and receive pingbacks.</td>
+		<td valign="top">Defaults to true if not specified.</td>
 	</tr>
 	<tr>
-		<td>Hidden</td>
-		<td>Hide, invisible</td>
-		<td>Boolean[1] true the object should not appear in menus.</td>
-		<td>Defaults to false (is visible) if not specified. Only applies to pages.</td>
+		<td valign="top">Hidden</td>
+		<td valign="top">Hide, invisible</td>
+		<td valign="top">Boolean[1] true the object should not appear in menus.</td>
+		<td valign="top">Defaults to false (is visible) if not specified. Only applies to pages.</td>
 	</tr>
 	<tr>
-		<td>Order<td>
-		<td>Sort, priority</td>
-		<td>Integer value explicitly setting the priority of menu order for a page object.</td>
-		<td>Defaults to undefined if not specified. Menu items are sorted in two phases 
+		<td valign="top">Order</td>
+		<td valign="top">Sort, priority</td>
+		<td valign="top">Integer value explicitly setting the priority of menu order for a page object.</td>
+		<td valign="top">Defaults to undefined if not specified. Menu items are sorted in two phases 
 			-- first on order header field value, then on name/title.</td>
 	</tr>
 </table>

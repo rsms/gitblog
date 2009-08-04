@@ -131,7 +131,7 @@ All of these are optional and replaced by default values if not specified.
 
 ### Ancillary header fields
 
-Ancillary header fields -- not defined in this table -- will be passed through and made 
+Ancillary header fields (not defined in "Standard header fields") will be passed through and made 
 available in the `meta` property of `post` objects.
 
 Example of presenting ancillary meta fields in a template:

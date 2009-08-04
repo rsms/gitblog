@@ -1678,6 +1678,8 @@ class GBContent {
 		if (!$commits)
 			return;
 		
+		gb::event('will-apply-info-from-commits', $this, $commits);
+		
 		# latest one is last modified
 		$this->modified = $commits[0]->authorDate;
 		
@@ -1691,6 +1693,8 @@ class GBContent {
 				'email' => $initial->authorEmail
 			);
 		}
+		
+		gb::event('did-apply-info-from-commits', $this, $commits);
 	}
 	
 	function __sleep() {
@@ -1759,6 +1763,8 @@ class GBExposedContent extends GBContent {
 		if ($post === false)
 			$post = new $class(self::pathspecFromAbsPath($path), $id, $slug);
 		
+		gb::event('will-load-work-object', $post);
+		
 		# load rebuild plugins before calling reload
 		gb::load_plugins('rebuild');
 	
@@ -1785,6 +1791,8 @@ class GBExposedContent extends GBContent {
 				$post->author = (object)array('name' => '', 'email' => '');
 			}
 		}
+		
+		gb::event('did-load-work-object', $post);
 	
 		return $post;
 	}
@@ -1838,6 +1846,8 @@ class GBExposedContent extends GBContent {
 	}
 	
 	function parseHeaderFields() {
+		gb::event('will-parse-object-meta', $this);
+		
 		# lift lists
 		static $special_lists = array('tag'=>'tags', 'category'=>'categories');
 		foreach ($special_lists as $singular => $plural) {
@@ -1931,6 +1941,8 @@ class GBExposedContent extends GBContent {
 				$this->$ok = ($s === '' || gb_strbool($s));
 			}
 		}
+		
+		gb::event('did-parse-object-meta', $this);
 	}
 	
 	function fnext() {
@@ -1982,6 +1994,8 @@ class GBExposedContent extends GBContent {
 		}
 		# comments member turns into an integer "number of comments"
 		$c->comments = $c->comments ? $c->comments->countApproved() : 0;
+		
+		gb::event('did-create-condensed-object', $this, $c);
 		
 		return $c;
 	}

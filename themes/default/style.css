@@ -121,9 +121,9 @@ h2 { font-size:19px; }
 		src:local(Inconsolata), url('inconsolata.ttf') format('opentype');
 	}
 	#header div.title div.name { text-shadow:#efeee1 0 1px 0; }
-	body { font-family:'Liberation Serif'; }
-	#header div.title div.description { font-family:'Liberation Serif Italic'; }
-	div.post code, div.post pre, div.post tt, div.post samp { font-family:'Inconsolata'; }
+	body { font-family:'Liberation Serif', georgia, times; }
+	#header div.title div.description { font-family:'Liberation Serif Italic', georgia, times; }
+	div.post code, div.post pre, div.post tt, div.post samp { font-family:'Inconsolata', monospace; }
 	div.post div.body blockquote { font-family:'Liberation Serif Italic'; }
 	#header div.title div.name a:link, #header div.title div.name a:visited { color:#2d2c25; }
 	#header div.title div.name a:link:hover, #header div.title div.name a:visited:hover { color:#000; }

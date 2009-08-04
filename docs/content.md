@@ -27,8 +27,8 @@ Header filed names are case-insensitive and values can wrap over several rows (i
 		<td></td>
 		<td valign="top">Name and/or email of author.</td>
 		<td valign="top">
-			Expects a git-style author format. (e.g. <tt>"Name Name &lt;e@ma.il&gt;"</tt>, 
-			<tt>"Name"</tt>, <tt>"e@ma.il"</tt>, etc). If the author is not given by a
+			Expects a git-style author format. (e.g. <code>"Name Name &lt;e@ma.il&gt;"</code>, 
+			<code>"Name"</code>, <code>"e@ma.il"</code>, etc). If the author is not given by a
 			header field, the author will be deduced by finding the initial commit for the
 			object in question.
 		</td>
@@ -58,8 +58,8 @@ Header filed names are case-insensitive and values can wrap over several rows (i
 		<td valign="top">
 			Defaults to the date parsed from the object file system path combined with
 			(date and) time of the initial commit. If a date and/or time is specified without 
-			timezone information, UTC is assumed. Examples: <tt>May 4, 2009 14:30 CEST</tt>, 
-			<tt>12:47</tt>, <tt>2009-05-04 19:03:41 +0400</tt>, <tt>12:47 -0700</tt>. The date is
+			timezone information, UTC is assumed. Examples: <code>May 4, 2009 14:30 CEST</code>, 
+			<code>12:47</code>, <code>2009-05-04 19:03:41 +0400</code>, <code>12:47 -0700</code>. The date is
 			parsed using a technique similar to the PHP function `strtotime` thus allowing for a
 			wide array of different formats and resolutions.<br/><br/>
 			

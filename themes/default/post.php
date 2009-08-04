@@ -8,7 +8,7 @@
 			<h1><?= $post->title ?></h1>
 			<p class="meta">
 				<? if (gb::$is_post): ?>
-					<?= $post->published->age() ?>
+					<abbr title="<?= $post->published ?>"><?= $post->published->age() ?></abbr>
 					by <?= h($post->author->name) . $post->tagLinks(', tagged ') . $post->categoryLinks(', filed under ')  ?>
 				<? else: ?>
 					<? $s=$post->tagLinks('tagged '); echo $s;  echo ($s ? ', ':'') . $post->categoryLinks('filed under ') ?>

@@ -159,6 +159,7 @@ div.columns.c3 {}
 		#summary div.recent-posts ol { list-style:none; padding:0; }
 		#summary div.recent-posts li { white-space:nowrap; overflow:hidden; color:#999; }
 			#summary div.recent-posts li a { margin-right:5px; }
+			#summary div.recent-posts li span.age { white-space:nowrap;; }
 	#summary h2 { font-size:14px; color:#555; margin-bottom:-5px; }
 	ol.tags { overflow:hidden; }
 	ol.tags a:link, ol.tags a:visited { border:none; }

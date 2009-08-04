@@ -14,7 +14,7 @@
 				<? foreach ($postspage->posts as $rank => $post): if ($rank === 6) break; ?>
 					<li>
 						<a href="<?= h($post->url()) ?>"><?= h($post->title) ?></a>
-						<?= $post->published->age() ?>
+						<span class="age"><?= $post->published->age() ?></span>
 					</li>
 				<? endforeach ?>
 			</ol>
@@ -57,7 +57,7 @@
 			<?= $post->commentsLink() ?>
 			<h2><a href="<?= h($post->url()) ?>"><?= h($post->title) ?></a></h2>
 			<p class="meta">
-				<?= $post->published->age() ?>
+				<abbr title="<?= $post->published ?>"><?= $post->published->age() ?></abbr>
 				by <?= h($post->author->name) . $post->tagLinks(', tagged ') . $post->categoryLinks(', filed under ')  ?>
 			</p>
 			<div class="body">

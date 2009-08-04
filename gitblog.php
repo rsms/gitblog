@@ -66,7 +66,7 @@ class gb {
 	# --------------------------------------------------------------------------
 	# Constants
 	
-	static public $version = '0.1.3';
+	static public $version = '0.1.4';
 	
 	/** Absolute path to the gitblog directory */
 	static public $dir;
@@ -525,10 +525,15 @@ class gb {
 			return self::$data_stores[$name];
 		$cls = self::$data_store_class;
 		$store = new $cls($name);
-		if ($default)
-			foreach ($default as $k => $v)
-				$store[$k] = $v;
 		self::$data_stores[$name] = $store;
+		if ($default) {
+			$d = $store->storage()->get();
+			if (!is_array($d))
+				$d = array();
+			foreach ($default as $k => $v)
+				if (!isset($d[$k]))
+					$store[$k] = $v;
+		}
 		return $store;
 	}
 	
@@ -812,21 +817,24 @@ class gb {
 			return $s;
 		$v = array_map('intval', explode('.', $s));
 		if (count($v) < 3)
-			$v = array(0,0,0);
-		list($a, $i, $b) = $v;
-		return ($a << 16) + ($i << 8) + $b;
+			return 0;
+		return ($v[0] << 16) + ($v[1] << 8) + $v[2];
 	}
 
 	static function version_format($v) {
-		return sprintf('%d.%d.%d', $v >> 16, ($v << 16) >> 24, ($v << 24) >> 24);
+		return sprintf('%d.%d.%d', $v >> 16, ($v & 0x00ff00) >> 8, $v & 0x0000ff);
 	}
 	
 	/** Load the site state */
 	static function load_site_state() {
 		$path = self::$site_dir.'/data/site.json';
 		$data = @file_get_contents($path);
-		if ($data === false)
-			return false;
+		if ($data === false) {
+			# version <= 0.1.3 ?
+			if (is_readable(gb::$site_dir.'/site.json'))
+				gb::$site_state = @json_decode(file_get_contents(gb::$site_dir.'/site.json'), true);
+			return gb::$site_state !== null;
+		}
 		gb::$site_state = json_decode($data, true);
 		if (gb::$site_state === null || is_string(gb::$site_state)) {
 			self::log(LOG_WARNING, 'syntax error in site.json -- moved to site.json.broken and creating new');
@@ -886,7 +894,7 @@ class gb {
 	
 	static function verify_config() {
 		if (!gb::$secret || strlen(gb::$secret) < 62) {
-			header('Status: 503 Service Unavailable');
+			header('HTTP/1.1 503 Service Unavailable');
 			header('Content-Type: text/plain; charset=utf-8');
 			exit("\n\ngb::\$secret is not set or too short.\n\nPlease edit your gb-config.php file.\n");
 		}

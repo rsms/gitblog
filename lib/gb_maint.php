@@ -3,6 +3,18 @@
 class gb_maint {
 	static public $branch = 'stable';
 	
+	static function gitignore_sub($search_re, $replacement) {
+		$gitignore_path = gb::$site_dir.'/.gitignore';
+		$gitignore = file_get_contents($gitignore_path);
+		$gitignore2 = preg_replace($search_re, $replacement, $gitignore);
+		if ($gitignore2 !== $gitignore) {
+			gb::log('updating %s', $gitignore_path);
+			file_put_contents($gitignore_path, $gitignore2, LOCK_EX);
+			return true;
+		}
+		return false;
+	}
+	
 	static function add_gitblog_submodule() {
 		# Add gitblog submodule
 		$roundtrip_temp = false;
@@ -60,14 +72,8 @@ class gb_maint {
 		
 		try {
 			# remove "/gitblog" ignore from .gitignore
-			$gitignore_path = gb::$site_dir.'/.gitignore';
-			$gitignore = file_get_contents($gitignore_path);
-			$gitignore2 = preg_replace('/(?:\r?\n)\/gitblog([\t\s \r\n]+|^)/m', '$1', $gitignore);
-			if ($gitignore2 !== $gitignore) {
-				gb::log('removing "/gitblog" from %s', $gitignore_path);
-				file_put_contents($gitignore_path, $gitignore2, LOCK_EX);
+			if (self::gitignore_sub('/(?:\r?\n)\/gitblog([\t\s \r\n]+|^)/m', '$1'))
 				$added[] = gb::add('.gitignore');
-			}
 			
 			# register (and clone if needed) the gitblog submodule. This might take some time.
 			try {
@@ -115,7 +121,7 @@ class gb_maint {
 				gb::commit('added '.implode(', ',$added), GBUser::findAdmin()->gitAuthor(), $added);
 			}
 			catch (GitError $e) {
-				if (strpos($e->getMessage('no changes added to commit')) === false)
+				if (strpos($e->getMessage(), 'no changes added to commit') === false)
 					throw $e;
 			}
 		}
@@ -173,7 +179,7 @@ class gb_maint {
 		
 		# no previous state?
 		if (!gb::$site_state)
-			gb::$site_state = json_decode(file_get_contents(gb::$dir.'/skeleton/site.json'), true);
+			gb::$site_state = array();
 		
 		# Set current values
 		gb::$site_state['url'] = gb::$site_url;
@@ -192,6 +198,12 @@ class gb_maint {
 		# Encode site.json
 		$json = json::pretty(gb::$site_state)."\n";
 		$path = gb::$site_dir.'/data/site.json';
+		
+		# create data/ ?
+		if (!is_dir(gb::$site_dir.'/data')) {
+			mkdir(gb::$site_dir.'/data', 0775);
+			chmod(gb::$site_dir.'/data', 0775);
+		}
 		
 		# Write site.json
 		$bytes_written += file_put_contents($path, $json, LOCK_EX);

@@ -1,9 +1,5 @@
 * { margin:0; padding:0; }
-body {
-	font-family:georgia,serif;
-	background-color:#fff;
-	color:#333;
-}
+body { font-family:georgia,serif; background-color:#fff; color:#333; }
 body,p,li,td { font-size:15px; }
 p, ul, ol { margin:13px 0 20px 0; line-height:1.5; }
 hr { border:none; height:1px; background-color:#ddd; }
@@ -101,10 +97,50 @@ h2 { font-size:19px; }
 				color: #000;
 				background-color:#fff;
 			}
-	/* Example of a simple way to add some character to your blog: */
-	/*#header { background-color:#ffff92; }
-	#header div.title div.description { color:#96946c; }
-	#header ul li a { color:#96946c; border-color:#cdc396 !important; }*/
+	
+	/*
+	 * The following ~40 lines adds some character to your blog.
+	 * Remove these lines for a plain and simple black & white style.
+	 */
+	#header { background-color:#e4e2cd; border-color:#c2c0ae;
+		background-image:url(header-bg.png); background-position:center 0; }
+	@font-face {
+		font-family:'Liberation Serif';
+		font-style:normal;
+		src:local('Liberation Serif'), url('liberation-serif-regular.ttf') format('truetype');
+	}
+	@font-face {
+		/* Firefox 3.5 don't seem to be able to deduce "italic" style from font-style:italic above
+		 so we import the typeface under its ps name */
+		font-family:'Liberation Serif Italic';
+		font-style:italic;
+		src:local('Liberation Serif Italic'), url('liberation-serif-italic.ttf') format('truetype');
+	}
+	@font-face {
+		font-family:Inconsolata;
+		src:local(Inconsolata), url('inconsolata.ttf') format('opentype');
+	}
+	#header div.title div.name { text-shadow:#efeee1 0 1px 0; }
+	body { font-family:'Liberation Serif'; }
+	#header div.title div.description { font-family:'Liberation Serif Italic'; }
+	div.post code, div.post pre, div.post tt, div.post samp { font-family:'Inconsolata'; }
+	div.post div.body blockquote { font-family:'Liberation Serif Italic'; }
+	#header div.title div.name a:link, #header div.title div.name a:visited { color:#2d2c25; }
+	#header div.title div.name a:link:hover, #header div.title div.name a:visited:hover { color:#000; }
+	#header div.title div.description { color:#8f8d7c; text-shadow:#efeee1 0 1px 0; }
+	#header div.date { color:#696758; text-shadow:#efeee1 0 1px 0; }
+	#header ul li a { color:#696758; border-color:#c2c0ae !important;
+		border-top-left-radius:          2px;
+		border-top-right-radius:         2px;
+		-webkit-border-top-left-radius:  2px;
+		-webkit-border-top-right-radius: 2px;
+		-moz-border-radius-topleft:      2px;
+		-moz-border-radius-topright:     2px;
+		text-shadow:#efeee1 0 1px 0;
+	}
+	#header ul li a:hover { background-color:#fff; color:#006be4; }
+	/* End of the posh styling */
+	
 
 /* Main content */
 #main { }
@@ -170,7 +206,7 @@ div.posts { width:600px; float:left; }
 		div.posts div.post > h2 { font-size:26px; /* same as h1 for single posts */ }
 
 /* Post */
-div.post { margin-top:20px; width:600px; }
+div.post { margin-top:20px; margin-bottom:10px; width:600px; }
 	div.post p.meta {
 		font-family:"lucida grande","tahoma",sans-serif; font-size:11px;
 		margin:2px 0;
@@ -197,7 +233,7 @@ div.post { margin-top:20px; width:600px; }
 			div.post a.numcomments:hover { background-position:right -80px; }
 			div.post a.numcomments:link, div.post a.numcomments:visited { color:#777; }
 			div.post a.numcomments:link:hover, div.post a.numcomments:visited:hover { color:#000; }
-	div.post div.body { margin-bottom:30px; overflow:hidden; }
+	div.post div.body { overflow:hidden; }
 	div.post div.body object, div.post div.body img { max-width:600px; }
 	div.post div.body hr { border-top-style:dashed; }
 	div.post div.body blockquote {
@@ -205,8 +241,16 @@ div.post { margin-top:20px; width:600px; }
 		border-left:5px solid #ccc;
 		font-style:italic;
 		color:#666;
-		font-family:georgia;
 	}
+	div.post div.body > p.read-more {
+		
+	}
+	div.post div.body > p.read-more a {
+		display:inline-block; padding:0 7px; line-height:22px;
+    border-radius:5px; -webkit-border-radius:5px; -moz-border-radius:5px;
+		background-color:#fffe95; color:#685c00; border:none;
+	}
+	div.post div.body > p.read-more a:hover { background-color:#fff000; color:#302400; }
 
 /* Paged posts footer */
 #paged-footer {

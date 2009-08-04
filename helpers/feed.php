@@ -26,9 +26,9 @@ echo '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
 		<id><?= h($post->url()) ?></id>
 		<published><?= $post->published ?></published>
 		<updated><?= $post->modified ?></updated>
-		<?= $post->tagLinks('<category scheme="'.gb::url_to('tags').'" term="%n" />',
+		<?= $post->tagLinks('', '', '<category scheme="'.gb::url_to('tags').'" term="%n" />',
 			"\n\t\t", "\n\t\t").($post->tags ? "\n" : '') ?>
-		<?= $post->categoryLinks('<category scheme="'.gb::url_to('categories').'" term="%n" />',
+		<?= $post->categoryLinks('', '', '<category scheme="'.gb::url_to('categories').'" term="%n" />',
 			"\n\t\t", "\n\t\t").($post->categories ? "\n" : '') ?>
 		<comments><?= $post->comments ?></comments>
 		<gb:version><?= $post->id ?></gb:version>
@@ -39,7 +39,6 @@ echo '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
 			<p><a href="<?= h($post->url()) ?>#<?= $post->domID() ?>-more">Read more...</a></p>
 		<? endif; ?>]]></content>
 		<link rel="replies" type="text/html" href="<?= h($post->url()) ?>#comments" thr:count="<?= $post->comments ?>" />
-		<link rel="replies" type="application/atom+xml" href="<?= h(gb::url_to('feed')) ?>" thr:count="<?= $post->comments ?>" />
 		<thr:total><?= $post->comments ?></thr:total>
 	</entry>
 <? endforeach ?>

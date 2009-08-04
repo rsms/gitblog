@@ -84,7 +84,7 @@ $fields = array(
 );
 
 function exit2($msg, $status='400 Bad Request') {
-	header('Status: '.$status);
+	header('HTTP/1.1 '.$status);
 	exit($status."\n".$msg."\n");
 }
 
@@ -181,7 +181,7 @@ if ($comment) {
 			if ($referrer) {
 				$referrer->fragment = 'comments';
 				$referrer['comment-status'] = 'duplicate';
-				header('Status: 304 Not Modified');
+				header('HTTP/1.1 304 Not Modified');
 				header('Location: '.$referrer);
 				exit(0);
 			}
@@ -205,7 +205,7 @@ if ($comment) {
 			else {
 				unset($referrer['comment-status']);
 			}
-			header('Status: 303 See Other');
+			header('HTTP/1.1 303 See Other');
 			header('Location: '.$referrer);
 			exit(0);
 		}
@@ -218,7 +218,7 @@ if ($comment) {
 			gb::log('skipped duplicate comment from '
 				.var_export($comment->email,1).' (nothing to commit)');
 			gb::event('was-duplicate-comment', $comment);
-			header('Status: 304 Not Modified');
+			header('HTTP/1.1 304 Not Modified');
 			header('Location: '.$input['gb-referrer'].'#skipped-duplicate-reply');
 			exit(0);
 		}
@@ -227,7 +227,7 @@ if ($comment) {
 			.' from '.var_export($comment->name,1).' <'.var_export($comment->email,1).'>'
 			.' to '.$post->cachename());
 		
-		header('Status: 500 Internal Server Error');
+		header('HTTP/1.1 500 Internal Server Error');
 		echo '$input => ';var_export($input);echo "\n";
 		gb_flush();
 		throw $e;
@@ -238,7 +238,7 @@ else {
 	if ($referrer) {
 		$referrer->fragment = 'comments';
 		$referrer['comment-status'] = 'rejected';
-		header('Status: 303 See Other');
+		header('HTTP/1.1 303 See Other');
 		header('Location: '.$referrer);
 	}
 	else {

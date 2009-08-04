@@ -48,7 +48,7 @@ class GBUser {
 	}
 	
 	static function findAdmin() {
-		foreach (self::storage()->get() as $email -> $user) {
+		foreach (self::storage()->get() as $email => $user) {
 			if ($user->admin === true)
 				return $user;
 		}

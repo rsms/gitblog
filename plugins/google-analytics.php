@@ -12,7 +12,7 @@ class google_analytics_plugin {
 	static public $conf;
 	
 	static function init($context) {
-		self::$conf = gb::data('google-analytics');
+		self::$conf = gb::data('plugins/google-analytics');
 		if (!self::$conf['property_id']) {
 			gb::log(LOG_WARNING, 'missing property_id in google-analytics configuration');
 		}

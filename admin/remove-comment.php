@@ -67,11 +67,11 @@ try {
 	if (!$removed_comment) {
 		if ($referrer) {
 			$referrer['gb-error'] = 'Comment '.$input['comment'].' not found';
-			header('Status: 303 See Other');
+			header('HTTP/1.1 303 See Other');
 			header('Location: '.$referrer);
 		}
 		else {
-			header('Status: 404 Not Found');
+			header('HTTP/1.1 404 Not Found');
 		}
 		exit('no such comment '.$input['comment']);
 	}
@@ -83,7 +83,7 @@ try {
 	# done OK
 	if ($referrer) {
 		$referrer->fragment = 'comments';
-		header('Status: 303 See Other');
+		header('HTTP/1.1 303 See Other');
 		header('Location: '.$referrer);
 	}
 	else {
@@ -92,7 +92,7 @@ try {
 }
 catch (Exception $e) {
 	gb::log(LOG_ERR, 'failed to remove comment %s from %s', $input['comment'], $post->cachename());
-	header('Status: 500 Internal Server Error');
+	header('HTTP/1.1 500 Internal Server Error');
 	echo '$input => ';var_export($input);echo "\n";
 	gb_flush();
 	throw $e;

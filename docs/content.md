@@ -113,7 +113,7 @@ All of these are optional and replaced by default values if not specified.
 		<td valign="top">Hide, invisible</td>
 		<td valign="top">Boolean[1] true the object should not appear in menus.</td>
 		<td valign="top">Defaults to false (is visible) if not specified. Only applies to pages.
-			Sets the <code>hidden</code> property on `GBPage`s.</td>
+			Sets the <code>hidden</code> property on <tt>GBPage</tt>s.</td>
 	</tr>
 	<tr>
 		<td valign="top">Order</td>
@@ -121,7 +121,7 @@ All of these are optional and replaced by default values if not specified.
 		<td valign="top">Integer value explicitly setting the priority of menu order for a page object.</td>
 		<td valign="top">Defaults to undefined if not specified. Menu items are sorted in two phases 
 			-- first on order header field value, then on name/title.
-			Sets the <code>order</code> property on `GBPage`s.</td>
+			Sets the <code>order</code> property on <tt>GBPage</tt>s.</td>
 	</tr>
 </table>
 

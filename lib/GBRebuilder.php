@@ -88,8 +88,9 @@ class GBRebuilder {
 				$rebuilder->finalize();
 			}
 			catch (RuntimeException $e) {
-				gb::log(LOG_ERR, 'rebuilder %s %x failed to finalize',
-					get_class($rebuilder), spl_object_hash($rebuilder));
+				gb::log(LOG_ERR, 'rebuilder %s (0x%x) failed to finalize: %s',
+					get_class($rebuilder), spl_object_hash($rebuilder),
+					GBException::format($e, true, false, null, 0));
 				$failures[] = array($rebuilder, null);
 			}
 		}

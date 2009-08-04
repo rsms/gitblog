@@ -1791,10 +1791,12 @@ class GBExposedContent extends GBContent {
 	function reload($data, $commits=null) {
 		parent::reload($data, $commits);
 		
-		$bodystart = strpos($data, "\n\n");
-		if ($bodystart === false)
+		if (($bodystart = strpos($data, "\n\n")) === false && ($bodystart = strpos($data, "\r\n\r\n")) === false) {
 			$bodystart = 0;
-			#trigger_error("malformed content object '{$this->name}' missing header");
+			gb::log(LOG_WARNING,
+				'malformed exposed content object %s: missing header and/or body (LFLF or CRLFCRLF not found)',
+				$this->name)
+		}
 		
 		$this->body = null;
 		$this->meta = array();

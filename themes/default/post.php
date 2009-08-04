@@ -24,7 +24,6 @@
 	<? if ($post->commentsOpen || count($post->comments)): ?>
 	<div id="comments">
 		<hr/>
-		<div class="wrapper">
 		<? if (isset($_GET['skipped-duplicate-comment'])): ?>
 			<div class="notification">
 				<p>
@@ -128,7 +127,6 @@
 			<p>Comments are closed.</p>
 		<? endif; ?>
 		</div>
-	</div>
 	<? endif; ?>
 	<div class="breaker"></div>
 </div>

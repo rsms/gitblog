@@ -36,9 +36,9 @@
 		<p>
 			<?= counted($postspage->numtotal, 'post', 'posts') ?>
 		<? if (gb::$is_categories): ?>
-			filed under <?= sentenceize($categories, 'h') ?>
+			filed under <span class="highlight"><?= sentenceize($categories, 'h') ?></span>
 		<? elseif (gb::$is_tags): ?>
-			tagged with <?= sentenceize($tags, 'h') ?>
+			tagged with <span class="highlight"><?= sentenceize($tags, 'h') ?></span>
 		<? endif ?>
 		</p>
 	</div>

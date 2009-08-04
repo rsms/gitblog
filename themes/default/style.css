@@ -21,6 +21,7 @@ h1 { font-size:26px; }
 h2 { font-size:19px; }
 
 /* Universal helpers */
+.highlight { background-color:#fffe95; color:#302400; }
 .breaker { clear:both; }
 .wrapper { clear:both; margin:0 auto; width:920px; }
 	.wrapper hr {

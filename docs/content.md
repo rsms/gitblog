@@ -132,7 +132,7 @@ All of these are optional and replaced by default values if not specified.
 ### Ancillary header fields
 
 Ancillary header fields (not defined in "Standard header fields") will be passed through and made 
-available in the `meta` property of `post` objects.
+available in the `meta` property.
 
 Example of presenting ancillary meta fields in a template:
 
@@ -148,7 +148,7 @@ plugin is recommended to remove it's "special" fields from the `meta` map:
 
 	class example_plugin {
 		static function init($context) {
-			gb::observe('did-reload-object', __CLASS__.'::will_reload_object');
+			gb::observe('did-reload-object', __CLASS__.'::did_reload_object');
 		}
 		
 		static function did_reload_object($post) {

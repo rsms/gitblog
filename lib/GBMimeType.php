@@ -159,6 +159,7 @@ class GBMimeType {
 		'hta' => 'application/hta',
 		'htc' => 'text/x-component',
 		'htm' => 'text/html',
+		'shtml' => 'text/html',
 		'html' => 'text/html',
 		'hxx' => 'text/x-c++hdr',
 		'ica' => 'application/x-ica',
@@ -359,7 +360,6 @@ class GBMimeType {
 		'sh' => 'text/x-sh',
 		'shar' => 'application/x-shar',
 		'shp' => 'application/x-qgis',
-		'shtml' => 'text/html',
 		'shx' => 'application/x-qgis',
 		'sid' => 'audio/prs.sid',
 		'sik' => 'application/x-trash',
@@ -475,6 +475,8 @@ class GBMimeType {
 		'323' => 'text/h323'
 	);
 	
+	static public $rmap;
+	
 	static function forExtension($ext) {
 		if (isset(self::$map[$ext]))
 			return self::$map[$ext];
@@ -485,6 +487,14 @@ class GBMimeType {
 		$p = strrpos($filename, '.', strrpos($filename, '/'));
 		if ($p !== false)
 			return self::forExtension(substr($filename, $p+1));
+		return null;
+	}
+	
+	static function forType($type) {
+		if (self::$rmap === null)
+			self::$rmap = array_flip(self::$map);
+		if (isset(self::$rmap[$type]))
+			return self::$rmap[$type];
 		return null;
 	}
 }

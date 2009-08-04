@@ -24,18 +24,18 @@ All of these are optional and replaced by default values if not specified.
 	<tr>
 		<th>Name</th><th>Alias</th><th>Value</th><th>Notes</th>
 	</tr>
-	<tr>
-		<td valign="top">Title</td>
+	<tr valign="top">
+		<td>Title</td>
 		<td></td>
-		<td valign="top">Title of object.</td>
-		<td valign="top">If not specified, the title will be deduced from the filename.
+		<td>Title of object.</td>
+		<td>If not specified, the title will be deduced from the filename.
 			Sets the <code>title</code> property.</td>
 	</tr>
-	<tr>
-		<td valign="top">Author</td>
+	<tr valign="top">
+		<td>Author</td>
 		<td></td>
-		<td valign="top">Name and/or email of author.</td>
-		<td valign="top">
+		<td>Name and/or email of author.</td>
+		<td>
 			Expects a git-style author format. (e.g. <code>"Name Name &lt;e@ma.il&gt;"</code>, 
 			<code>"Name"</code>, <code>"e@ma.il"</code>, etc). If the author is not given by a
 			header field, the author will be deduced by finding the initial commit for the
@@ -43,31 +43,31 @@ All of these are optional and replaced by default values if not specified.
 			properties <code>name</code> and <code>email</code>).
 		</td>
 	</tr>
-	<tr>
-		<td valign="top">Category</td>
-		<td valign="top">Categories</td>
-		<td valign="top">One or more categories separated by comma.</td>
-		<td valign="top">
+	<tr valign="top">
+		<td>Category</td>
+		<td>Categories</td>
+		<td>One or more categories separated by comma.</td>
+		<td>
 			Category names are case-insensitive and whitespace is trimmed (not stripped).
 			If not specified, the object is not filed under any category.
 			Sets the <code>categories</code> property (an ordered list).
 		</td>
 	</tr>
-	<tr>
-		<td valign="top">Tags</td>
-		<td valign="top">Tag</td>
-		<td valign="top">One or more tags separated by comma.</td>
-		<td valign="top">
+	<tr valign="top">
+		<td>Tags</td>
+		<td>Tag</td>
+		<td>One or more tags separated by comma.</td>
+		<td>
 			Tag names are case-insensitive and whitespace is trimmed (not stripped).
 			If not specified, the object is not tagged with any tags.
 			Sets the <code>tags</code> property (an ordered list).
 		</td>
 	</tr>
-	<tr>
-		<td valign="top">Publish</td>
-		<td valign="top">Published</td>
-		<td valign="top">Boolean[1] is published OR date and/or time when the object was or will be published.</td>
-		<td valign="top">
+	<tr valign="top">
+		<td>Publish</td>
+		<td>Published</td>
+		<td>Boolean[1] is published OR date and/or time when the object was or will be published.</td>
+		<td>
 			Defaults to the date parsed from the object file system path combined with
 			(date and) time of the initial commit. If a date and/or time is specified without 
 			timezone information, UTC is assumed. Examples: <code>May 4, 2009 14:30 CEST</code>, 
@@ -90,44 +90,44 @@ All of these are optional and replaced by default values if not specified.
 			Sets the <code>published</code> property (an instance of <code>GBDateTime</code>).
 		</td>
 	</tr>
-	<tr>
-		<td valign="top">Draft</td>
+	<tr valign="top">
+		<td>Draft</td>
 		<td></td>
-		<td valign="top">Boolean[1] is draft (not published).</td>
-		<td valign="top">Defaults to false if not specified. Sets the <code>draft</code> property.</td>
+		<td>Boolean[1] is draft (not published).</td>
+		<td>Defaults to false if not specified. Sets the <code>draft</code> property.</td>
 	</tr>
-	<tr>
-		<td valign="top">Comments</td>
+	<tr valign="top">
+		<td>Comments</td>
 		<td></td>
-		<td valign="top">Boolean[1] allow comments.</td>
-		<td valign="top">Defaults to true if not specified. Sets the <code>commentsOpen</code> property.</td>
+		<td>Boolean[1] allow comments.</td>
+		<td>Defaults to true if not specified. Sets the <code>commentsOpen</code> property.</td>
 	</tr>
-	<tr>
-		<td valign="top">Pingback</td>
+	<tr valign="top">
+		<td>Pingback</td>
 		<td></td>
-		<td valign="top">Boolean[1] send and receive pingbacks.</td>
-		<td valign="top">Defaults to true if not specified. Sets the <code>pingbackOpen</code> property.</td>
+		<td>Boolean[1] send and receive pingbacks.</td>
+		<td>Defaults to true if not specified. Sets the <code>pingbackOpen</code> property.</td>
 	</tr>
-	<tr>
-		<td valign="top">Hidden</td>
-		<td valign="top">Hide, invisible</td>
-		<td valign="top">Boolean[1] true the object should not appear in menus.</td>
-		<td valign="top">Defaults to false (is visible) if not specified. Only applies to pages.
+	<tr valign="top">
+		<td>Hidden</td>
+		<td>Hide, invisible</td>
+		<td>Boolean[1] true the object should not appear in menus.</td>
+		<td>Defaults to false (is visible) if not specified. Only applies to pages.
 			Sets the <code>hidden</code> property on <tt>GBPage</tt>s.</td>
 	</tr>
-	<tr>
-		<td valign="top">Order</td>
-		<td valign="top">Sort, priority</td>
-		<td valign="top">Integer value explicitly setting the priority of menu order for a page object.</td>
-		<td valign="top">Defaults to undefined if not specified. Menu items are sorted in two phases 
+	<tr valign="top">
+		<td>Order</td>
+		<td>Sort, priority</td>
+		<td>Integer value explicitly setting the priority of menu order for a page object.</td>
+		<td>Defaults to undefined if not specified. Menu items are sorted in two phases 
 			-- first on order header field value, then on name/title.
 			Sets the <code>order</code> property on <tt>GBPage</tt>s.</td>
 	</tr>
-	<tr>
-		<td valign="top">Content-type</td>
+	<tr valign="top">
+		<td>Content-type</td>
 		<td></td>
-		<td valign="top">MIME type or filename extension with optional <code>;charset=S</code> suffix.</td>
-		<td valign="top">
+		<td>MIME type or filename extension with optional <code>;charset=S</code> suffix.</td>
+		<td>
 			By default, the content type is deduced by trying to map the actual filename extension 
 			to a mime type (done by <code>GBMimeType</code>). If a filename extension (a string not 
 			containing a <tt>/</tt> character) is specified, 
@@ -137,11 +137,11 @@ All of these are optional and replaced by default values if not specified.
 			(see description of <code>Charset</code> field for more info).
 		</td>
 	</tr>
-	<tr>
-		<td valign="top">Charset</td>
-		<td valign="top">Encoding</td>
-		<td valign="top">Body character set (text encoding).</td>
-		<td valign="top">
+	<tr valign="top">
+		<td>Charset</td>
+		<td>Encoding</td>
+		<td>Body character set (text encoding).</td>
+		<td>
 			Defaults to <tt>UTF-8</tt>. If specified this overrides any other character set definition
 			(i.e. any charset set by <code>Content-type</code> or similar).
 			The internal representation is <tt>UTF-8</tt>, thus specifying anything else than 

@@ -8,8 +8,10 @@ $context_date = time();
 header('Content-Type: application/xhtml+xml; charset=utf-8');
 if (gb::$is_404)
 	header('HTTP/1.1 404 Not Found');
-elseif (gb::$is_post || gb::$is_page)
+elseif (gb::$is_post)
 	$context_date = $post->published->time;
+elseif (gb::$is_page)
+	$context_date = $post->modified->time;
 elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->posts) {
 	if (is_object($postspage->posts)) {
 		# workaround for picking up first item from an iterator

@@ -1838,7 +1838,7 @@ class GBExposedContent extends GBContent {
 	}
 	
 	function parseHeaderFields() {
-		# lift lists from meta to this
+		# lift lists
 		static $special_lists = array('tag'=>'tags', 'category'=>'categories');
 		foreach ($special_lists as $singular => $plural) {
 			$s = false;
@@ -1857,9 +1857,44 @@ class GBExposedContent extends GBContent {
 		# lift specials, like title, from meta to this
 		static $special_singles = array('title');
 		foreach ($special_singles as $singular) {
-			if (isset($this->meta[$singular])) {
-				$this->$singular = $this->meta[$singular];
+			if (isset($this->meta['title'])) {
+				$this->title = $this->meta['title'];
 				unset($this->meta[$singular]);
+			}
+		}
+		
+		# lift content type
+		$charset = 'utf-8';
+		if (isset($this->meta['content-type'])) {
+			$this->mimeType = $this->meta['content-type'];
+			if (preg_match('/^([^ ;\s\t]+)(?:[ \s\t]*;[ \s\t]*charset=([a-zA-Z0-9_-]+)|).*$/', $this->mimeType, $m)) {
+				if (isset($m[2]) && $m[2])
+					$charset = strtolower($m[2]);
+				$this->mimeType = $m[1];
+			}
+			unset($this->meta['content-type']);
+		}
+		
+		# lift charset or encoding
+		if (isset($this->meta['charset'])) {
+			$charset = strtolower(trim($this->meta['charset']));
+			unset($this->meta['charset']);
+		}
+		elseif (isset($this->meta['encoding'])) {
+			$charset = strtolower(trim($this->meta['encoding']));
+			unset($this->meta['encoding']);
+		}
+		
+		# convert body text encoding?
+		if ($charset && $charset !== 'utf-8' && $charset !== 'utf8' && $charset !== 'ascii') {
+			if (function_exists('mb_convert_encoding'))
+				$this->body = mb_convert_encoding($this->body, 'utf-8', $charset);
+			elseif (function_exists('iconv'))
+				$this->body = iconv($charset, 'utf-8', $this->body);
+			else {
+				gb::log(LOG_ERR,
+					'failed to convert text encoding of %s -- neither mbstring nor iconv extension is available.',
+					$this->name);
 			}
 		}
 		

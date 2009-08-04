@@ -123,6 +123,35 @@ All of these are optional and replaced by default values if not specified.
 			-- first on order header field value, then on name/title.
 			Sets the <code>order</code> property on <tt>GBPage</tt>s.</td>
 	</tr>
+	<tr>
+		<td valign="top">Content-type</td>
+		<td></td>
+		<td valign="top">MIME type or filename extension with optional <code>;charset=S</code> suffix.</td>
+		<td valign="top">
+			By default, the content type is deduced by trying to map the actual filename extension 
+			to a mime type (done by <code>GBMimeType</code>). If a filename extension (a string not 
+			containing a <tt>/</tt> character) is specified, 
+			the MIME type will be aquired by looking up that filename extension.
+			Sets the <code>mimeType</code> property and affects the <code>body</code> 
+			property if charset meta is defined 
+			(see description of <code>Charset</code> field for more info).
+		</td>
+	</tr>
+	<tr>
+		<td valign="top">Charset</td>
+		<td valign="top">Encoding</td>
+		<td valign="top">Body character set (text encoding).</td>
+		<td valign="top">
+			Defaults to <tt>UTF-8</tt>. If specified this overrides any other character set definition
+			(i.e. any charset set by <code>Content-type</code> or similar).
+			The internal representation is <tt>UTF-8</tt>, thus specifying anything else than 
+			<tt>UTF-8</tt> or <tt>ASCII</tt> will 
+			cause a conversion which requires either the 
+			<a href="http://php.net/mbstring">Multibyte String</a> 
+			or the <a href="http://php.net/iconv">iconv</a> extension.
+			Does not set any property, but affects the <code>body</code> property.
+		</td>
+	</tr>
 </table>
 
 > **[1] Boolean values:** True values are `"true"`, `"yes"`, `"on"`, `"1"` or `""` (empty).

@@ -14,9 +14,11 @@ The header is terminated by two linebreaks (`LF LF` or `CR LF CR LF`).
 
 ## Header fields
 
-Field names are case-insensitive and values can wrap over several rows (if subsequent rows are indented with at least one space or tab). The field name and value are separated by a colon (`":"`) and all of them are optional and replaced by default or deduced values if not specified.
+Field names are case-insensitive and values can wrap over several rows (if subsequent rows are indented with at least one space or tab). The field name and value are separated by a colon (`":"`).
 
 ### Standard header fields
+
+All of these are optional and replaced by default values if not specified.
 
 <table>
 	<tr>

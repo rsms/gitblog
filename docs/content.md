@@ -28,7 +28,8 @@ All of these are optional and replaced by default values if not specified.
 		<td valign="top">Title</td>
 		<td></td>
 		<td valign="top">Title of object.</td>
-		<td valign="top">If not specified, the title will be deduced from the filename.</td>
+		<td valign="top">If not specified, the title will be deduced from the filename.
+			Sets the <code>title</code> property.</td>
 	</tr>
 	<tr>
 		<td valign="top">Author</td>
@@ -38,7 +39,8 @@ All of these are optional and replaced by default values if not specified.
 			Expects a git-style author format. (e.g. <code>"Name Name &lt;e@ma.il&gt;"</code>, 
 			<code>"Name"</code>, <code>"e@ma.il"</code>, etc). If the author is not given by a
 			header field, the author will be deduced by finding the initial commit for the
-			object in question.
+			object in question. Sets the <code>author</code> property (an anonymous object with 
+			properties <code>name</code> and <code>email</code>).
 		</td>
 	</tr>
 	<tr>
@@ -47,7 +49,8 @@ All of these are optional and replaced by default values if not specified.
 		<td valign="top">One or more categories separated by comma.</td>
 		<td valign="top">
 			Category names are case-insensitive and whitespace is trimmed (not stripped).
-			If not specified, the object is not filed under any category
+			If not specified, the object is not filed under any category.
+			Sets the <code>categories</code> property (an ordered list).
 		</td>
 	</tr>
 	<tr>
@@ -57,6 +60,7 @@ All of these are optional and replaced by default values if not specified.
 		<td valign="top">
 			Tag names are case-insensitive and whitespace is trimmed (not stripped).
 			If not specified, the object is not tagged with any tags.
+			Sets the <code>tags</code> property (an ordered list).
 		</td>
 	</tr>
 	<tr>
@@ -81,39 +85,43 @@ All of these are optional and replaced by default values if not specified.
 			The later in the list the higher the priority. Commit date does not override file system
 			path date, but completes it. If the date parsed from the filename expresses year and 
 			month; day, hour, minute, second and zone are <em>added</em> from date of initial commit.
-			However, the "publish" header field <em>overrides</em> any parts defined.
+			However, the "publish" header field <em>overrides</em> any parts defined.<br/><br/>
+			
+			Sets the <code>published</code> property (an instance of <code>GBDateTime</code>).
 		</td>
 	</tr>
 	<tr>
 		<td valign="top">Draft</td>
 		<td></td>
 		<td valign="top">Boolean[1] is draft (not published).</td>
-		<td valign="top">Defaults to false if not specified.</td>
+		<td valign="top">Defaults to false if not specified. Sets the <code>draft</code> property.</td>
 	</tr>
 	<tr>
 		<td valign="top">Comments</td>
 		<td></td>
 		<td valign="top">Boolean[1] allow comments.</td>
-		<td valign="top">Defaults to true if not specified.</td>
+		<td valign="top">Defaults to true if not specified. Sets the <code>commentsOpen</code> property.</td>
 	</tr>
 	<tr>
 		<td valign="top">Pingback</td>
 		<td></td>
 		<td valign="top">Boolean[1] send and receive pingbacks.</td>
-		<td valign="top">Defaults to true if not specified.</td>
+		<td valign="top">Defaults to true if not specified. Sets the <code>pingbackOpen</code> property.</td>
 	</tr>
 	<tr>
 		<td valign="top">Hidden</td>
 		<td valign="top">Hide, invisible</td>
 		<td valign="top">Boolean[1] true the object should not appear in menus.</td>
-		<td valign="top">Defaults to false (is visible) if not specified. Only applies to pages.</td>
+		<td valign="top">Defaults to false (is visible) if not specified. Only applies to pages.
+			Sets the <code>hidden</code> property on `GBPage`s.</td>
 	</tr>
 	<tr>
 		<td valign="top">Order</td>
 		<td valign="top">Sort, priority</td>
 		<td valign="top">Integer value explicitly setting the priority of menu order for a page object.</td>
 		<td valign="top">Defaults to undefined if not specified. Menu items are sorted in two phases 
-			-- first on order header field value, then on name/title.</td>
+			-- first on order header field value, then on name/title.
+			Sets the <code>order</code> property on `GBPage`s.</td>
 	</tr>
 </table>
 

@@ -304,7 +304,7 @@ class gb {
 		if (self::authenticator($context)->deauthorize()) {
 			if ($old_authorized)
 				self::log('client deauthorized: '.$old_authorized->email);
-			self::event('client-deauthorized', $old_authorized);
+			gb::event('client-deauthorized', $old_authorized);
 		}
 		if ($redirect) {
 			header('HTTP/1.1 303 See Other');

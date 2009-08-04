@@ -1384,11 +1384,22 @@ function gb_normalize_git_name($name) {
 function gb_parse_author($gitauthor) {
 	$gitauthor = trim($gitauthor);
 	$p = strpos($gitauthor, '<');
-	if ($p === 0)
-		return (object)array('name' => '', 'email' => trim($gitauthor, '<>'));
-	elseif ($p === false)
-		return (object)array('name' => $gitauthor, 'email' => '');
-	return (object)array('name' => rtrim(substr($gitauthor, 0, $p)), 'email' => trim(substr($gitauthor, $p+1), '<>'));
+	$name = '';
+	$email = '';
+	if ($p === 0) {
+		$email = trim($gitauthor, '<>');
+	}
+	elseif ($p === false) {
+		if (strpos($gitauthor, '@') !== false)
+			$email = $gitauthor;
+		else
+			$name = $gitauthor;
+	}
+	else {
+		$name = rtrim(substr($gitauthor, 0, $p));
+		$email = trim(substr($gitauthor, $p+1), '<>');
+	}
+	return (object)array('name' => $name, 'email' => $email);
 }
 
 /** Normalize $time (any format strtotime can handle) to a ISO timestamp. */
@@ -1780,10 +1791,12 @@ class GBExposedContent extends GBContent {
 	function reload($data, $commits=null) {
 		parent::reload($data, $commits);
 		
-		$bodystart = strpos($data, "\n\n");
-		if ($bodystart === false)
+		if (($bodystart = strpos($data, "\n\n")) === false && ($bodystart = strpos($data, "\r\n\r\n")) === false) {
 			$bodystart = 0;
-			#trigger_error("malformed content object '{$this->name}' missing header");
+			gb::log(LOG_WARNING,
+				'malformed exposed content object %s: missing header and/or body (LFLF or CRLFCRLF not found)',
+				$this->name)
+		}
 		
 		$this->body = null;
 		$this->meta = array();
@@ -1877,11 +1890,14 @@ class GBExposedContent extends GBContent {
 				$this->published = $this->published->mergeString($mp);
 		}
 		
-		# handle draft meta tag
-		if (isset($this->meta['draft'])) {
-			$s = rtrim($this->meta['draft']);
-			unset($this->meta['draft']);
-			$this->draft = ($s === '' || gb_strbool($s));
+		# handle booleans
+		static $bools = array('draft' => 'draft', 'comments' => 'commentsOpen', 'pingback' => 'pingbackOpen');
+		foreach ($bools as $mk => $ok) {
+			if (isset($this->meta[$mk])) {
+				$s = trim($this->meta[$mk]);
+				unset($this->meta[$mk]);
+				$this->$ok = ($s === '' || gb_strbool($s));
+			}
 		}
 		
 		# apply filters

@@ -1522,7 +1522,8 @@ class GBDateTime {
 			. self::formatTimezoneOffset($this->offset, $tzformat);
 	}
 	
-	function age($abs_threshold=31536000, $abs_format='%B %e, %Y', $suffix=' ago', 
+	#                           2592000 = 30 days
+	function age($threshold=2592000, $yformat='%B %e', $absformat='%B %e, %Y', $suffix=' ago', 
 		$compared_to=null, $momentago='A second')
 	{
 		if ($compared_to === null)
@@ -1532,8 +1533,8 @@ class GBDateTime {
 		else
 			$diff = $compared_to->time - $this->time;
 		
-		if ($diff >= $abs_threshold)
-			return $this->utcformat($abs_format);
+		if ($diff >= $threshold)
+			return $this->utcformat($diff < 31536000 ? $yformat : $absformat);
 		
 		if ($diff < 5)
 			return $momentago.$suffix;
@@ -1788,26 +1789,55 @@ class GBExposedContent extends GBContent {
 		return $post;
 	}
 	
-	function reload($data, $commits=null) {
-		parent::reload($data, $commits);
-		
-		if (($bodystart = strpos($data, "\n\n")) === false && ($bodystart = strpos($data, "\r\n\r\n")) === false) {
-			$bodystart = 0;
-			gb::log(LOG_WARNING,
-				'malformed exposed content object %s: missing header and/or body (LFLF or CRLFCRLF not found)',
-				$this->name)
-		}
-		
+	function parseData($data) {
 		$this->body = null;
 		$this->meta = array();
 		
-		# extract base date from name
-		if (!$commits && $this instanceof GBPost)
-			GBPost::parsePathspec($this->name, $this->published, $this->slug, $fnext);
+		# use meta for title if absent
+		if ($this->title === null)
+			$this->title = $this->slug;
+		
+		# find header terminator
+		if (($bodystart = strpos($data, "\n\n")) === false) {
+			if (($bodystart = strpos($data, "\r\n\r\n")) === false) {
+				$bodystart = 0;
+				gb::log(LOG_WARNING,
+					'malformed exposed content object %s: missing header and/or body (LFLF or CRLFCRLF not found)',
+					$this->name);
+			}
+			else {
+				$this->body = substr($data, $bodystart+4);
+			}
+		}
+		else {
+			$this->body = substr($data, $bodystart+2);
+		}
 		
 		if ($bodystart > 0)
-			self::parseMetaHeaders(substr($data, 0, $bodystart), $this->meta);
-		
+			self::parseHeader(substr($data, 0, $bodystart), $this->meta);
+	}
+	
+	static function parseHeader($lines, &$out) {
+		$lines = explode("\n", $lines);
+		$k = null;
+		foreach ($lines as $line) {
+			if (!$line)
+				continue;
+			if ($line{0} === ' ' || $line{0} === "\t") {
+				# continuation
+				if ($k !== null)
+					$out[$k] .= ltrim($line);
+				continue;
+			}
+			$line = explode(':', $line, 2);
+			if (isset($line[1])) {
+				$k = $line[0];
+				$out[strtolower($k)] = ltrim($line[1]);
+			}
+		}
+	}
+	
+	function parseHeaderFields() {
 		# lift lists from meta to this
 		static $special_lists = array('tag'=>'tags', 'category'=>'categories');
 		foreach ($special_lists as $singular => $plural) {
@@ -1820,7 +1850,6 @@ class GBExposedContent extends GBContent {
 				$s = $this->meta[$singular];
 				unset($this->meta[$singular]);
 			}
-			
 			if ($s)
 				$this->$plural = GBFilter::apply('parse-tags', $s);
 		}
@@ -1839,38 +1868,6 @@ class GBExposedContent extends GBContent {
 			$this->author = gb_parse_author($this->meta['author']);
 			unset($this->meta['author']);
 		}
-		
-		# Page-specific meta tags. todo: do this in the GBPage subclass in some nice way
-		if ($this instanceof GBPage) {
-			# transfer order meta tag
-			static $order_aliases = array('order', 'sort', 'priority');
-			foreach ($order_aliases as $singular) {
-				if (isset($this->meta[$singular])) {
-					$this->order = $this->meta[$singular];
-					unset($this->meta[$singular]);
-				}
-			}
-			
-			# transfer hidden meta tag
-			static $hidden_aliases = array('hidden', 'hide', 'invisible');
-			foreach ($hidden_aliases as $singular) {
-				if (isset($this->meta[$singular])) {
-					$s = $this->meta[$singular];
-					$this->hidden = ($s === '' || gb_strbool($s));
-					unset($this->meta[$singular]);
-				}
-			}
-		}
-		
-		# use meta for title if absent
-		if ($this->title === null)
-			$this->title = $this->slug;
-		
-		# set body
-		$this->body = substr($data, $bodystart+2);
-		
-		# apply and translate info from commits
-		$this->applyInfoFromCommits($commits);
 		
 		# specific publish (date and) time?
 		$mp = false;
@@ -1899,9 +1896,30 @@ class GBExposedContent extends GBContent {
 				$this->$ok = ($s === '' || gb_strbool($s));
 			}
 		}
+	}
+	
+	function fnext() {
+		$fnext = null;
+		if ($this->mimeType) {
+			if (strpos($this->mimeType, '/') !== false)
+				$fnext = GBMimeType::forType($this->mimeType);
+			else
+				$fnext = $this->mimeType;
+		}
+		if (!$fnext)
+			$fnext = array_pop(gb_fnsplit($this->name));
+		return $fnext;
+	}
+	
+	function reload($data, $commits=null) {
+		parent::reload($data, $commits);
+		
+		$this->parseData($data);
+		$this->applyInfoFromCommits($commits);
+		$this->parseHeaderFields();
 		
 		# apply filters
-		$fnext = array_pop(gb_fnsplit($this->name));
+		$fnext = $this->fnext();
 		GBFilter::apply('post-reload-GBExposedContent', $this);
 		GBFilter::apply('post-reload-GBExposedContent.'.$fnext, $this);
 		$cls = get_class($this);
@@ -2002,26 +2020,6 @@ class GBExposedContent extends GBContent {
 			'commentsOpen','pingbackOpen',
 			'draft');
 		return array_merge(parent::__sleep(), $members);
-	}
-	
-	static function parseMetaHeaders($lines, &$out) {
-		$lines = explode("\n", $lines);
-		$k = null;
-		foreach ($lines as $line) {
-			if (!$line)
-				continue;
-			if ($line{0} === ' ' || $line{0} === "\t") {
-				# continuation
-				if ($k !== null)
-					$out[$k] .= ltrim($line);
-				continue;
-			}
-			$line = explode(':', $line, 2);
-			if (isset($line[1])) {
-				$k = $line[0];
-				$out[strtolower($k)] = ltrim($line[1]);
-			}
-		}
 	}
 	
 	static function findByCacheName($cachename) {
@@ -2194,6 +2192,29 @@ class GBPage extends GBExposedContent {
 	public $order = null; # order in menu, etc.
 	public $hidden = false; # hidden from menu, but still accessible (i.e. not the same thing as $draft)
 	
+	function parseHeaderFields() {
+		parent::parseHeaderFields();
+		
+		# transfer order meta tag
+		static $order_aliases = array('order', 'sort', 'priority');
+		foreach ($order_aliases as $singular) {
+			if (isset($this->meta[$singular])) {
+				$this->order = $this->meta[$singular];
+				unset($this->meta[$singular]);
+			}
+		}
+		
+		# transfer hidden meta tag
+		static $hidden_aliases = array('hidden', 'hide', 'invisible');
+		foreach ($hidden_aliases as $singular) {
+			if (isset($this->meta[$singular])) {
+				$s = $this->meta[$singular];
+				$this->hidden = ($s === '' || gb_strbool($s));
+				unset($this->meta[$singular]);
+			}
+		}
+	}
+	
 	function isCurrent() {
 		if (!gb::$is_page)
 			return false;
@@ -2232,6 +2253,12 @@ class GBPost extends GBExposedContent {
 	
 	function cachename() {
 		return self::mkCachename($this->published, $this->slug);
+	}
+	
+	function parseData($data) {
+		if ($this->name)
+			self::parsePathspec($this->name, $this->published, $this->slug, $fnext);
+		return parent::parseData($data);
 	}
 	
 	static function mkCachename($published, $slug) {

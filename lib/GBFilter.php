@@ -629,6 +629,51 @@ function gb_html_abspaths_to_urls($html) {
 	return $html;
 }
 
+/** Adds missing width and height attribute for img tags */
+function gb_html_img_size($html) {
+	$html = preg_replace_callback('/<img[^>]+src=[^>]+>/sm', 
+		'_gb_html_img_size_cb', $html);
+	return $html;
+}
+
+function _gb_html_img_size_cb($m) {
+	$img = $m[0];
+	if (preg_match('/(?:(?:[^a-zA-Z0-9_]+|^)width=.*(?:[^a-zA-Z0-9_]+|^)height=|'
+		.'(?:[^a-zA-Z0-9_]+|^)height=.*(?:[^a-zA-Z0-9_]+|^)width=)/sm', $img))
+		return $img;
+	
+	if (!preg_match('/(?:[^a-zA-Z0-9_]+|^)src=("[^"]+"|\'[^\']+\')/sm', $img, $srcm))
+		return $img;
+	
+	# lookup
+	$src = trim($srcm[1], '"\'');
+	if (!$src)
+		return $img;
+	
+	if ($src{0} === '/')
+		$src = gb::$site_dir.$src;
+	elseif (strpos($src, '://') === false)
+		$src = gb::$site_dir.'/'.$src;
+	elseif (strpos($src, gb::$site_url) === 0)
+		$src = gb::$site_dir.'/'.substr($src, strlen(gb::$site_url));
+	
+	if (!($v = @getimagesize($src)))
+		return $img;
+	
+	$add = '';
+	if (!preg_match('/(?:[^a-zA-Z0-9_]+|^)width=/', $img))
+		$add = ' width="'.$v[0].'"';
+	if (!preg_match('/(?:[^a-zA-Z0-9_]+|^)height=/', $img))
+		$add .= ' height="'.$v[1].'"';
+	
+	if (substr($img, -2) === '/>')
+		$img = trim(substr($img, 0, -2)) . $add . ' />';
+	else
+		$img = trim(substr($img, 0, -1)) . $add . '>';
+	
+	return $img;
+}
+
 function gb_split_tags($text) {
 	return preg_split('/[ \t]*,+[ \t]*/', $text, -1, PREG_SPLIT_NO_EMPTY);
 }
@@ -672,6 +717,7 @@ GBFilter::add('body.html', 'gb_normalize_html_structure', 40);
 GBFilter::add('body.html', 'gb_htmlents_to_xmlents', 50);
 GBFilter::add('body.html', 'gb_xmlents_to_utf8', 60);
 GBFilter::add('body.html', 'gb_force_balance_tags', 70);
+GBFilter::add('body.html', 'gb_html_img_size', 80);
 GBFilter::add('body.html', 'gb_html_abspaths_to_urls', 10000);
 
 # Applied to GBComment after being posted, but before being saved

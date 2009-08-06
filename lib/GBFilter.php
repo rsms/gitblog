@@ -496,22 +496,6 @@ function gb_force_balance_tags( $text ) {
 }
 
 
-# Used to GBExposedContent->slug = filter(GBExposedContent->title)
-GBFilter::add('sanitize-title', 'gb_sanitize_title', 10);
-
-# Applied to URLs from the outside world, for instance when adding comments
-GBFilter::add('sanitize-url', 'gb_sanitize_url', 10);
-
-# Applied to HTML content prior to writing cache
-GBFilter::add('body.html', 'gb_texturize_html', 10);
-GBFilter::add('body.html', 'gb_convert_html_chars', 20);
-GBFilter::add('body.html', 'gb_html_to_xhtml', 30);
-GBFilter::add('body.html', 'gb_normalize_html_structure', 40);
-GBFilter::add('body.html', 'gb_htmlents_to_xmlents', 50);
-GBFilter::add('body.html', 'gb_xmlents_to_utf8', 60);
-GBFilter::add('body.html', 'gb_force_balance_tags', 70);
-
-
 # -----------------------------------------------------------------------------
 # GBExposedContent filters
 
@@ -540,9 +524,6 @@ function gb_filter_post_reload_content_html(GBExposedContent $c) {
 		$c->excerpt = GBFilter::apply('body.html', $c->excerpt);
 	return $c;
 }
-
-GBFilter::add('post-reload-GBExposedContent', 'gb_filter_post_reload_content', 10);
-GBFilter::add('post-reload-GBExposedContent.html', 'gb_filter_post_reload_content_html', 10);
 
 
 # -----------------------------------------------------------------------------
@@ -641,6 +622,13 @@ function gb_uri_to_html_link($text) {
 	return $out;
 }
 
+/** Expands abspath in HTML to URLs (based on gb::$site_url) */
+function gb_html_abspaths_to_urls($html) {
+	$html = preg_replace('/((?:^|[ \t\s])(?:src|href))="\/([^"]*)"/', 
+		'$1="'.gb::$site_url.'$2"', $html);
+	return $html;
+}
+
 function gb_split_tags($text) {
 	return preg_split('/[ \t]*,+[ \t]*/', $text, -1, PREG_SPLIT_NO_EMPTY);
 }
@@ -651,7 +639,7 @@ function gb_unique_strings($strings) {
 	return array_flip(array_flip($strings));
 }
 
-function gb_strtolowers($strings) {
+function gb_vstrtolower($strings) {
 	return array_map('strtolower', $strings);
 }
 
@@ -660,6 +648,31 @@ function gb_approve_ham_comment($comment) {
 		$comment->approved = true;
 	return $comment;
 }
+
+# ----------------------------------------------------------------------------
+# Default filters
+
+# Used to GBExposedContent->slug = filter(GBExposedContent->title)
+GBFilter::add('sanitize-title', 'gb_sanitize_title', 10);
+
+# Applied to URLs from the outside world, for instance when adding comments
+GBFilter::add('sanitize-url', 'gb_sanitize_url', 10);
+
+# Called with GBExposedContent object when they are reloaded
+GBFilter::add('post-reload-GBExposedContent', 'gb_filter_post_reload_content', 10);
+
+# Called with GBExposedContent object of type ".html" when they are reloaded
+GBFilter::add('post-reload-GBExposedContent.html', 'gb_filter_post_reload_content_html', 10);
+
+# Applied to HTML content prior to writing cache
+GBFilter::add('body.html', 'gb_texturize_html', 10);
+GBFilter::add('body.html', 'gb_convert_html_chars', 20);
+GBFilter::add('body.html', 'gb_html_to_xhtml', 30);
+GBFilter::add('body.html', 'gb_normalize_html_structure', 40);
+GBFilter::add('body.html', 'gb_htmlents_to_xmlents', 50);
+GBFilter::add('body.html', 'gb_xmlents_to_utf8', 60);
+GBFilter::add('body.html', 'gb_force_balance_tags', 70);
+GBFilter::add('body.html', 'gb_html_abspaths_to_urls', 10000);
 
 # Applied to GBComment after being posted, but before being saved
 GBFilter::add('pre-comment', 'gb_filter_pre_comment', 10);
@@ -680,6 +693,7 @@ GBFilter::add('sanitize-comment', 'gb_filter_allowed_tags', 60);
 GBFilter::add('sanitize-comment', 'gb_normalize_html_structure', 70);
 GBFilter::add('sanitize-comment', 'gb_htmlents_to_xmlents', 80);
 GBFilter::add('sanitize-comment', 'gb_xmlents_to_utf8', 90);
+GBFilter::add('sanitize-comment', 'gb_html_abspaths_to_urls', 10000);
 
 # Applied to tag-type meta fields at reload and should at the end return a
 # clean array of tokens. Note that gb_split_tags performs the initial splitting
@@ -687,7 +701,7 @@ GBFilter::add('sanitize-comment', 'gb_xmlents_to_utf8', 90);
 # an array as the first argument. Any filter run prior to gb_split_tags will
 # get a string as input and should return a string.
 GBFilter::add('parse-tags', 'gb_split_tags', 10);
-GBFilter::add('parse-tags', 'gb_strtolowers', 20);
+GBFilter::add('parse-tags', 'gb_vstrtolower', 20);
 GBFilter::add('parse-tags', 'gb_unique_strings', 30);
 
 ?>

@@ -1018,6 +1018,8 @@ function gb_throw_php_error($errno, $errstr, $errfile=null, $errline=-1, $errcon
 	if(error_reporting() === 0)
 		return;
 	try { gb::vlog(LOG_WARNING, array($errstr), 2); } catch (Exception $e) {}
+	if ($errstr)
+		$errstr = html_entity_decode(strip_tags($errstr), ENT_QUOTES, 'UTF-8');
 	throw new PHPException($errstr, $errno, $errfile, $errline);
 }
 

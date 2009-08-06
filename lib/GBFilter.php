@@ -638,8 +638,7 @@ function gb_html_img_size($html) {
 
 function _gb_html_img_size_cb($m) {
 	$img = $m[0];
-	if (preg_match('/(?:(?:[^a-zA-Z0-9_]+|^)width=.*(?:[^a-zA-Z0-9_]+|^)height=|'
-		.'(?:[^a-zA-Z0-9_]+|^)height=.*(?:[^a-zA-Z0-9_]+|^)width=)/sm', $img))
+	if (preg_match('/(?:[^a-zA-Z0-9_]+|^)(?:width|height)=/', $img))
 		return $img;
 	
 	if (!preg_match('/(?:[^a-zA-Z0-9_]+|^)src=("[^"]+"|\'[^\']+\')/sm', $img, $srcm))
@@ -660,16 +659,10 @@ function _gb_html_img_size_cb($m) {
 	if (!($v = @getimagesize($src)))
 		return $img;
 	
-	$add = '';
-	if (!preg_match('/(?:[^a-zA-Z0-9_]+|^)width=/', $img))
-		$add = ' width="'.$v[0].'"';
-	if (!preg_match('/(?:[^a-zA-Z0-9_]+|^)height=/', $img))
-		$add .= ' height="'.$v[1].'"';
-	
 	if (substr($img, -2) === '/>')
-		$img = trim(substr($img, 0, -2)) . $add . ' />';
+		$img = trim(substr($img, 0, -2)).' '.$v[3].' />';
 	else
-		$img = trim(substr($img, 0, -1)) . $add . '>';
+		$img = trim(substr($img, 0, -1)).' '.$v[3].'>';
 	
 	return $img;
 }

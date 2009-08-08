@@ -190,8 +190,8 @@ if ($comment) {
 			}
 		}
 		
-		gb::log('added comment from '.var_export($comment->email,1)
-			.' to '.$post->cachename());
+		gb::log('added comment from %s to %s',
+			var_export($comment->email,1), gb_filenoext($post->cachename()));
 		
 		gb::event('did-add-comment', $comment);
 		

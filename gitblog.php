@@ -66,7 +66,7 @@ class gb {
 	# --------------------------------------------------------------------------
 	# Constants
 	
-	static public $version = '0.1.4';
+	static public $version = '0.1.5';
 	
 	/** Absolute path to the gitblog directory */
 	static public $dir;
@@ -3020,7 +3020,6 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
 		return implode($nglue, $collection).$endglue.$end;
 	}
 }
-
 
 # -----------------------------------------------------------------------------
 /**

@@ -131,11 +131,28 @@ class gb_maint {
 	static function repair_repo_setup() {
 		gb::exec('config receive.denyCurrentBranch ignore');
 		gb::exec('config core.sharedRepository 1');
-		foreach (array('post-commit', 'post-update') as $name) {
-			$dst = gb::$site_dir.'/.git/hooks/'.$name;
-			if (!file_exists($dst)) {
-				copy(gb::$dir.'/skeleton/hooks/'.$name, $dst);
-				@chmod($dst, 0774);
+		
+		static $hooks = array(
+			'post-commit'   => '',
+			'post-update'   => 'git --work-tree=.. checkout -f',
+			'post-checkout' => '',
+			'post-merge'    => ''
+		);
+		
+		$post_update_relpath = gb_relpath(
+			gb::$site_dir.'/.git/post-update.sh', gb::$dir.'/hooks/post-update.sh');
+		
+		foreach ($hooks as $name => $extras) {
+			$path = gb::$site_dir.'/.git/hooks/'.$name;
+			$s = is_file($path) ? file_get_contents($path) : '#!/bin/sh';
+			if ($s === '#!/bin/sh' || strpos($s, '/gitblog/hooks/post-update.sh') === false) {
+				$s .= "\n# This was added by gitblog:\n"
+					. 'cd $(dirname "$0")/..'."\n"
+					. ($extras ? rtrim($extras)."\n" : '')
+					. ". $post_update_relpath\n";
+				file_put_contents($path, $s, LOCK_EX);
+				@chmod($path, 0774);
+				gb::log('updated hook %s', $path);
 			}
 		}
 	}

@@ -100,6 +100,19 @@ class gb_upgrade {
 		}
 	}
 	
+	static function _000105($from, $to) {
+		# remove old hooks, allowing new symlinked ones to appear (which will
+		# happen after the upgrade is complete, by effect of calling
+		# gb_main::sync_site_state()).
+		foreach (array('post-commit', 'post-update') as $name) {
+			$path = gb::$site_dir.'/.git/hooks/'.$name;
+			if (is_file($path)) {
+				gb::log('removing old hook %s', $path);
+				unlink($path);
+			}
+		}
+	}
+	
 	static function build_stages($from, $to) {
 		$stages = array();
 		for ($v=$from+1; $v<=$to; $v++) {
@@ -111,8 +124,8 @@ class gb_upgrade {
 	}
 
 	static function perform($from, $to) {
-		$from = gb::version_parse('0.1.3');
-		$to = gb::version_parse('0.1.4');
+		$from = gb::version_parse($from);
+		$to = gb::version_parse($to);
 		$froms = gb::version_format($from);
 		$tos = gb::version_format($to);
 		if ($from === $to)

@@ -43,7 +43,7 @@ class GBCommentDB extends JSONStore {
 		$r = parent::txWriteData();
 		if ($r === false && $this->data != $this->originalData && $this->readOnly)
 			throw new RuntimeException($this->file.' is not writable');
-		return false;
+		return $r;
 	}
 	
 	function rollback($strict=true) {

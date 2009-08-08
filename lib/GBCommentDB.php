@@ -34,8 +34,16 @@ class GBCommentDB extends JSONStore {
 	
 	function commit() {
 		$this->autocommitToRepoAuthor = $this->lastComment ? $this->lastComment->gitAuthor() : null;
-		return parent::commit();
+		$r = parent::commit();
 		$this->lastComment = false;
+		return $r;
+	}
+	
+	protected function txWriteData() {
+		$r = parent::txWriteData();
+		if ($r === false && $this->data != $this->originalData && $this->readOnly)
+			throw new RuntimeException($this->file.' is not writable');
+		return false;
 	}
 	
 	function rollback($strict=true) {

@@ -65,7 +65,7 @@ class JSONStore extends FileDB implements ArrayAccess, Countable {
 	
 	protected function txWriteData() {
 		$this->encodeData();
-		if ($this->data != $this->originalData)
+		if ($this->data !== $this->originalData)
 			return parent::txWriteData();
 		return false;
 	}

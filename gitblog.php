@@ -2480,6 +2480,7 @@ class GBComments extends GBContent implements IteratorAggregate, Countable {
 	
 	# these two are not serialized, but lazy-initialized by count()
 	public $_countTotal;
+	public $_countSpam;
 	public $_countApproved;
 	public $_countApprovedTopo;
 	
@@ -2489,7 +2490,7 @@ class GBComments extends GBContent implements IteratorAggregate, Countable {
 			$c = $this;
 		if ($c->_countTotal !== null)
 			return $c->_countTotal;
-		$c->_countTotal = $c->_countApproved = $c->_countApprovedTopo = 0;
+		$c->_countTotal = $c->_countApproved = $c->_countApprovedTopo = $c->_countSpam = 0;
 		if (!$c->comments)
 			return 0;
 		foreach ($c->comments as $comment) {
@@ -2498,10 +2499,13 @@ class GBComments extends GBContent implements IteratorAggregate, Countable {
 				$c->_countApproved++;
 				$c->_countApprovedTopo++;
 			}
+			if ($comment->spam === true)
+				$c->_countSpam++;
 			$this->count($comment);
 			$c->_countTotal += $comment->_countTotal;
 			if ($comment->approved)
 				$c->_countApprovedTopo += $comment->_countApprovedTopo;
+			$c->_countSpam += $comment->_countSpam;
 			$c->_countApproved += $comment->_countApproved;
 		}
 		return $c->_countTotal;
@@ -2521,9 +2525,14 @@ class GBComments extends GBContent implements IteratorAggregate, Countable {
 		return $this->_countTotal - ($this->_countApprovedTopo + ($this->_countTotal - $this->_countApproved));
 	}
 	
-	function countUnapproved() {
+	function countUnapproved($excluding_spam=true) {
 		$this->count();
-		return $this->_countTotal - $this->_countApproved;
+		return $this->_countTotal - $this->_countApproved - ($excluding_spam ? $this->_countSpam : 0);
+	}
+	
+	function countSpam() {
+		$this->count();
+		return $this->_countSpam;
 	}
 	
 	function cachename() {

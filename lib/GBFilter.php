@@ -540,49 +540,36 @@ function gb_filter_post_reload_comment(GBComment $comment) {
 	return $comment;
 }
 
+
 class gb_allowed_tags {
-	# tagname => allowed attributes
-	static public $tags = array(
-		'a' => array('href', 'target', 'rel', 'name'),
-		'strong' => array(),
-		'b' => array(),
-		'blockquote' => array(),
-		'em' => array(),
-		'i' => array(),
-		'img' => array('src', 'width', 'height', 'alt', 'title'),
-		'u' => array(),
-		's' => array(),
-		'del' => array()
-	);
-	
-	static public $attrcbs = array();
+	public static $cb = array();
 }
 
 # generate map of tag => attr callback proxies
-foreach (gb_allowed_tags::$tags as $t => $x) {
-	gb_allowed_tags::$attrcbs[$t] = create_function(
+foreach (GBComment::$allowedTags as $t => $x) {
+	gb_allowed_tags::$cb[$t] = create_function(
 		'$matches','return _gb_filter_allowed_attrs_cb(\''.$t.'\', $matches);');
 }
 
 function _gb_filter_allowed_attrs_cb($tag, $matches) {
 	$attr = strtolower($matches[1]);
-	if (!in_array($attr, gb_allowed_tags::$tags[$tag]))
+	if (!in_array($attr, GBComment::$allowedTags[$tag]))
 		return '';
-	return $attr.'='.$matches[2];
+	return $attr.'="'.trim($matches[2],'"\'').'"';
 }
 
 function _gb_filter_allowed_tags_cb($matches) {
 	$tag = strtolower($matches[1]);
 	if (($is_end = ($tag && $tag{0} === '/')))
 		$tag = substr($tag, 1);
-	if (!isset(gb_allowed_tags::$tags[$tag]))
+	if (!isset(GBComment::$allowedTags[$tag]))
 		return '';
 	if ($is_end)
 		return '</'.$tag.'>';
 	$attrs = false;
-	if (gb_allowed_tags::$tags[$tag] && $matches[2]) {
-		$attrs = trim(preg_replace_callback('/(\w+)=("[^"]*"|\'[^\']*\')/',
-			gb_allowed_tags::$attrcbs[$tag],
+	if (GBComment::$allowedTags[$tag] && $matches[2]) {
+		$attrs = trim(preg_replace_callback('/(\w+)=("[^"]*"|\'[^\']*\'|[^ \s\t]*)/',
+			gb_allowed_tags::$cb[$tag],
 			$matches[2]));
 	}
 	if ($attrs)

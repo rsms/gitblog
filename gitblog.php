@@ -2684,6 +2684,24 @@ class GBComment {
 	public $_countApproved;
 	public $_countApprovedTopo;
 	
+	/**
+	 * Allowed tags, primarily used by GBFilter but here so that themes and
+	 * other stuff can read it.
+	 */
+	static public $allowedTags = array(
+		# tagname => allowed attributes
+		'a' => array('href', 'target', 'rel', 'name'),
+		'strong' => array(),
+		'b' => array(),
+		'blockquote' => array(),
+		'em' => array(),
+		'i' => array(),
+		'img' => array('src', 'width', 'height', 'alt', 'title'),
+		'u' => array(),
+		's' => array(),
+		'del' => array()
+	);
+	
 	function __construct($state=array()) {
 		$this->type = self::TYPE_COMMENT;
 		if ($state) {

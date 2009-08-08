@@ -526,14 +526,8 @@ class gb {
 		$cls = self::$data_store_class;
 		$store = new $cls($name);
 		self::$data_stores[$name] = $store;
-		if ($default) {
-			$d = $store->storage()->get();
-			if (!is_array($d))
-				$d = array();
-			foreach ($default as $k => $v)
-				if (!isset($d[$k]))
-					$store[$k] = $v;
-		}
+		if ($default && !is_array($store->storage()->get()))
+			$store->storage()->set($default);
 		return $store;
 	}
 	

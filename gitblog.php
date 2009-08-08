@@ -869,7 +869,7 @@ class gb {
 		
 		# check site state
 		if ( $r === false 
-			|| isset(gb::$site_state['url'])
+			|| !isset(gb::$site_state['url'])
 			|| !gb::$site_state['url']
 			|| (
 				gb::$site_state['url'] !== gb::$site_url

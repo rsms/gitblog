@@ -868,9 +868,15 @@ class gb {
 		$r = self::load_site_state();
 		
 		# check site state
-		if ( $r === false || (gb::$site_state['url'] !== gb::$site_url
-			&& strpos(gb::$site_url, '://localhost') === false
-			&& strpos(gb::$site_url, '://127.0.0.1') === false) || !gb::$site_state['url'] )
+		if ( $r === false 
+			|| isset(gb::$site_state['url'])
+			|| !gb::$site_state['url']
+			|| (
+				gb::$site_state['url'] !== gb::$site_url
+				&& strpos(gb::$site_url, '://localhost') === false
+				&& strpos(gb::$site_url, '://127.0.0.1') === false
+				)
+			)
 		{
 			return gb_maint::sync_site_state() === false ? -1 : 0;
 		}

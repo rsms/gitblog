@@ -128,6 +128,9 @@ class GBMail {
 			$to = array_filter(array_merge($to, $addrs));
 		$to = implode(', ', $to);
 		
+		if (!$to)
+			throw new UnexpectedValueException('no recipients specified');
+		
 		# from must be set
 		if (!$this->mailer->From) {
 			list($this->mailer->From, $this->mailer->FromName) = $this->authorizedFromAddress();
@@ -175,6 +178,9 @@ class GBMail {
 			elseif (isset($v['address'])) {
 				return array($v['address'], isset($v['name']) ? $v['name'] : '');
 			}
+		}
+		elseif (is_object($v) && isset($v->email)) {
+			return array($v->email, isset($v->name) ? $v->name : '');
 		}
 		else {
 			return array(strval($v), '');

@@ -26,9 +26,11 @@ class email_notification_plugin {
 	static function recipient($comment) {
 		$recipient = self::$data['recipient'];
 		if (is_array($recipient) || strpos($recipient, '@') !== false)
-			return $recipient;
+			$recipient = GBMail::normalizeRecipient($recipient);
 		else
-			return array($comment->post->author->email, $comment->post->author->name);
+			$recipient = GBMail::normalizeRecipient($comment->post->author);
+		if (!$recipient[0])
+			$recipient[0] = gb::data('email')->get('admin');
 	}
 
 	static function comment_mkbody($comment, $header='', $footer='') {

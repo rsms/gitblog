@@ -1519,7 +1519,7 @@ class GBDateTime {
 			$diff = $compared_to->time - $this->time;
 		
 		if ($diff >= $threshold)
-			return $this->utcformat($diff < 31536000 ? $yformat : $absformat);
+			return $this->origformat($diff < 31536000 ? $yformat : $absformat, false);
 		
 		if ($diff < 5)
 			return $momentago.$suffix;

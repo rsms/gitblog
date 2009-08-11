@@ -7,6 +7,7 @@ header('Content-Type: application/xhtml+xml; charset=utf-8');
 		<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8"/>
 		<title><?= gb_title() ?></title>
 		<link href="<?= gb_admin::$url ?>res/screen.css" type="text/css" rel="stylesheet" media="screen" />
+		<script type="text/javascript" src="<?= gb_admin::$url ?>res/jquery-1.3.2.min.js"></script>
 	</head>
 	<? gb_flush(); ?>
 	<body>

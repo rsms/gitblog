@@ -30,12 +30,13 @@ include '../_header.php';
 ?>
 <script type="text/javascript" src="<?= gb_admin::$url ?>res/sha1-min.js"></script>
 <script type="text/javascript">
+	//<![CDATA[
 	var chap = {
 		submit: function(nonce, opaque, context) {
 			if (typeof context == 'undefined')
 				context = '';
-			var username = document.getElementById('chap-username');
-			var password = document.getElementById('chap-password');
+			var username = $('#chap-username').get(0);
+			var password = $('#chap-password').get(0);
 			var shadow = hex_sha1(username.value+':'+context+':'+password.value);
 			var a = hex_hmac_sha1(opaque, shadow);
 			document.getElementById('chap-response').value = hex_hmac_sha1(nonce, a);
@@ -43,6 +44,16 @@ include '../_header.php';
 			return true;
 		}
 	};
+	$(function(){
+		// give username or password field focus when dom has loaded
+		var username = $('#chap-username').get(0);
+		var password = $('#chap-password').get(0);
+		if (username.value.length)
+			password.select();
+		else
+			username.select();
+	});
+	//]]>
 </script>
 <h2>Authorize</h2>
 <form action="<?= gb::url() ?>" method="POST" 

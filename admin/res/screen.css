@@ -1,6 +1,6 @@
 * { margin:0; padding:0; }
-body { font-family:georgia,serif; background-color:#fff; color:#333; }
-body,p,li,td { font-size:15px; }
+body { font-family:'helvetica neue',helvetica,arial,sans-serif; background-color:#fff; color:#333; }
+body,p,li,td { font-size:13px; }
 p, ul, ol { margin:13px 0 20px 0; line-height:1.5; }
 hr { border:none; height:1px; background-color:#ddd; }
 img { border:none; vertical-align:bottom; }
@@ -13,7 +13,7 @@ a:link:hover, a:active:hover { color:#006be4; background:#e2f4ff; border-bottom-
 a:visited:hover { color:#af00cf; background:#f4e6ff; border-bottom-color:#e5cbf0; }
 a > img { margin-bottom:-1px; } /* hide the bottom border implied by the "a" tag */
 
-h1, h2, h3, h4 { color:#000; font-family:'helvetica neue',helvetica,arial,sans-serif; }
+h1, h2, h3, h4 { color:#000;  }
 h1 a, h2 a, h3 a, h4 a { border:none; }
 h1 a:link, h2 a:link, h3 a:link, h4 a:link, 
 	h1 a:visited, h2 a:visited, h3 a:visited, h4 a:visited { color:inherit; }
@@ -67,6 +67,8 @@ h2 { font-size:19px; }
 
 #content { background-color:#fff; float:left; }
 	#content h2 { margin:15px 0 10px 0; font-size:24px; }
+	#content h2:first-child { margin-top:0; }
+#content.margins { padding:20px; }
 
 #content.edit-post { width:600px; border-left:1px solid #ccc; border-right:1px solid #ccc; margin-left:-1px; }
 	div.section { border-bottom:1px solid #ccc; clear:both; }
@@ -86,12 +88,27 @@ h2 { font-size:19px; }
 		div.component.c2a input { width:376px; }
 	div.component.c3 { width:180px; }
 		div.component.c3 input { width:176px; }
-	div.component.save-changes { width:280px; text-align:right; }
-		div.component.save-changes input { }
+	div.component.controls { width:280px; text-align:right; }
+		div.component.controls input {
+			border-radius:2px; -webkit-border-radius:2px; -moz-border-radius:2px;
+			background-color:#bbb; color:#111; padding:0 8px;
+			line-height:19px; font-family:'lucida grande',tahoma,sans-serif; font-size:11px;
+			border:none; border:1px solid #999;
+			text-shadow:#eee 0 1px 0;
+		}
+		div.component.controls input.commit { background-color:#3cd375; text-shadow:#77fca9 0 1px 0; border-color:#1fa853; }
+		div.component.controls input.commit:active { background-color:#222; }
+		div.component.controls input:hover { border-color:#000; }
+		div.component.controls input:focus { 
+			background-color:#4a88e4; border-color:#3672cc; text-shadow:#3672cc 0 -1px 0; color:#fff;
+		}
+		div.component.controls input:active { background-color:#222; border-color:#000; text-shadow:#000 0 -1px 0; }
+		div.component.controls input.disabled { background-color:#ddd; border-color:#ccc; text-shadow:none; color:#888; }
 	div.component.body { padding:0; }
 	div.component.body textarea { width:580px; height:200px; border:none; padding:10px;
 		font-family:monospace; font-size:13px; resize:auto; display:block;
 	}
+	div.component.commits ol { list-style:none; padding:0; margin:0; }
 
 #preview { width:630px; float:left; border-left:1px solid #ccc; padding-left:10px; margin-left:-1px; }
 	#preview iframe { width:630px; height:800px; border:none; }

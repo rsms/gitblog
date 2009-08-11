@@ -1,7 +1,5 @@
 <?
-class GBUser {
-	public $name;
-	public $email;
+class GBUser extends GBAuthor {
 	public $passhash;
 	public $admin;
 	
@@ -53,30 +51,6 @@ class GBUser {
 				return $user;
 		}
 		return null;
-	}
-	
-	static function formatGitAuthor($account, $fallback=null) {
-		if (!$account)
-			throw new InvalidArgumentException('first argument is empty');
-		$s = '';
-		if ($account->name)
-			$s = $account->name . ' ';
-		if ($account->email)
-			$s .= '<'.$account->email.'>';
-		if (!$s) {
-			if ($fallback === null)
-				throw new InvalidArgumentException('neither name nor email is set');
-			$s = $fallback;
-		}
-		return $s;
-	}
-	
-	function gitAuthor() {
-		return self::formatGitAuthor($this);
-	}
-	
-	function __toString() {
-		return $this->gitAuthor();
 	}
 }
 ?>

@@ -57,7 +57,7 @@ class GBRebuilder {
 		gb::load_plugins('rebuild');
 		
 		# Query ls-tree
-		$ls = rtrim(gb::exec('ls-files --stage'));
+		$ls = rtrim(git::exec('ls-files --stage'));
 		
 		if ($ls) {
 			# Iterate objects

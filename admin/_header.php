@@ -6,18 +6,28 @@ header('Content-Type: application/xhtml+xml; charset=utf-8');
 	<head>
 		<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8"/>
 		<title><?= gb_title() ?></title>
-		<link href="<?= GITBLOG_ADMIN_URL ?>screen.css" type="text/css" rel="stylesheet" media="screen" />
+		<link href="<?= gb_admin::$url ?>res/screen.css" type="text/css" rel="stylesheet" media="screen" />
 	</head>
 	<? gb_flush(); ?>
 	<body>
 		<div id="head">
-			<h1><?= h(gb::$site_title) ?></h1>
+			<? if (gb::$authorized): ?>
+			<div class="user">
+				Logged in as <?= h(gb::$authorized) ?> &mdash;
+				<a href="<?= gb_admin::$url ?>helpers/deauthorize.php?referrer=<?= urlencode(gb::url()) ?>">Log out</a>
+			</div>
+			<? endif ?>
+			<h1>
+				<a href="<?= gb::$site_url ?>"><?= h(gb::$site_title) ?> <span class="note">‹ visit site</span></a>
+			</h1>
 		</div>
-		<? if ($errors): ?>
+		<? if (gb_admin::$errors): ?>
 			<div id="errormsg">
 				<p>
-					<?= implode('</p><p>', $errors) ?>
+					<?= implode('</p><p>', gb_admin::$errors) ?>
 				</p>
 			</div>
-		<? endif; ?>		
-		<div id="content">
+		<? endif; ?>
+		<div id="menu">
+			<?= gb_admin::render_menu() ?>
+		</div>

@@ -37,12 +37,12 @@ class GitPatch {
 			$start3 = substr($line, 0, 3);
 		
 			# line 1 -- new set
-			if ($start3 === 'diff') {
+			if ($start3 === 'dif') {
 				# flush previous
 				if ($currpatch !== null)
 					$patches[] = $currpatch;
 				# new
-				$currpatch = new self(self::EDIT_IN_PLACE);
+				$currpatch = new GitPatch(GitPatch::EDIT_IN_PLACE);
 				$passed_delta = false;
 			}
 		
@@ -148,7 +148,7 @@ class GitPatch {
 		# flush
 		if ($currpatch !== null)
 			$patches[] = $currpatch;
-	
+		
 		return $patches;
 	}
 }

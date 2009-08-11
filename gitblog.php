@@ -35,12 +35,17 @@ class gb {
 	static public $index_prefix = 'index.php/';
 	
 	/**
-	 * When this query string key is set and the client is authorized, the work
-	 * copy of a viewed post is displayed rather than the live version.
-	 * 
-	 * i.e. gb::$is_preview is set to true.
+	 * When this query string key is set and the client is authorized,
+	 * the same effect as setting $version_query_key to "work" is achieved.
 	 */
 	static public $preview_query_key = 'preview';
+	
+	/**
+	 * When this query string key is set and the client is authorized, the
+	 * specified version of a viewed post is displayed rather than the live
+	 * version.
+	 */
+	static public $version_query_key = 'version';
 	
 	/**
 	 * Log messages of priority >=$log_filter will be sent to syslog.
@@ -321,8 +326,7 @@ class gb {
 			return self::$authorized;
 		}
 		elseif ($force) {
-			$url = self::$site_url . 'gitblog/admin/authenticate.php'
-				.'?referrer='.urlencode(self::url());
+			$url = gb_admin::$url . 'helpers/authorize.php?referrer='.urlencode(self::url());
 			header('HTTP/1.1 303 See Other');
 			header('Location: '.$url);
 			exit('<html><body>See Other <a href="'.$url.'"></a></body></html>');
@@ -556,35 +560,6 @@ class gb {
 	# GitBlog
 	
 	static public $rebuilders = array();
-	static public $gitQueryCount = 0;
-	
-	/** Execute a git command */
-	static function exec($cmd, $input=null, $gitdir=null, $worktree=null) {
-		# build cmd
-		if ($gitdir === null)
-			$gitdir = gb::$site_dir.'/.git';
-		if ($worktree === null)
-			$worktree = gb::$site_dir;
-		$cmd = 'git --git-dir='.escapeshellarg($gitdir)
-			.' --work-tree='.escapeshellarg($worktree)
-			.' '.$cmd;
-		#var_dump($cmd);
-		gb::log(LOG_DEBUG, 'exec$ '.$cmd);
-		$r = self::shell($cmd, $input, gb::$site_dir);
-		self::$gitQueryCount++;
-		# fail?
-		if ($r === null)
-			return null;
-		# check for errors
-		if ($r[0] != 0) {
-			$msg = trim($r[1]."\n".$r[2]);
-			if (strpos($r[2], 'Not a git repository') !== false)
-				throw new GitUninitializedRepoError($msg, $r[0], $cmd);
-			else
-				throw new GitError($msg, $r[0], $cmd);
-		}
-		return $r[1];
-	}
 	
 	/** Execute a command inside a shell */
 	static function shell($cmd, $input=null, $cwd=null, $env=null) {
@@ -664,7 +639,7 @@ class gb {
 		chmod(gb::$site_dir.'/.git', $mkdirmode);
 		
 		# git init
-		self::exec('init --quiet '.$shared);
+		git::exec('init --quiet '.$shared);
 		
 		# Create empty standard directories
 		mkdir(gb::$site_dir.'/content/posts', $mkdirmode, true);
@@ -694,7 +669,7 @@ class gb {
 		}
 		
 		# Enable remote pushing with a checked-out copy
-		self::exec('config receive.denyCurrentBranch ignore');
+		git::exec('config receive.denyCurrentBranch ignore');
 		
 		# Copy .gitignore
 		copy(gb::$dir.'/skeleton/gitignore', gb::$site_dir.'/.gitignore');
@@ -742,7 +717,7 @@ class gb {
 	}
 	
 	static function add($pathspec, $forceIncludeIgnored=true) {
-		self::exec(($forceIncludeIgnored ? 'add --force ' : 'add ').escapeshellarg($pathspec));
+		git::exec(($forceIncludeIgnored ? 'add --force ' : 'add ').escapeshellarg($pathspec));
 		return $pathspec;
 	}
 	
@@ -775,7 +750,7 @@ class gb {
 						.'object or an array of any of the two mentioned types');
 			}
 		}
-		self::exec('reset '.$flags.' '.$commitargs.' --'.$pathspec);
+		git::exec('reset '.$flags.' '.$commitargs.' --'.$pathspec);
 	}
 	
 	static function commit($message, $author=null, $pathspec=null, $deferred=false) {
@@ -801,7 +776,7 @@ class gb {
 			$pathspec = '';
 		}
 		$author = $author ? '--author='.escapeshellarg($author) : '';
-		self::exec('commit -m '.escapeshellarg($message).' --quiet '.$author.$pathspec);
+		git::exec('commit -m '.escapeshellarg($message).' --quiet '.$author.$pathspec);
 		@chmod(gb::$site_dir.'/.git/COMMIT_EDITMSG', 0664);
 		return true;
 	}
@@ -1047,8 +1022,12 @@ function __autoload($classname) {
 }
 
 function gb_exception_handler($e) {
-	if (ini_get('html_errors'))
-		$msg = GBException::formatHTMLDocument($e);
+	if (ini_get('html_errors')) {
+		if (headers_sent())
+			$msg = GBException::formatHTMLBlock($e);
+		else
+			$msg = GBException::formatHTMLDocument($e);
+	}
 	else
 		$msg = GBException::format($e, true, false, null, 0);
 	exit($msg);
@@ -1323,7 +1302,7 @@ class GBURL implements ArrayAccess, Countable {
 
 /** Human-readable representation of $var */
 function r($var) {
-	return print_r($var, true);
+	return var_export($var, true);
 }
 
 /** Ture $path is an absolute path */
@@ -1401,7 +1380,7 @@ function gb_parse_author($gitauthor) {
 		$name = rtrim(substr($gitauthor, 0, $p));
 		$email = trim(substr($gitauthor, $p+1), '<>');
 	}
-	return (object)array('name' => $name, 'email' => $email);
+	return new GBAuthor($name, $email);
 }
 
 /** Normalize $time (any format strtotime can handle) to a ISO timestamp. */
@@ -1480,6 +1459,10 @@ function gb_strbool($s) {
 	return ($s === 'TRUE' || $s === 'YES' || $s === '1' || $s === 'ON');
 }
 
+function gb_strtodomid($s) {
+	return trim(preg_replace('/[^A-Za-z0-9_-]+/m', '-', $s), '-');
+}
+
 function gb_tokenize_html($html) {
 	return preg_split('/(<.*>|\[.*\])/Us', $html, -1, 
 		PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY);
@@ -1521,7 +1504,7 @@ class GBDateTime {
 	
 	function origformat($format='%FT%H:%M:%S', $tzformat='H:i') {
 		return gmstrftime($format, $this->time + $this->offset)
-			. self::formatTimezoneOffset($this->offset, $tzformat);
+			. ($tzformat ? self::formatTimezoneOffset($this->offset, $tzformat) : '');
 	}
 	
 	#                           2592000 = 30 days
@@ -1633,6 +1616,39 @@ class GBDateTime {
 # -----------------------------------------------------------------------------
 # Content (posts, pages, etc)
 
+class GBAuthor {
+	public $name;
+	public $email;
+	
+	function __construct($name=null, $email=null) {
+		$this->name = $name;
+		$this->email = $email;
+	}
+	
+	static function gitFormat($author, $fallback=null) {
+		if (!$author)
+			throw new InvalidArgumentException('first argument is empty');
+		$s = '';
+		if ($author->name)
+			$s = $author->name . ' ';
+		if ($author->email)
+			$s .= '<'.$author->email.'>';
+		if (!$s) {
+			if ($fallback === null)
+				throw new InvalidArgumentException('neither name nor email is set');
+			$s = $fallback;
+		}
+		return $s;
+	}
+	
+	function gitAuthor() {
+		return self::gitFormat($this);
+	}
+	
+	function __toString() {
+		return $this->gitAuthor();
+	}
+}
 
 class GBContent {
 	public $name; # relative to root tree
@@ -1676,6 +1692,15 @@ class GBContent {
 		$this->mimeType = GBMimeType::forFilename($this->name);
 	}
 	
+	function findCommits() {
+		if (!$this->name)
+			throw new UnexpectedValueException('name property is empty');
+		$v = GitCommit::find(array('names' => array($this->name)));
+		if ($v)
+			return $v[0];
+		return array();
+	}
+	
 	protected function applyInfoFromCommits($commits) {
 		if (!$commits)
 			return;
@@ -1689,12 +1714,8 @@ class GBContent {
 		$initial = $commits[count($commits)-1];
 		$this->published = $initial->authorDate;
 		
-		if (!$this->author) {
-			$this->author = (object)array(
-				'name' => $initial->authorName,
-				'email' => $initial->authorEmail
-			);
-		}
+		if (!$this->author)
+			$this->author = new GBAuthor($initial->authorName, $initial->authorEmail);
 		
 		gb::event('did-apply-info-from-commits', $this, $commits);
 	}
@@ -1740,10 +1761,9 @@ class GBExposedContent extends GBContent {
 		return substr($path, strlen(gb::$site_dir)+1);
 	}
 	
-	static function find($slug, $subdir='', $class='GBExposedContent', $work_version=null) {
-		if ($work_version === null)
-			$work_version = gb::$is_preview;
-		if ($work_version === true) {
+	static function find($slug, $subdir='', $class='GBExposedContent', $version=null) {
+		$version = self::parseVersion($version);
+		if ($version === 'work') {
 			# find path to raw content
 			if (($path = self::pathToWork($subdir, $slug)) === null)
 				return false;
@@ -1761,9 +1781,26 @@ class GBExposedContent extends GBContent {
 		}
 	}
 	
+	static function parseVersion($version) {
+		if ($version === null) {
+			return gb::$is_preview ? 'work' : null;
+		}
+		elseif ($version === true) {
+			return 'work';
+		}
+		else {
+			$s = strtolower($version);
+			if ($s === 'live' || $s === 'head' || $s === 'current')
+				return null;
+			return $version;
+		}
+	}
+	
 	static function loadWork($path, $post=false, $class='GBExposedContent', $id=null, $slug=null) {
 		if ($post === false)
 			$post = new $class(self::pathspecFromAbsPath($path), $id, $slug);
+		
+		$post->id = $id;
 		
 		gb::event('will-load-work-object', $post);
 		
@@ -1773,8 +1810,7 @@ class GBExposedContent extends GBContent {
 		# reload post with work data
 		$post->reload(file_get_contents($path));
 	
-		# set publish and modified date
-		$post->published = new GBDateTime(filectime($path));
+		# set modified date from file
 		$post->modified = new GBDateTime(filemtime($path));
 		
 		# set author if needed
@@ -1790,13 +1826,21 @@ class GBExposedContent extends GBContent {
 				unset($post->passhash);
 			}
 			else {
-				$post->author = (object)array('name' => '', 'email' => '');
+				$post->author = new GBAuthor();
 			}
 		}
 		
 		gb::event('did-load-work-object', $post);
 	
 		return $post;
+	}
+	
+	static function findHeaderTerminatorOffset($data) {
+		if (($offset = strpos($data, "\n\n")) !== false)
+			return $offset+2;
+		if (($offset = strpos($data, "\r\n\r\n")) !== false)
+			return $offset+4;
+		return false;
 	}
 	
 	function parseData($data) {
@@ -1808,23 +1852,19 @@ class GBExposedContent extends GBContent {
 			$this->title = $this->slug;
 		
 		# find header terminator
-		if (($bodystart = strpos($data, "\n\n")) === false) {
-			if (($bodystart = strpos($data, "\r\n\r\n")) === false) {
-				$bodystart = 0;
-				gb::log(LOG_WARNING,
-					'malformed exposed content object %s: missing header and/or body (LFLF or CRLFCRLF not found)',
-					$this->name);
-			}
-			else {
-				$this->body = substr($data, $bodystart+4);
-			}
+		$bodystart = self::findHeaderTerminatorOffset($data);
+		if ($bodystart === false) {
+			$bodystart = 0;
+			gb::log(LOG_WARNING,
+				'malformed exposed content object %s: missing header and/or body (LFLF or CRLFCRLF not found)',
+				$this->name);
 		}
 		else {
-			$this->body = substr($data, $bodystart+2);
+			$this->body = substr($data, $bodystart);
 		}
 		
 		if ($bodystart > 0)
-			self::parseHeader(substr($data, 0, $bodystart), $this->meta);
+			self::parseHeader(rtrim(substr($data, 0, $bodystart)), $this->meta);
 	}
 	
 	static function parseHeader($lines, &$out) {
@@ -1984,6 +2024,42 @@ class GBExposedContent extends GBContent {
 		gb::event('did-reload-object', $this);
 	}
 	
+	function isWorkVersion() {
+		return (!$this->id || $this->id === 'work');
+	}
+	
+	function isTracked() {
+		# if it has a real ID, it's tracked
+		if (!$this->isWorkVersion())
+			return true;
+		# ask git
+		try {
+			if ($this->name && git::id_for_pathspec($this->name))
+				return true;
+		}
+		catch (GitError $e) {}
+		return false;
+	}
+	
+	function exists() {
+		if (!$this->name)
+			return false;
+		return is_file(gb::$site_dir.'/'.$this->name);
+	}
+	
+	function rawBody($data=null) {
+		if ($data === null) {
+			if ($this->isWorkVersion())
+				$data = file_get_contents(gb::$site_dir.'/'.$this->name);
+			else
+				$data = git::cat_file($this->id);
+		}
+		$p = self::findHeaderTerminatorOffset($data);
+		if ($p === false)
+			return '';
+		return substr($data, $p);
+	}
+	
 	/**
 	 * Return a, possibly cloned, version of this post which contains a minimal
 	 * set of information. Primarily used for paged posts pages.
@@ -2010,8 +2086,15 @@ class GBExposedContent extends GBContent {
 		return str_replace('%2F', '/', urlencode($this->slug));
 	}
 	
-	function url() {
-		return gb::$site_url . gb::$index_prefix . $this->urlpath();
+	function url($include_version=false) {
+		$url = gb::$site_url . gb::$index_prefix . $this->urlpath();
+		if ($include_version !== false) {
+			if ($include_version === true)
+				$include_version = $this->id ? $this->id : 'work';
+			$url .= (strpos($url, '?') === false ? '?' : '&')
+				. gb::$version_query_key.'='.$include_version;
+		}
+		return $url;
 	}
 	
 	function commentsStageName() {
@@ -2161,8 +2244,7 @@ class GBExposedContent extends GBContent {
 	}
 	
 	function domID() {
-		return 'post-'.$this->published->utcformat('%Y-%m-%d-')
-			. preg_replace('/[^A-Za-z0-9_-]+/', '-', $this->slug);
+		return 'post-'.$this->published->utcformat('%Y-%m-%d-').gb_strtodomid($this->slug);
 	}
 }
 
@@ -2286,8 +2368,8 @@ class GBPage extends GBExposedContent {
 		return parent::pathToCached('pages', $slug . gb::$content_cache_fnext);
 	}
 	
-	static function find($slug, $work_version=null) {
-		return parent::find($slug, 'pages', $class='GBPage', $work_version);
+	static function find($slug, $version=null) {
+		return parent::find($slug, 'pages', $class='GBPage', $version);
 	}
 	
 	static function urlTo($slug) {
@@ -2376,12 +2458,19 @@ class GBPost extends GBExposedContent {
 		return @unserialize(file_get_contents($path));
 	}
 	
-	static function find($slug, $work_version=null, $strptime=null) {
-		if ($work_version === null)
-			$work_version = gb::$is_preview;
-		if ($work_version) {
+	static function find($uri_path_or_slug, $version=null, $strptime=null) {
+		$version = self::parseVersion($version);
+		$path = false;
+		
+		if (strpos($uri_path_or_slug, 'content/posts/') !== false) {
+			$path = $uri_path_or_slug;
+			if ($path{0} !== '/')
+				$path = gb::$site_dir.'/'.$path;
+		}
+			
+		if ($version === 'work') {
 			# find path to raw content
-			if (($path = self::pathToWork($slug, $strptime)) === null)
+			if ((!$path || !is_file($path)) && ($path = self::pathToWork($uri_path_or_slug, $strptime)) === null)
 				return false;
 			
 			# parse pathspec, producing date and actual slug needed to look up cached
@@ -2391,13 +2480,18 @@ class GBPost extends GBExposedContent {
 			$post = self::findByDateAndSlug($date, $slug);
 			
 			# load work
-			return self::loadWork($path, $post, 'GBPost', null, $slug);
+			return self::loadWork($path, $post, 'GBPost', $version, $slug);
 		}
-		else {
-			$path = self::pathToCached($slug, $strptime);
+		elseif ($version === null) {
+			if ($path) {
+				self::parsePathspec(self::pathspecFromAbsPath($path), $date, $slug, $fnext);
+				return self::findByDateAndSlug($date, $slug);
+			}
+			$path = self::pathToCached($uri_path_or_slug, $strptime);
 			$data = @file_get_contents($path);
 			return $data === false ? false : unserialize($data);
 		}
+		throw new Exception('arbitrary version retrieval not yet implemented');
 	}
 	
 	/**
@@ -3125,6 +3219,7 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
 if (isset($gb_handle_request) && $gb_handle_request === true) {
 	$gb_request_uri = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
 	$strptime = null;
+	$version = null;
 	
 	# verify integrity and config
 	gb::verify();
@@ -3145,8 +3240,14 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 	}
 	
 	# preview mode?
-	if (isset($_GET[gb::$preview_query_key]) && gb::$authorized)
+	if (isset($_GET[gb::$preview_query_key]) && gb::$authorized) {
 		gb::$is_preview = true;
+		$version = 'work';
+	}
+	elseif (isset($_GET[gb::$version_query_key]) && gb::$authorized) {
+		gb::$is_preview = true;
+		$version = $_GET[gb::$version_query_key];
+	}
 	
 	# load plugins
 	gb::load_plugins('request');
@@ -3185,7 +3286,7 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 		}
 		elseif (gb::$posts_prefix === '' || ($strptime = strptime($gb_request_uri, gb::$posts_prefix)) !== false) {
 			# post
-			$post = GBPost::find(urldecode($gb_request_uri), gb::$is_preview, $strptime);
+			$post = GBPost::find(urldecode($gb_request_uri), $version, $strptime);
 			if ($post === false)
 				gb::$is_404 = true;
 			elseif ($post->draft === true || $post->published->time > time())
@@ -3197,7 +3298,7 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 			
 			# empty prefix and 404 -- try page
 			if (gb::$is_404 === true && gb::$posts_prefix === '') {
-				$post = GBPage::find(urldecode($gb_request_uri), gb::$is_preview);
+				$post = GBPage::find(urldecode($gb_request_uri), $version);
 				if ($post !== false) {
 					gb::$title[] = $post->title;
 					gb::$is_404 = false;
@@ -3208,7 +3309,7 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 		}
 		else {
 			# page
-			$post = GBPage::find(urldecode($gb_request_uri), gb::$is_preview);
+			$post = GBPage::find(urldecode($gb_request_uri), $version);
 			if ($post === false)
 				gb::$is_404 = true;
 			else

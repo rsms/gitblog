@@ -154,7 +154,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		$commitsbyname = $commits[2];
 		
 		# Load blobs
-		$out = gb::exec("cat-file --batch", implode("\n", $ids));
+		$out = git::exec("cat-file --batch", implode("\n", $ids));
 		$p = 0;
 		$numobjects = count($objects);
 		

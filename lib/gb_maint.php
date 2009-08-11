@@ -28,7 +28,7 @@ class gb_maint {
 		if (is_dir(gb::$dir.'/.git')) {
 			try {
 				gb::log('deducing remote.origin.url for existing gitblog');
-				$s = trim(gb::exec('config remote.origin.url', null, gb::$dir.'/.git', gb::$dir));
+				$s = trim(git::exec('config remote.origin.url', null, gb::$dir.'/.git', gb::$dir));
 				if ($s)
 					$origin_url = $s;
 			}
@@ -77,7 +77,7 @@ class gb_maint {
 			
 			# register (and clone if needed) the gitblog submodule. This might take some time.
 			try {
-				gb::exec('submodule --quiet add -b '
+				git::exec('submodule --quiet add -b '
 					. escapeshellarg(self::$branch).' -- '
 					. escapeshellarg($origin_url) . ' gitblog');
 				# add gitblog
@@ -96,7 +96,7 @@ class gb_maint {
 					gb::log(LOG_ERR, 'failed to move back %s to %s', $roundtrip_temp, $old_dst);
 				
 				# we want to explicitly checkout the branch we requested
-				gb::exec('checkout '.escapeshellarg(self::$branch), null, gb::$dir.'/.git', gb::$dir);
+				git::exec('checkout '.escapeshellarg(self::$branch), null, gb::$dir.'/.git', gb::$dir);
 			}
 		}
 		catch (Exception $e) {
@@ -129,8 +129,8 @@ class gb_maint {
 	
 	
 	static function repair_repo_setup() {
-		gb::exec('config receive.denyCurrentBranch ignore');
-		gb::exec('config core.sharedRepository 1');
+		git::exec('config receive.denyCurrentBranch ignore');
+		git::exec('config core.sharedRepository 1');
 		
 		static $hooks = array(
 			'post-commit'   => '',
@@ -177,7 +177,7 @@ class gb_maint {
 		$gb_branch = 'master';
 		$gb_head = '0000000000000000000000000000000000000000';
 		try {
-			$branches = trim(gb::exec('branch --no-abbrev --verbose --no-color', null, gb::$dir.'/.git', gb::$dir));
+			$branches = trim(git::exec('branch --no-abbrev --verbose --no-color', null, gb::$dir.'/.git', gb::$dir));
 			foreach (explode("\n", $branches) as $line) {
 				if (!$line)
 					continue;

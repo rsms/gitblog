@@ -238,7 +238,7 @@ class WordpressImporter {
 			'wp-id' => $obj->wpid
 		));
 		if ($obj->author && $obj->author->name)
-			$meta['author'] = GBUser::formatGitAuthor($obj->author);
+			$meta['author'] = GBAuthor::gitFormat($obj->author);
 		if ($obj instanceof WPPage)
 			$meta['order'] = $obj->order;
 		if ($obj->tags)
@@ -433,10 +433,7 @@ class WordpressImporter {
 				# discard
 			}
 			elseif ($name === 'dc:creator') {
-				$obj->author = (object)array(
-					'name' => $n->nodeValue,
-					'email' => $this->defaultAuthorEmail
-				);
+				$obj->author = new GBAuthor($n->nodeValue, $this->defaultAuthorEmail);
 			}
 			elseif ($is_exposed && $name === 'wp:comment') {
 				if ($obj->comments === null)
@@ -577,9 +574,9 @@ gb::$title[] = 'Import Wordpress';
 
 if (isset($_FILES['wpxml'])) {
 	if ($_FILES['wpxml']['error'])
-		$errors[] = 'file upload failed with unknown error (maybe you forgot to select the file?).';
+		gb_admin::$errors[] = 'file upload failed with unknown error (maybe you forgot to select the file?).';
 	
-	if (!$errors) {
+	if (!gb_admin::$errors) {
 		$importer = new WordpressImporter();
 		$importer->includeAttachments = @gb_strbool($_POST['include-attachments']);
 		$importer->includeComments = @gb_strbool($_POST['include-comments']);
@@ -631,7 +628,7 @@ if (isset($_FILES['wpxml'])) {
 		}
 	</style><?
 	
-	if (!$errors) {
+	if (!gb_admin::$errors) {
 		echo '<h2>Importing '. h(basename($_FILES['wpxml']['name'])) .'</h2>';
 		try {
 			$importer->import(DOMDocument::load($_FILES['wpxml']['tmp_name']));
@@ -657,7 +654,7 @@ if (isset($_FILES['wpxml'])) {
 		echo '<script type="text/javascript" charset="utf-8">setTimeout(\'window.scrollBy(0,999999);\',50)</script>';
 	}
 }
-if (!isset($_FILES['wpxml']) || $errors) {
+if (!isset($_FILES['wpxml']) || gb_admin::$errors) {
 	include_once '_header.php';
 ?>
 <style type="text/css">

@@ -50,7 +50,7 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# Can git be found and if so, what version?
 	try {
-		$version = array_pop(explode(' ', trim(gb::exec("--version"))));
+		$version = array_pop(explode(' ', trim(git::exec("--version"))));
 		$version = array_map('intval', explode('.', $version));
 		if ($version[0] < 1 || $version[1] < 6) {
 			$errors[] = '<b>To old git version.</b> Gitblog requires git version 1.6 

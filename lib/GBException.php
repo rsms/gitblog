@@ -298,44 +298,54 @@ class GBException extends Exception {
 	/** @return string */
 	public function __toString() { return self::format($this, false, false); }
 	
-	static public function formatHTMLDocument(Exception $e, $includingTrace=true, $skip=null, $context_lines=2) {
+	static public $css = '
+		html,body { margin:0; padding:0; }
+		body,div.exception { background-color:#f0ffff; color:#666; font-family:"helvetica neue",helvetica,sans-serif; font-size:16px; }
+		h1 { padding:.8em 0 .5em 30px; font-weight:normal; color:#777; background:#333; margin:0; }
+		h2 { background-color:#fcc; color:#721; margin:0; padding:.2em 30px; }
+		h2 span.code { color:#c99; font-weight:normal; }
+		p.message { background:#fff; color:#220; padding:1.5em 30px; margin:0; }
+		p.message code { display:block; margin:1.5em 0 0 0; }
+		p.location { padding:0.5em 30px; margin:0; background:#36a; color:#fff; font-family:monospace; font-size:18px; }
+		p.location span.prefix { color:#9cf; font-size:9px; padding-right:4px; float:right; line-height:22px; }
+		div.trace { padding:1em 30px; margin:0; font-size:13px; }
+		div.frame { padding:0; font-family:monospace; }
+		pre.context { font-size:10px; margin-left:55px; margin-bottom:0; 
+			border-left:1px solid #ccc; padding:0 0 0 4px; }
+		div.frame pre.context { margin-left:25px; }
+		pre.context span { display:inline-block; }
+		pre.context span.c { color:#8aa; }
+		pre.context span.f { color:#000; padding:3px 0; }
+		div.frame span.function { color:#06a; }
+		div.frame span.location { color:#000; }';
+
+	static public function formatHTMLBlock(Exception $e, $includingTrace=true, $skip=null, $context_lines=2, $inc_css=true) {
 		$msg = self::format($e, $includingTrace, true, $skip, $context_lines);
+		if ($inc_css)
+			$msg = '<style type="text/css" media="screen">'.self::$css.'</style>'.$msg;
+		return '<div class="exception">'.$msg.'</div>';
+	}
+	
+	static public function formatHTMLDocument(Exception $e, $includingTrace=true, $skip=null, $context_lines=2) {
 		$cls = get_class($e);
-		$msg = <<<HTML
+		$html = self::formatHTMLBlock($e, $includingTrace, $skip, $context_lines, false);
+		$css = self::$css;
+		return <<<HTML
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 		<title>Error: $cls</title>
 		<style type="text/css" media="screen">
-			html,body { margin:0; padding:0; }
-			body { background-color:#f0ffff; color:#666; font-family:'helvetica neue',helvetica,sans-serif; font-size:16px; }
-			h1 { padding:.8em 0 .5em 30px; font-weight:normal; color:#777; background:#333; margin:0; }
-			h2 { background-color:#fcc; color:#721; margin:0; padding:.2em 30px; }
-			h2 span.code { color:#c99; font-weight:normal; }
-			p.message { background:#fff; color:#220; padding:1.5em 30px; margin:0; }
-			p.message code { display:block; margin:1.5em 0 0 0; }
-			p.location { padding:0.5em 30px; margin:0; background:#36a; color:#fff; font-family:monospace; font-size:18px; }
-			p.location span.prefix { color:#9cf; font-size:9px; padding-right:4px; float:right; line-height:22px; }
-			div.trace { padding:1em 30px; margin:0; font-size:13px; }
-			div.frame { padding:0; font-family:monospace; }
-			pre.context { font-size:10px; margin-left:55px; margin-bottom:0; 
-				border-left:1px solid #ccc; padding:0 0 0 4px; }
-			div.frame pre.context { margin-left:25px; }
-			pre.context span { display:inline-block; }
-			pre.context span.c { color:#8aa; }
-			pre.context span.f { color:#000; padding:3px 0; }
-			div.frame span.function { color:#06a; }
-			div.frame span.location { color:#000; }
+			$css
 		</style>
 	</head>
 	<body>
 		<h1>An unrecoverable error occured</h1>
-		$msg
+		$html
 	</body>
 </html>
 HTML;
-		return $msg;
 	}
 }
 

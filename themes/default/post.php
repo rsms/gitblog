@@ -2,7 +2,7 @@
 	<!-- =========================== sidebar =========================== -->
 	<? include gb::$theme_dir . '/sidebar.php' ?>
 	<!-- =========================== post =========================== -->
-	<div class="posts single">
+	<div class="posts single" id="post">
 		<div class="post">
 			<?= $post->commentsLink() ?>
 			<h1><?= $post->title ?></h1>

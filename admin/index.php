@@ -6,7 +6,7 @@ include '_header.php';
 ?>
 <h2>Administration</h2>
 <p>
-	Authenticated as <?= h(gb::$authorized) ?>
+	Logged in as <?= h(gb::$authorized) ?>
 </p>
 <h3>Fancy menu</h3>
 <ul>

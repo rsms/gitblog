@@ -1,5 +1,5 @@
 <?
-require '_base.php';
+require '../_base.php';
 gb::verify();
 $authed = gb::authenticate(false);
 
@@ -7,24 +7,28 @@ if ($authed) {
 	gb::log('client authorized: '.$authed);
 	gb_author_cookie::set($authed->email, $authed->name, gb::$site_url);
 	gb::event('client-authorized', $authed);
-	$url = ((isset($_POST['referrer']) && $_POST['referrer']) 
-		? $_POST['referrer'] : GITBLOG_ADMIN_URL);
+	$url = ((isset($_REQUEST['referrer']) && $_REQUEST['referrer']) ? $_REQUEST['referrer'] : gb_admin::$url);
 	header('HTTP/1.1 303 See Other');
 	header('Location: '.$url);
 	exit('<html><body>See Other <a href="'.$url.'"></a></body></html>');
 }
 
-if ($authed === CHAP::BAD_USER) {
-	$errors[] = 'No such user';
-}
-elseif ($authed === CHAP::BAD_RESPONSE) {
-	$errors[] = 'Bad password';
+if (isset($_POST['chap-username'])) {
+	if ($authed === CHAP::BAD_USER) {
+		gb_admin::$errors[] = 'No such user';
+	}
+	elseif ($authed === CHAP::BAD_RESPONSE) {
+		gb_admin::$errors[] = 'Bad password';
+	}
+	else {
+		gb_admin::$errors[] = 'Unknown error';
+	}
 }
 
 $auth = gb::authenticator();
-include '_header.php';
+include '../_header.php';
 ?>
-<script type="text/javascript" src="sha1-min.js"></script>
+<script type="text/javascript" src="<?= gb_admin::$url ?>res/sha1-min.js"></script>
 <script type="text/javascript">
 	var chap = {
 		submit: function(nonce, opaque, context) {
@@ -40,11 +44,10 @@ include '_header.php';
 		}
 	};
 </script>
-<h2>Authenticate</h2>
-<form action="authenticate.php" method="POST" 
+<h2>Authorize</h2>
+<form action="<?= gb::url() ?>" method="POST" 
 	onsubmit="chap.submit('<?= $auth->nonce() ?>','<?= $auth->opaque() ?>','<?= $auth->context ?>')">
 	<input type="hidden" id="chap-response" name="chap-response" value="" />
-	<input type="hidden" name="referrer" value="<?= isset($_REQUEST['referrer']) ? h($_REQUEST['referrer']) : '' ?>" />
 	<p>
 		Username: <input type="text" id="chap-username" name="chap-username" 
 			value="<?= isset($_REQUEST['chap-username']) ? $_REQUEST['chap-username'] : gb_author_cookie::get('email'); ?>" /><br />
@@ -54,4 +57,4 @@ include '_header.php';
 		<input type="submit" value="Login" />
 	</p>
 </form>
-<? include '_footer.php' ?>
+<? include '../_footer.php' ?>

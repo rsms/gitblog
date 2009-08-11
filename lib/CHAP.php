@@ -13,7 +13,7 @@
  *   HMAC     = SHA-1-HMAC
  */
 class CHAP {
-	public $ttl = 86400; # 1 day
+	public $ttl = 604800; # 1 week
 	public $cookie_name = 'gb-chap'; # set to false to disable cookies
 	public $refresh_cookie = true;
 	public $users = null;
@@ -49,11 +49,11 @@ class CHAP {
 		return self::h($s);
 	}
 	
-	function set_cookie($username, $response, $password=false, $cookie=false) {
+	function set_cookie($username, $response, $shadow=false, $cookie=false) {
 		if (!$this->cookie_name)
 			return;
 		if ( $cookie !== false && !$this->refresh_cookie
-			&& ($response && isset($cookie['r'])) || ($password && isset($cookie['p'])) ) {
+			&& ($response && isset($cookie['r'])) || ($shadow && isset($cookie['p'])) ) {
 			# no need to refresh
 			return;
 		}
@@ -63,7 +63,7 @@ class CHAP {
 		if ($response)
 			$cookie['r'] = $response;
 		else
-			$cookie['s'] = self::shadow($username, $password, $this->context);
+			$cookie['s'] = $shadow;
 		$cookie = base64_encode(serialize($cookie));
 		$url = new GBURL(gb::$site_url);
 		setcookie($this->cookie_name, $cookie, time() + $this->ttl, $url->path, $url->host, $url->secure);
@@ -96,7 +96,8 @@ class CHAP {
 		$expected_shadow = $this->preshadowed ? 
 			$this->users[$username] : 
 			self::shadow($username, $this->users[$username], $this->context);
-		if ( ($password && $this->users[$username] !== $password) 
+		if ( ($password && $this->users[$username] !== 
+					($this->preshadowed ? self::shadow($username, $password, $this->context) : $password) )
 				|| ($shadow && $expected_shadow !== $shadow) )
 			return self::BAD_RESPONSE;
 		$this->set_cookie($username, null, $expected_shadow, $cookie);

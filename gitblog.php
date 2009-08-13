@@ -2458,6 +2458,12 @@ class GBPost extends GBExposedContent {
 		return @unserialize(file_get_contents($path));
 	}
 	
+	static function findByName($name, $version=null) {
+		if (strpos($name, 'content/posts/') !== 0)
+			$name = 'content/posts/' . $name;
+		return self::find($name, $version);
+	}
+	
 	static function find($uri_path_or_slug, $version=null, $strptime=null) {
 		$version = self::parseVersion($version);
 		$path = false;

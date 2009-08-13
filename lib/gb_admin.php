@@ -87,6 +87,34 @@ class gb_admin {
 		$s .= $listend;
 		return $s;
 	}
+	
+	static function error_rsp($msg, $status='400 Bad Request', $content_type='text/plain; charset=utf-8', $exit=true) {
+		self::abrupt_rsp($status."\n".$msg."\n", $status, $content_type, $exit);
+	}
+	
+	static function json_rsp($data=null, $status='200 OK', $exit=true, $pretty=true) {
+		if ($data !== null)
+			$data = $pretty ? json::pretty($data)."\n" : json_encode($data);
+		else
+			$data = '';
+		self::abrupt_rsp($data, $status, 'application/json; charset=utf-8', $exit);
+	}
+	
+	static function abrupt_rsp($body='', $status='200 OK', $content_type='text/plain; charset=utf-8', $exit=true) {
+		if (!$body)
+			$body = '';
+		if (!headers_sent()) {
+			if ($status)
+				header('HTTP/1.1 '.$status);
+			if ($content_type)
+				header('Content-Type: '.$content_type);
+			header('Content-Length: '.strlen($body));
+			header('Cache-Control: no-cache');
+		}
+		if ($exit)
+			exit($body);
+		echo $body;
+	}
 }
 
 gb_admin::$url = gb::$site_url.'gitblog/admin/';

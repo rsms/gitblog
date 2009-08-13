@@ -24,9 +24,7 @@ if ($q['version'] === null)
 
 # load existing post
 if ($q['path']) {
-	if (substr($q['path'], 'content/posts/') !== 0)
-		$q['path'] = 'content/posts/' . $q['path'];
-	if (!($post = GBPost::find($q['path'], $q['version'])))
+	if (!($post = GBPost::findByName($q['path'], $q['version'])))
 		gb_admin::$errors[] = 'No post could be found at path '.r($q['path']);
 }
 elseif ($q['uri']) {
@@ -48,6 +46,40 @@ include '../_header.php';
 	if (typeof console != 'undefined' && typeof console.log != 'undefined')
 		c = console;
 	
+	var http = {
+		postForm: function(kw) {
+			kw.data = http.toFormParams(kw.data);
+			return http.post(kw);
+		},
+		
+		post: function(kw) {
+			kw.type = "POST";
+			c.log(kw.type, kw.url, kw.data);
+			return $.ajax(kw);
+		},
+		
+		toFormParams: function(params) {
+			if (typeof params == 'object')
+				for (var k in params)
+					http._flattenComplexFormParams(params, k, params[k]);
+			return params;
+		},
+		
+		_flattenComplexFormParams: function(params, k, v) {
+			if (typeof v == 'object') {
+				for (var x in v) {
+					var k2 = k+'['+x+']';
+					var v2 = v[x];
+					if (!http._flattenComplexFormParams(params, k2, v2))
+						params[k2] = v2;
+				}
+				delete(params[k]);
+				return true;
+			}
+			return false;
+		}
+	};
+	
 	var post = {
 		savedState: {},
 		currentState: {},
@@ -57,7 +89,8 @@ include '../_header.php';
 		checkStateInterval: 10000,
 		
 		autoSaveTimer: null,
-		autoSaveLatency: 2000,
+		autoSaveLatency: 4000,
+		autoSaveActivityLatency: 1000,
 		autoSaveEnabled: true, // setting
 		_autoSaveEnabled: true, // runtime
 		
@@ -65,13 +98,111 @@ include '../_header.php';
 		checkModifiedLatency: 100,
 		checkModifiedAdjustThreshold: 50, // if checkTracked run faster then this, adjust checkModifiedLatency accordingly.
 		
-		pathspec: <?= $post->exists() ? '"'.str_replace('"', '\"',$post->name).'"' : 'null' ?>,
+		name: <?= $post->exists() ? '"'.str_replace('"', '\"',$post->name).'"' : 'null' ?>,
+		version: <?= $post->exists() ? '"'.str_replace('"', '\"',$post->id).'"' : 'null' ?>,
 		
 		trackState: function() {
+			post.setupFieldFilters();
 			post.recordCurrentState(true);
 			post.onNotModified();
 			post.resetCheckStateTimer();
-			post._autoSaveEnabled = post.autoSaveEnabled && post.pathspec != null; // no auto save for new (non-existing) posts
+			post._autoSaveEnabled = post.autoSaveEnabled && post.name != null; // no auto save for new (non-existing) posts
+		},
+		
+		recordCurrentState: function(setSavedState) {
+			if (typeof setSavedState == 'undefined')
+				setSavedState = false;
+			$('.dep-save').each(function(i){
+				var t = post.getField(this);
+				post.currentState[t.name] = t.value;
+				if (setSavedState)
+					post.savedState[t.name] = t.value;
+				var j = $(this);
+				j.change(function(ev){ post.checkTracked(this);});
+				var type = j.attr('type');
+				if (type == 'text' || (type == null && this.nodeName.toLowerCase() == 'textarea')) {
+					j.keyup(function(ev){ post.queueCheckTracked(this);});
+				}
+			});
+		},
+		
+		fieldGetFilters: {},
+		fieldPutFilters: {},
+		
+		standardFilters: {	
+			csv_to_list: function(s){
+				return s.replace(/(^[ \t\s\n\r,]+|[ \t\s\n\r,]+$)/g, '').split(/,[ \s\t]*/);
+			},
+			list_to_csv: function(l){
+				return l.join(', ');
+			}
+		},
+		
+		setupFieldFilters: function() {
+			// comma separated values <--> list of strings
+			$('.transform-csv').each(function(i){
+				var t = post.getField(this, false);
+				post.fieldGetFilters[t.name] = post.standardFilters.csv_to_list;
+				post.fieldPutFilters[t.name] = post.standardFilters.list_to_csv;
+			});
+		},
+		
+		applyFilters: function(name, value, filterCollection) {
+			if (name in filterCollection) {
+				var filters = filterCollection[name];
+				if (typeof filters == 'function')
+					filters = [filters];
+				for (var i in filters) {
+					var filter = filters[i];
+					//c.log('filtering value', value);
+					value = filter(value);
+					//c.log('filter returned', value);
+				}
+			}
+			return value;
+		},
+		
+		investigateField: function(j) {
+			var p = {type: j.attr('type')};
+			p.haveValue = p.type == 'text' || (p.type == null && j.get(0).nodeName.toLowerCase() == 'textarea');
+			p.haveChecked = !p.haveValue && j.attr('type') == 'checkbox';
+			return p;
+		},
+		
+		putField: function(name, value, applyFilters) {
+			if (typeof applyFilters == 'undefined' || applyFilters)
+				value = post.applyFilters(name, value, post.fieldPutFilters);
+			var j = $('input[name='+name+']');
+			var p = post.investigateField(j);
+			var el = j.get(0);
+			if (p.haveValue) {
+				// check eq first to avoid browser bugs when setting values
+				if (el.value != value)
+					el.value = value;
+			}
+			else if (p.haveChecked) {
+				el.checked = value;
+			}
+			else {
+				c.log('todo post.putField other type');
+			}
+		},
+		
+		getField: function(el, applyFilters) {
+			var p = post.investigateField($(el));
+			var t = {name: null, value: null};
+			if (typeof el.name != 'undefined') {
+				t.name = el.name;
+				if (p.haveValue)
+					t.value = el.value;
+				else if (p.haveChecked)
+					t.value = el.checked;
+				else
+					c.log('todo post.getField other type');
+			}
+			if (typeof applyFilters == 'undefined' || applyFilters)
+				t.value = post.applyFilters(t.name, t.value, post.fieldGetFilters);
+			return t;
 		},
 		
 		resetCheckStateTimer: function() {
@@ -81,16 +212,25 @@ include '../_header.php';
 		},
 		
 		stopAutoSaveTimer: function() {
-			if (post.autoSaveTimer != null)
-				clearInterval(post.autoSaveTimer);
+			clearInterval(post.autoSaveTimer);
+			post.autoSaveTimer = null;
 		},
 		
-		startAutoSaveTimer: function() {
+		startAutoSaveTimer: function(interval) {
 			if (!post._autoSaveEnabled)
 				return false;
+			if (typeof interval == 'undefined')
+				interval = post.autoSaveLatency;
 			post.stopAutoSaveTimer();
-			post.autoSaveTimer = setInterval(post.performAutosave, post.autoSaveLatency);
+			post.autoSaveTimer = setInterval(post.performAutosave, interval);
 			return true;
+		},
+		
+		delayAutoSaveTimer: function(delayInterval) {
+			if (post.autoSaveTimer == null)
+				return;
+			post.stopAutoSaveTimer();
+			post.startAutoSaveTimer(delayInterval);
 		},
 		
 		performAutosave: function() {
@@ -109,56 +249,77 @@ include '../_header.php';
 		save: function(params) {
 			if (typeof params == 'undefined')
 				params = post.currentState;
+			if (post.name)
+				params.name = post.name;
 			// disable save button
 			$('input.save').addClass('disabled').attr('disabled', 'disabled').attr('value', 'Saving...');
-			var postid = post.pathspec ? '?pathspec='+post.pathspec : '';
-			// send request
-			return $.ajax({
-				type: "POST",
-				url: "save-post.php"+postid,
+			// send
+			return http.postForm({
+				url: "../helpers/save-post.php",
 				data: params,
 				success: function(rsp) { post.onSaveDidSucceed(params, rsp); },
-				error: function (req, status, exc) { post.onSaveDidFail(params, status, exc); }
+				error: function (req, type, exc) { post.onSaveDidFail(req, type, exc, params); }
 			});
 		},
 		
 		onSaveDidSucceed: function(params, rsp) {
-			c.log('saved post >> '+rsp);
-			// set post.*
-			//post.pathspec = rsp.pathspec;
+			try {
+				if (rsp.length)
+					rsp = eval('('+rsp+')');
+				else
+					rsp = null;
+				c.log('saved changes', rsp);
+			}
+			catch(e) {
+				c.log('failed to parse response from save-post', rsp);
+			}
+			
+			// transfer updated data
+			var updated = {};
+			if (typeof rsp == 'object') {
+				// spec changed?
+				var spec = {'name':post.onNameChanged, 'version':post.onVersionChanged};
+				for (var k in spec) {
+					if (typeof rsp[k] != 'undefined' && rsp[k] != post[k]) {
+						post[k] = rsp[k];
+						if (typeof spec[k] == 'function')
+							spec[k]();
+					}
+				}
+				// fields
+				if (typeof rsp.state == 'object') {
+					for (var name in rsp.state) {
+						var value = rsp.state[name];
+						if (typeof post.savedState[name] == 'undefined' || !post.eq(post.savedState[name], value)) {
+							post.savedState[name] = value;
+							post.currentState[name] = value;
+							post.putField(name, value);
+							updated[name] = value;
+							c.log(name+' was updated. is now:', value);
+						}
+					}
+				}
+			}
 			
 			// tidy up
 			post._autoSaveEnabled = post.autoSaveEnabled;
-			var nmodified = post.findModified().length;
-			if (nmodified == 0 && post.isModified)
+			$('input.save').attr('value', 'Saved');
+			
+			// no longer modified
+			if (post.isModified)
 				post.onNotModified();
-			else if (nmodified != 0 && !post.isModified)
-				post.onModified();
-			else
-				$('input.save').attr('value', 'Saved');
+			
+			// reload iframe
+			if (updated.length)
+				$('#preview iframe')[0].contentDocument.location.reload();
 		},
 		
-		onSaveDidFail: function(params, status, exc) {
-			c.log('failed to save ('+status+'): '+exc+' -- disabling autosave');
+		onSaveDidFail: function(req, type, exc, params) {
+			c.log('failed to save post with status '+req.status+' '+req.statusText+': '
+				+req.responseText+' '
+				+(typeof exc != 'undefined' ? exc : ''));
+			c.log('disabling autosave');
 			post._autoSaveEnabled = false;
-			post.onModified();
-		},
-		
-		recordCurrentState: function(setSavedState) {
-			if (typeof setSavedState == 'undefined')
-				setSavedState = false;
-			$('.dep-save').each(function(i){
-				var t = post.getNameValue(this);
-				post.currentState[t.name] = t.value;
-				if (setSavedState)
-					post.savedState[t.name] = t.value;
-				var j = $(this);
-				j.change(function(ev){ post.checkTracked(this);});
-				var type = j.attr('type');
-				if (type == 'text' || (type == null && this.nodeName.toLowerCase() == 'textarea')) {
-					j.keyup(function(ev){ post.queueCheckTracked(this);});
-				}
-			});
 		},
 		
 		findModified: function() {
@@ -173,18 +334,41 @@ include '../_header.php';
 		queueCheckTracked: function(el) {
 			if (post.checkModifiedLatency < 1)
 				return post.checkTracked(el);
-			var t = post.getNameValue(el);
+			var t = post.getField(el);
 			clearTimeout(post.checkModifiedQueue[t.name]);
 			post.checkModifiedQueue[t.name] = setTimeout(function(){ post.checkTracked(el); }, post.checkModifiedLatency);
 		},
 		
+		eq: function(a, b) {
+			if (a == b)
+				return true;
+			var at = typeof a;
+			var bt = typeof b;
+			if (at != bt)
+				return false;
+			if (at == 'object') {
+				if ($.isArray(a))
+					a = $.extend({}, a);
+				if ($.isArray(b))
+					b = $.extend({}, b);
+				return $.param(http.toFormParams(a)) == $.param(http.toFormParams(b));
+			}
+			return false;
+		},
+		
 		checkTracked: function(el) {
 			var startTime = (new Date()).getTime();
-			var t = post.getNameValue(el);
+			var t = post.getField(el);
 			clearTimeout(post.checkModifiedQueue[t.name]);
 			post.checkModifiedQueue[t.name] = null;
-			post.currentState[t.name] = t.value;
-			var modified = post.savedState[t.name] != t.value;
+			var modified = !post.eq(post.currentState[t.name], t.value);
+			
+			if (modified) {
+				post.currentState[t.name] = t.value;
+				if (post.isModified)
+					post.delayAutoSaveTimer(post.autoSaveActivityLatency);
+			}
+			
 			if (modified && !post.isModified) {
 				post.onModified([t.name]);
 			}
@@ -204,8 +388,8 @@ include '../_header.php';
 		checkFullState: function() {
 			var modifiedFields = [];
 			$('.dep-save').each(function(i){
-				var t = post.getNameValue(this);
-				if (post.savedState[t.name] != t.value) {
+				var t = post.getField(this);
+				if (!post.eq(post.savedState[t.name], t.value)) {
 					post.currentState[t.name] = t.value;
 					modifiedFields.push(t.name);
 				}
@@ -216,7 +400,16 @@ include '../_header.php';
 				post.onNotModified();
 		},
 		
+		onNameChanged: function() {
+			c.log('new name:', post.name);
+		},
+		
+		onVersionChanged: function() {
+			c.log('new version:', post.version);
+		},
+		
 		onModified: function(modifiedFields) {
+			c.log('detected unsaved modifications');
 			post.isModified = true;
 			$('input.save').removeClass('disabled').removeAttr('disabled').attr('value', 'Save');
 			post.resetCheckStateTimer();
@@ -228,20 +421,6 @@ include '../_header.php';
 			post.isModified = false;
 			$('input.save').addClass('disabled').attr('disabled', 'disabled').attr('value', 'Saved');
 			post.resetCheckStateTimer();
-		},
-		
-		getNameValue: function(el) {
-			var j = $(el);
-			var type = j.attr('type');
-			var haveValue = type == 'text' || (type == null && el.nodeName.toLowerCase() == 'textarea');
-			var haveChecked = !haveValue && j.attr('type') == 'checkbox';
-			if (typeof el.name != 'undefined') {
-				if (haveValue)
-					return {name: el.name, value: el.value};
-				else if (haveChecked)
-					return {name: el.name, value: el.checked};
-			}
-			return {name: null, value: null};
 		}
 	};
 	
@@ -250,12 +429,12 @@ include '../_header.php';
 		post.trackState();
 
 		// select/give focus to the body text area for new posts
-		if (!post.pathspec) {
+		if (!post.name) {
 			$('textarea[name=body]').get(0).select();
 			setTimeout(function(){$('textarea[name=body]').get(0).select();}, 500);
 		}
 		
-		// the #post anchor in the iframe cases might cause the browser to scroll
+		// the #post anchor in the iframe might cause the browser to scroll
 		// down. We reset scrolling after the first load.
 		$('#preview iframe').one('load', function(){ window.scrollTo(0,0); });
 		
@@ -302,13 +481,13 @@ include '../_header.php';
 		<div class="component tags c2a">
 			<h4>Tags <small>(comma separated)</small></h4>
 			<p>
-				<input type="text" class="dep-save" name="tags" value="<?= implode(', ',array_map('h', $post->tags)) ?>" />
+				<input type="text" class="dep-save transform-csv" name="tags" value="<?= implode(', ',array_map('h', $post->tags)) ?>" />
 			</p>
 		</div>
 		<div class="component categories c3">
 			<h4>Categories <small>(comma separated)</small></h4>
 			<p>
-				<input type="text" class="dep-save" name="categories" value="<?= implode(', ',array_map('h', $post->categories)) ?>" />
+				<input type="text" class="dep-save transform-csv" name="categories" value="<?= implode(', ',array_map('h', $post->categories)) ?>" />
 			</p>
 		</div>
 		<div class="breaker"></div>

@@ -83,11 +83,11 @@ h2 { font-size:19px; }
 		div.component > h4 small { float:right; }
 		div.component > p { margin:0; }
 	div.component.c2 { width:280px; }
-		div.component.c2 input { width:276px; }
+		div.component.c2 input[type=text] { width:276px; }
 	div.component.c2a { width:380px; }
-		div.component.c2a input { width:376px; }
+		div.component.c2a input[type=text] { width:376px; }
 	div.component.c3 { width:180px; }
-		div.component.c3 input { width:176px; }
+		div.component.c3 input[type=text] { width:176px; }
 	div.component.controls { width:280px; text-align:right; }
 		div.component.controls input {
 			border-radius:2px; -webkit-border-radius:2px; -moz-border-radius:2px;
@@ -120,22 +120,8 @@ body > address {
 	font-size:11px;
 	margin-top:-1px;
 }
-			
-#errormsg {
-	background-color:#fa9;
-	border-top:1px solid #c77;
-}
-#errormsg > p {
-	padding:15px 20px;
-	margin:0;
-	color:#400;
-	font-size:16px;
-	border-bottom:1px solid #c77;
-}
-#errormsg code {
-	background-color:#fdd;
-}
 
+/* Relics from old admin ui -- used by wordpress import and setup.php */
 div.inputgroup {
 	display:block;
 	margin-bottom:10px;
@@ -145,8 +131,32 @@ div.inputgroup {
 	width:300px;
 	border-right:1px solid #ddd;
 }
-div.inputgroup > h4 { font-size:100%; margin-bottom:4px; }
-div.inputgroup > p { margin:6px 0 2px 0; }
-div.inputgroup > p.note { margin-top:2px; font-size:11px; color:#999; }
-div.inputgroup > input { margin:2px 0; }
-div.inputgroup > input[type=text], div.inputgroup > input[type=password] { width:290px; }
+	div.inputgroup > h4 { font-size:100%; margin-bottom:4px; }
+	div.inputgroup > p { margin:6px 0 2px 0; }
+	div.inputgroup > p.note { margin-top:2px; font-size:11px; color:#999; }
+	div.inputgroup > input { margin:2px 0; }
+	div.inputgroup > input[type=text], div.inputgroup > input[type=password] { width:290px; }
+
+/* Errors from gb::$errors */
+#gb-errors { background-color:#fcc; color:#611; padding:10px; min-height:48px; border-bottom:4px solid #c00; }
+	#gb-errors a { border:none; background:transparent; }
+	#gb-errors a.close {
+		display:block; float:right;
+		width:16px; height:16px;
+		background-image:url(../../themes/default/icons16.png);
+		background-position:0 -32px;
+		background-repeat:no-repeat;
+	}
+	#gb-errors a.close:hover { background-position:0 -48px; }
+	#gb-errors a.close span { display:none; }
+	#gb-errors div.icon {
+		background-image:url(../../themes/default/icons48.png);
+		background-position:0 -48px;
+		background-repeat:no-repeat;
+		width:48px; height:48px;
+		float:left;
+		margin-left:-15px;
+	}
+	#gb-errors ul { display:block; float:left; margin:0; padding:0; list-style:none; }
+	#gb-errors li { font-size:16px; }
+	#gb-errors li.title { font-weight:bold; line-height:1; margin:0.2em 0; }

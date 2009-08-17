@@ -15,13 +15,13 @@ if ($authed) {
 
 if (isset($_POST['chap-username'])) {
 	if ($authed === CHAP::BAD_USER) {
-		gb_admin::$errors[] = 'No such user';
+		gb::$errors[] = 'No such user';
 	}
 	elseif ($authed === CHAP::BAD_RESPONSE) {
-		gb_admin::$errors[] = 'Bad password';
+		gb::$errors[] = 'Bad password';
 	}
 	else {
-		gb_admin::$errors[] = 'Unknown error';
+		gb::$errors[] = 'Unknown error';
 	}
 }
 

@@ -115,8 +115,8 @@ class FileDB {
 			if (!($author = $this->autocommitToRepoAuthor))
 				$author = GBUser::findAdmin()->gitAuthor();
 			$m = $this->autocommitToRepoMessage ? $this->autocommitToRepoMessage : 'autocommit:'.$this->file;
-			gb::add($this->file);
-			gb::commit($m, $author);
+			git::add($this->file);
+			git::commit($m, $author);
 			# rollback() will handle gb::reset if needed
 		}
 		
@@ -130,7 +130,7 @@ class FileDB {
 			return false;
 		}
 		if ($this->autocommitToRepo) {
-			try { gb::reset($this->file); } catch (Exception $y) {}
+			try { git::reset($this->file); } catch (Exception $y) {}
 		}
 		return $this->txEnd();
 	}

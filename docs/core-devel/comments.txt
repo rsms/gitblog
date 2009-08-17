@@ -26,8 +26,8 @@ And added like this: (pseudo code)
 	fwrite(fp, json_encode($comments))
 	funlock(fp)
 	fclose(fp)
-	gb::add(path)
-	gb::commit('new comment on {post->}', 
+	git::add(path)
+	git::commit('new comment on {post->}', 
 	                comment->name.' <'.comment->email.'>')
 
 This is how .comment-files look:

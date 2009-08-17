@@ -36,6 +36,98 @@ class git {
 		return is_string($args) ? escapeshellarg($args) : implode(' ', array_map('escapeshellarg', $args));
 	}
 	
+# -----------------------------------------------------------------------------------------------
+	
+	
+	static function init($gitdir=null, $worktree=null, $shared='true') {
+		$mkdirmode = $shared === 'all' ? 0777 : 0775;
+		
+		if ($shared)
+			$shared = '--shared='.$shared;
+		if ($worktree === null)
+			$worktree = gb::$site_dir;
+		if ($gitdir === null)
+			$gitdir = $worktree.'/.git';
+		
+		# create directories and chmod
+		if (!is_dir($gitdir)) {
+			mkdir($gitdir, $mkdirmode, true);
+			@chmod($gitdir, $mkdirmode);
+		}
+		if (!is_dir($worktree)) {
+			mkdir($worktree, $mkdirmode, true);
+			@chmod($worktree, $mkdirmode);
+		}
+		
+		# git init
+		git::exec('init --quiet '.$shared, null, $gitdir, $worktree);
+	}
+	
+	static function add($pathspec, $forceIncludeIgnored=true) {
+		git::exec(($forceIncludeIgnored ? 'add --force ' : 'add ').escapeshellarg($pathspec));
+		return $pathspec;
+	}
+	
+	static function reset($pathspec=null, $commitobj=null, $flags='-q') {
+		if ($pathspec) {
+			if (is_array($pathspec))
+				$pathspec = implode(' ', array_map('escapeshellarg',$pathspec));
+			else
+				$pathspec = escapeshellarg($pathspec);
+			$pathspec = ' '.$pathspec;
+		}
+		$commitargs = '';
+		if ($commitobj) {
+			$badtype = false;
+			if (!is_array($commitobj))
+				$commitobj = array($commitobj);
+			foreach ($commitobj as $c) {
+				if (is_object($c)) {
+					if (strtolower(get_class($c)) !== 'GitCommit')
+						$badtype = true;
+					else
+						$commitargs .= ' '.escapeshellarg($c->id);
+				}
+				elseif (is_string($c))
+					$commitargs .= escapeshellarg($c);
+				else
+					$badtype = true;
+				if ($badtype)
+					throw new InvalidArgumentException('$commitobj argument must be a string, a GitCommit '
+						.'object or an array of any of the two mentioned types');
+			}
+		}
+		git::exec('reset '.$flags.' '.$commitargs.' --'.$pathspec);
+	}
+	
+	static function commit($message, $author=null, $pathspec=null, $deferred=false) {
+		if ($deferred && gb::defer(array('gb', 'commit'), $message, $author, $pathspec, false)) {
+			$pathspec = $pathspec ? r($pathspec) : '';
+			gb::log('deferred commit -m %s --author %s %s',
+				escapeshellarg($message), escapeshellarg($author), $pathspec);
+			if (!$pathspec) {
+				gb::log(LOG_WARNING,
+					'deferred commits without pathspec might cause unexpected changesets');
+			}
+			return true;
+		}
+		
+		if ($pathspec) {
+			if (is_array($pathspec))
+				$pathspec = implode(' ', array_map('escapeshellarg',$pathspec));
+			else
+				$pathspec = escapeshellarg($pathspec);
+			$pathspec = ' '.$pathspec;
+		}
+		else {
+			$pathspec = '';
+		}
+		$author = $author ? '--author='.escapeshellarg($author) : '';
+		git::exec('commit -m '.escapeshellarg($message).' --quiet '.$author.$pathspec);
+		@chmod(gb::$site_dir.'/.git/COMMIT_EDITMSG', 0664);
+		return true;
+	}
+	
 	/** Each argument can be a string or and array of strings (or null to skip) */
 	static function diff($commits=null, $paths=null, $args=null) {
 		$commits = self::escargs($commits);

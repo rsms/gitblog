@@ -40,7 +40,7 @@ class gb_upgrade {
 		# remove /site.json from .gitignore
 		if (gb_maint::gitignore_sub('/(?:\r?\n)\/site\.json([\t\s \r\n]+|^)/m', '$1')) {
 			gb::log('removed "/site.json" from .gitignore');
-			$added[] = gb::add('.gitignore');
+			$added[] = git::add('.gitignore');
 		}
 		
 		# load settings.json
@@ -90,7 +90,7 @@ class gb_upgrade {
 		# commit any modifications
 		if ($added) {
 			try {
-				gb::commit('upgrade 0.1.4 modified '
+				git::commit('upgrade 0.1.4 modified '
 					. implode(', ',$added), GBUser::findAdmin()->gitAuthor(), $added);
 			}
 			catch (GitError $e) {

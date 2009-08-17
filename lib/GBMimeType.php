@@ -490,12 +490,12 @@ class GBMimeType {
 		return null;
 	}
 	
-	static function forType($type) {
+	static function forType($type, $default=null) {
 		if (self::$rmap === null)
 			self::$rmap = array_flip(self::$map);
 		if (isset(self::$rmap[$type]))
 			return self::$rmap[$type];
-		return null;
+		return $default;
 	}
 }
 ?>

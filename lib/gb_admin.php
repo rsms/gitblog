@@ -3,8 +3,6 @@
 class gb_admin {
 	static public $url;
 	
-	static public $errors = array();
-	
 	/**
 	 * The menu.
 	 * 
@@ -106,14 +104,46 @@ class gb_admin {
 		if (!headers_sent()) {
 			if ($status)
 				header('HTTP/1.1 '.$status);
-			if ($content_type)
-				header('Content-Type: '.$content_type);
-			header('Content-Length: '.strlen($body));
+			if ($body) {
+				if ($content_type)
+					header('Content-Type: '.$content_type);
+				header('Content-Length: '.strlen($body));
+			}
 			header('Cache-Control: no-cache');
 		}
 		if ($exit)
 			exit($body);
 		echo $body;
+	}
+	
+	static function mkdirs($path, $maxdepth=999, $mode=0775) {
+		if ($maxdepth <= 0)
+			return;
+		$parent = dirname($path);
+		if (!is_dir($parent))
+			self::mkdirs($parent, $maxdepth-1, $mode);
+		mkdir($path, $mode);
+		@chmod($path, $mode);
+	}
+	
+	/** Write blob version of $obj. Returns path written to or false if write was not needed. */
+	static function write_content(GBContent $obj) {
+		# build blob
+		$blob = $obj->toBlob();
+		
+		# build destination path
+		$dstpath = gb::$site_dir.'/'.$obj->name;
+		
+		# assure destination dir is prepared
+		$dstpathdir = dirname($dstpath);
+		if (!is_dir($dstpathdir))
+			self::mkdirs($dstpathdir);
+		
+		# write
+		file_put_contents($dstpath, $blob, LOCK_EX);
+		@chmod($dstpath, 0664);
+		
+		return $dstpath;
 	}
 }
 

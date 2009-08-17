@@ -7,11 +7,27 @@ gb::authenticate();
 class WPPost extends GBPost {
 	public $wpid = 0;
 	public $wpparent;
+	
+	function buildHeaderFields() {
+		$header = parent::buildHeaderFields();
+		$header['wp-id'] = $this->wpid;
+		if ($this->wpparent)
+			$header['wp-parent'] = $this->wpparent;
+		return $header;
+	}
 }
 
 class WPPage extends GBPage {
 	public $wpid = 0;
 	public $wpparent;
+	
+	function buildHeaderFields() {
+		$header = parent::buildHeaderFields();
+		$header['wp-id'] = $this->wpid;
+		if ($this->wpparent)
+			$header['wp-parent'] = $this->wpparent;
+		return $header;
+	}
 }
 
 class WPAttachment extends GBContent {
@@ -121,7 +137,7 @@ class WordpressImporter {
 		$count_attachments = 0;
 		$timer = microtime(1);
 		
-		gb::reset(); # rollback any previously prepared commit
+		git::reset(); # rollback any previously prepared commit
 		
 		try {
 			foreach ($channel->getElementsByTagName('item') as $item) {
@@ -171,7 +187,7 @@ class WordpressImporter {
 			if ($commit) {
 				$this->report('Creating commit...');
 				try {
-					gb::commit($message.' from Wordpress blog '.$channel_name,
+					git::commit($message.' from Wordpress blog '.$channel_name,
 						GBUser::findAdmin()->gitAuthor());
 					$this->report('Committed to git repository');
 				}
@@ -184,7 +200,7 @@ class WordpressImporter {
 			}
 		}
 		catch (Exception $e) {
-			gb::reset(); # rollback prepared commit
+			git::reset(); # rollback prepared commit
 			throw $e;
 		}
 	}
@@ -219,57 +235,10 @@ class WordpressImporter {
 	}
 	
 	function writeExposedContent(GBExposedContent $obj) {
-		$dstpath = gb::$site_dir.'/'.$obj->name;
-		if ($this->debug)
-			$this->dump($dstpath);
-		
-		# assure destination dir is prepared
-		$dstpathdir = dirname($dstpath);
-		if (!is_dir($dstpathdir))
-			$this->mkdirs($dstpathdir, count(explode('/', trim($obj->name, '/'))));
-		
-		# build meta
-		$meta = array_merge($obj->meta, array(
-			'title' => $obj->title,
-			'published' => $obj->published->__toString(),
-			'draft' => $obj->draft ? 'yes' : 'no',
-			'comments' => $obj->commentsOpen ? 'yes' : 'no',
-			'pingback' => $obj->pingbackOpen ? 'yes' : 'no',
-			'wp-id' => $obj->wpid
-		));
-		if ($obj->author && $obj->author->name)
-			$meta['author'] = GBAuthor::gitFormat($obj->author);
-		if ($obj instanceof WPPage)
-			$meta['order'] = $obj->order;
-		if ($obj->tags)
-			$meta['tags'] = implode(', ', $obj->tags);
-		if ($obj->categories)
-			$meta['categories'] = implode(', ', $obj->categories);
-		
-		# mux meta and body
-		$data = '';
-		foreach ($meta as $k => $v) {
-			$k = trim($k);
-			$v = trim($v);
-			if (!$k || !$v)
-				continue;
-			$data .= $k.': '.str_replace("\n", "\n\t", $v)."\n";
-		}
-		if (!$data)
-			$data .= "\n";
-		$data .= "\n".$obj->body."\n";
-		
-		# write
-		file_put_contents($dstpath, $data, LOCK_EX);
-		@chmod($dstpath, 0664);
-		
-		# add to commit cache
-		gb::add($obj->name);
-		
-		# write comments
+		gb_admin::write_content($obj);
+		git::add($obj->name);
 		if ($this->includeComments)
 			$this->writeComments($obj);
-		
 		return true;
 	}
 	
@@ -293,7 +262,7 @@ class WordpressImporter {
 			throw $e;
 		}
 		$cdb->commit();
-		gb::add($cdb->file);
+		git::add($cdb->file);
 	}
 	
 	function writeAttachment(WPAttachment $obj) {
@@ -574,9 +543,9 @@ gb::$title[] = 'Import Wordpress';
 
 if (isset($_FILES['wpxml'])) {
 	if ($_FILES['wpxml']['error'])
-		gb_admin::$errors[] = 'file upload failed with unknown error (maybe you forgot to select the file?).';
+		gb::$errors[] = 'file upload failed with unknown error (maybe you forgot to select the file?).';
 	
-	if (!gb_admin::$errors) {
+	if (!gb::$errors) {
 		$importer = new WordpressImporter();
 		$importer->includeAttachments = @gb_strbool($_POST['include-attachments']);
 		$importer->includeComments = @gb_strbool($_POST['include-comments']);
@@ -628,7 +597,7 @@ if (isset($_FILES['wpxml'])) {
 		}
 	</style><?
 	
-	if (!gb_admin::$errors) {
+	if (!gb::$errors) {
 		echo '<h2>Importing '. h(basename($_FILES['wpxml']['name'])) .'</h2>';
 		try {
 			$importer->import(DOMDocument::load($_FILES['wpxml']['tmp_name']));
@@ -654,7 +623,7 @@ if (isset($_FILES['wpxml'])) {
 		echo '<script type="text/javascript" charset="utf-8">setTimeout(\'window.scrollBy(0,999999);\',50)</script>';
 	}
 }
-if (!isset($_FILES['wpxml']) || gb_admin::$errors) {
+if (!isset($_FILES['wpxml']) || gb::$errors) {
 	include_once '_header.php';
 ?>
 <style type="text/css">

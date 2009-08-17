@@ -86,7 +86,7 @@ class gb_input {
 					}
 					elseif ($filter{0} === '@') {
 						$filter = array('filter'=>FILTER_CALLBACK, 'options'=>create_function(
-							'$x', 'return new '.substr($filter, 1).'($x);'
+							'$x', 'return '.substr($filter, 1).'::__set_state($x);'
 						));
 					}
 					elseif ($filter{0} === '/') {
@@ -95,7 +95,7 @@ class gb_input {
 					else {
 						$f = filter_id($filter);
 						if ($f === false || $f === null)
-							throw new InvalidArgumentException('unknown filter "'.$filter.'"');
+							throw new InvalidArgumentException('Unknown filter "'.$filter.'"');
 						$filter = $f;
 					}
 				}

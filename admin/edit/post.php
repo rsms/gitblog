@@ -5,7 +5,7 @@ gb::$title[] = 'New post';
 
 # array( string name => filterspec , .. )
 $fields = array(
-	'path' => FILTER_REQUIRE_SCALAR,
+	'name' => FILTER_REQUIRE_SCALAR,
 	'uri' => FILTER_REQUIRE_SCALAR,
 	'version' => array(
 		'filter' => FILTER_SANITIZE_STRING,
@@ -23,63 +23,26 @@ if ($q['version'] === null)
 	$q['version'] = 'work';
 
 # load existing post
-if ($q['path']) {
-	if (!($post = GBPost::findByName($q['path'], $q['version'])))
-		gb_admin::$errors[] = 'No post could be found at path '.r($q['path']);
+if ($q['name']) {
+	if (!($post = GBPost::findByName($q['name'], $q['version'])))
+		gb::$errors[] = 'No post could be found at path '.r($q['name']);
 }
 elseif ($q['uri']) {
 	$q['uri'] = ltrim($q['uri'], '/');
 	if (!($post = GBPost::find($q['uri'], $q['version'])))
-		gb_admin::$errors[] = 'No post could be found for URI '.r($q['uri']);
+		gb::$errors[] = 'No post could be found for URI '.r($q['uri']);
 }
 
 # no post found or new post
 if (!$post) {
 	$post = new GBPost();
 	$post->published = new GBDateTime();
+	$post->mimeType = 'text/html';
 }
 
 include '../_header.php';
 ?>
 <script type="text/javascript" charset="utf-8">//<![CDATA[
-	var c = {log:function(){}};
-	if (typeof console != 'undefined' && typeof console.log != 'undefined')
-		c = console;
-	
-	var http = {
-		postForm: function(kw) {
-			kw.data = http.toFormParams(kw.data);
-			return http.post(kw);
-		},
-		
-		post: function(kw) {
-			kw.type = "POST";
-			c.log(kw.type, kw.url, kw.data);
-			return $.ajax(kw);
-		},
-		
-		toFormParams: function(params) {
-			if (typeof params == 'object')
-				for (var k in params)
-					http._flattenComplexFormParams(params, k, params[k]);
-			return params;
-		},
-		
-		_flattenComplexFormParams: function(params, k, v) {
-			if (typeof v == 'object') {
-				for (var x in v) {
-					var k2 = k+'['+x+']';
-					var v2 = v[x];
-					if (!http._flattenComplexFormParams(params, k2, v2))
-						params[k2] = v2;
-				}
-				delete(params[k]);
-				return true;
-			}
-			return false;
-		}
-	};
-	
 	var post = {
 		savedState: {},
 		currentState: {},
@@ -89,8 +52,7 @@ include '../_header.php';
 		checkStateInterval: 10000,
 		
 		autoSaveTimer: null,
-		autoSaveLatency: 4000,
-		autoSaveActivityLatency: 1000,
+		autoSaveLatency: 2000,
 		autoSaveEnabled: true, // setting
 		_autoSaveEnabled: true, // runtime
 		
@@ -98,8 +60,11 @@ include '../_header.php';
 		checkModifiedLatency: 100,
 		checkModifiedAdjustThreshold: 50, // if checkTracked run faster then this, adjust checkModifiedLatency accordingly.
 		
+		exists: <?= $post->exists() ? 'true' : 'false' ?>,
+		isTracked: <?= $post->isTracked() ? 'true' : 'false' ?>,
 		name: <?= $post->exists() ? '"'.str_replace('"', '\"',$post->name).'"' : 'null' ?>,
 		version: <?= $post->exists() ? '"'.str_replace('"', '\"',$post->id).'"' : 'null' ?>,
+		
 		
 		trackState: function() {
 			post.setupFieldFilters();
@@ -121,7 +86,8 @@ include '../_header.php';
 				j.change(function(ev){ post.checkTracked(this);});
 				var type = j.attr('type');
 				if (type == 'text' || (type == null && this.nodeName.toLowerCase() == 'textarea')) {
-					j.keyup(function(ev){ post.queueCheckTracked(this);});
+					j.keyup(function(ev){ post.queueCheckTracked(this); });
+					j.keydown(function(ev){ post.delayAutoSaveTimer(); });
 				}
 			});
 		},
@@ -131,11 +97,14 @@ include '../_header.php';
 		
 		standardFilters: {	
 			csv_to_list: function(s){
-				return s.replace(/(^[ \t\s\n\r,]+|[ \t\s\n\r,]+$)/g, '').split(/,[ \s\t]*/);
+				s = s.replace(/(^[ \t\s\n\r,]+|[ \t\s\n\r,]+$)/g, '');
+				if (s == '')
+					return [];
+				return s.split(/,[ \s\t]*/);
 			},
-			list_to_csv: function(l){
-				return l.join(', ');
-			}
+			list_to_csv: function(l){ return l.join(', '); },
+			empty_to_null: function(s){ return s.length ? s : null; },
+			null_to_empty: function(s){ return s == null ? "" : s; }
 		},
 		
 		setupFieldFilters: function() {
@@ -144,6 +113,12 @@ include '../_header.php';
 				var t = post.getField(this, false);
 				post.fieldGetFilters[t.name] = post.standardFilters.csv_to_list;
 				post.fieldPutFilters[t.name] = post.standardFilters.list_to_csv;
+			});
+			// empty means null
+			$('.transform-null').each(function(i){
+				var t = post.getField(this, false);
+				post.fieldGetFilters[t.name] = post.standardFilters.empty_to_null;
+				post.fieldPutFilters[t.name] = post.standardFilters.null_to_empty;
 			});
 		},
 		
@@ -172,7 +147,11 @@ include '../_header.php';
 		putField: function(name, value, applyFilters) {
 			if (typeof applyFilters == 'undefined' || applyFilters)
 				value = post.applyFilters(name, value, post.fieldPutFilters);
-			var j = $('input[name='+name+']');
+			var j = $('*[name='+name+']');
+			if (j.length == 0) {
+				c.log('putField for non-existing field', name);
+				return;
+			}
 			var p = post.investigateField(j);
 			var el = j.get(0);
 			if (p.haveValue) {
@@ -239,20 +218,30 @@ include '../_header.php';
 				return false;
 			if (!post.isModified)
 				return false;
-			var modified = post.findModified();
-			if (modified.length == 0)
-				return false;
-			post.save(modified);
-			return true;
+			return post.save(false);
 		},
 		
-		save: function(params) {
-			if (typeof params == 'undefined')
-				params = post.currentState;
+		save: function(commit, params) {
+			post.stopAutoSaveTimer();
+			
+			if (typeof commit == 'undefined')
+				commit = false;
+			
+			if (typeof params == 'undefined') {
+				var modified = post.findModified();
+				if (modified[0] == 0 && !commit)
+					return false;
+				params = modified[1];
+			}
+			
+			if (commit)
+				params.commit = true;
+			
 			if (post.name)
 				params.name = post.name;
-			// disable save button
-			$('input.save').addClass('disabled').attr('disabled', 'disabled').attr('value', 'Saving...');
+			
+			post.setSaveButton('Saving', false);
+			
 			// send
 			return http.postForm({
 				url: "../helpers/save-post.php",
@@ -272,18 +261,25 @@ include '../_header.php';
 			}
 			catch(e) {
 				c.log('failed to parse response from save-post', rsp);
+				return post.onSaveDidFail(null);
 			}
 			
 			// transfer updated data
-			var updated = {};
+			var was_modified = false;
 			if (typeof rsp == 'object') {
 				// spec changed?
-				var spec = {'name':post.onNameChanged, 'version':post.onVersionChanged};
+				var spec = {
+					'exists':post.onExistsChanged,
+					'isTracked':post.onIsTrackedChanged,
+					'name':post.onNameChanged,
+					'version':post.onVersionChanged,
+				};
 				for (var k in spec) {
 					if (typeof rsp[k] != 'undefined' && rsp[k] != post[k]) {
+						var oldval = post[k];
 						post[k] = rsp[k];
 						if (typeof spec[k] == 'function')
-							spec[k]();
+							spec[k](oldval);
 					}
 				}
 				// fields
@@ -294,8 +290,8 @@ include '../_header.php';
 							post.savedState[name] = value;
 							post.currentState[name] = value;
 							post.putField(name, value);
-							updated[name] = value;
-							c.log(name+' was updated. is now:', value);
+							was_modified = true;
+							c.log(name+' was updated');
 						}
 					}
 				}
@@ -303,35 +299,62 @@ include '../_header.php';
 			
 			// tidy up
 			post._autoSaveEnabled = post.autoSaveEnabled;
-			$('input.save').attr('value', 'Saved');
+			post.setSaveButton('Saved', false);
 			
 			// no longer modified
 			if (post.isModified)
 				post.onNotModified();
 			
 			// reload iframe
-			if (updated.length)
-				$('#preview iframe')[0].contentDocument.location.reload();
+			if (was_modified) {
+				$('#preview iframe').each(function(i){
+					var yoffset = $(this.contentDocument.documentElement.getElementsByTagName('body').item(0)).scrollTop();
+					c.log('reloading preview');
+					$(this).one('load', function(){
+						$(this.contentDocument.documentElement.getElementsByTagName('body').item(0)).scrollTop(yoffset);
+					});
+					this.contentDocument.location.hash = null;
+					this.contentDocument.location.search = 
+						'?preview='+escape((new Date()).toUTCString())+
+						'&version='+post.version;
+				});
+			}
 		},
 		
 		onSaveDidFail: function(req, type, exc, params) {
-			c.log('failed to save post with status '+req.status+' '+req.statusText+': '
-				+req.responseText+' '
-				+(typeof exc != 'undefined' ? exc : ''));
-			c.log('disabling autosave');
-			post._autoSaveEnabled = false;
+			var obj = null;
+			try {
+				obj = eval('('+req.responseText+')');
+			}catch(e){}
+			msg = $.trim(String(obj ? obj : (req ? req.responseText : '')));
+			if (msg.length == 0)
+				msg = 'Unspecified remote error when trying to save post.';
+			if (post._autoSaveEnabled) {
+				c.log('disabling auto-save');
+				msg += "\n\n -- disabling auto-save";
+				post._autoSaveEnabled = false;
+			}
+			ui.alert(msg);
+			c.log('failed to save post', req.status, req.statusText, req.responseText, type, exc);
+			if (!post.isModified)
+				post.onModified();
+			post.setSaveButton('Save', true);
 		},
 		
 		findModified: function() {
 			var modified = {};
+			var count = 0;
 			for (var name in post.currentState) {
-				if (post.savedState[name] != post.currentState[name])
+				if (post.savedState[name] != post.currentState[name]) {
 					modified[name] = post.currentState[name];
+					count++;
+				}
 			}
-			return modified;
+			return [count, modified];
 		},
 		
 		queueCheckTracked: function(el) {
+			post.delayAutoSaveTimer();
 			if (post.checkModifiedLatency < 1)
 				return post.checkTracked(el);
 			var t = post.getField(el);
@@ -363,17 +386,14 @@ include '../_header.php';
 			post.checkModifiedQueue[t.name] = null;
 			var modified = !post.eq(post.currentState[t.name], t.value);
 			
-			if (modified) {
+			if (modified)
 				post.currentState[t.name] = t.value;
-				if (post.isModified)
-					post.delayAutoSaveTimer(post.autoSaveActivityLatency);
-			}
 			
 			if (modified && !post.isModified) {
 				post.onModified([t.name]);
 			}
 			else if (!modified && post.isModified) {
-				if (post.findModified().length == 0)
+				if (post.findModified()[0] == 0)
 					post.onNotModified();
 			}
 			// this logic tunes latency and use of a queue in order to give good
@@ -400,18 +420,76 @@ include '../_header.php';
 				post.onNotModified();
 		},
 		
-		onNameChanged: function() {
-			c.log('new name:', post.name);
+		setSaveButton: function(label, enabled) {
+			var j = $('input.save');
+			var label_transl = j.data('_'+label);
+			if (typeof label_transl != 'undefined')
+				label = label_transl;
+			if (typeof enabled != 'undefined') {
+				if (enabled)
+					j.removeClass('disabled').removeAttr('disabled');
+				else
+					j.addClass('disabled').attr('disabled', 'disabled');
+			}
+			j.attr('value', label);
 		},
 		
-		onVersionChanged: function() {
+		loadPost: function(name, version) {
+			document.location.search = '?name='+name+'&version='+version;
+		},
+		
+		setCommitButtonAccordingToTrackedState: function() {
+			if (post.isTracked) {
+				$('#commit-button').css('display', 'inline-block');
+				$('#publish-button').css('display', 'none');
+				$('input.discard').css('display', 'none');
+			}
+			else {
+				$('#commit-button').css('display', 'none');
+				$('#publish-button').css('display', 'inline-block');
+				$('input.discard').css('display', 'inline-block');
+			}
+		},
+		
+		setSaveButtonAccordingToExistingState: function() {
+			var j = $('input.save');
+			if (post.exists) {
+				j.removeData('_Save');
+				j.removeData('_Saving...');
+			}
+			else {
+				j.data('_Save', 'Create');
+				j.data('_Saved', 'Create');
+				j.data('_Saving...', 'Creating...');
+			}
+			if (post.isModified)
+				post.setSaveButton('Save');
+			else
+				post.setSaveButton('Saved');
+		},
+		
+		onIsTrackedChanged: function(oldval) {
+			post.setCommitButtonAccordingToTrackedState();
+		},
+		
+		onExistsChanged: function(oldval) {
+			post.setSaveButtonAccordingToExistingState();
+		},
+		
+		onNameChanged: function(oldval) {
+			c.log('new name:', post.name);
+			post.loadPost(post.name, post.version);
+		},
+		
+		onVersionChanged: function(oldval) {
 			c.log('new version:', post.version);
+			post.loadPost(post.name, post.version);
 		},
 		
 		onModified: function(modifiedFields) {
-			c.log('detected unsaved modifications');
+			c.log('detected unsaved modifications', modifiedFields);
 			post.isModified = true;
-			$('input.save').removeClass('disabled').removeAttr('disabled').attr('value', 'Save');
+			post.setSaveButton('Save', true);
 			post.resetCheckStateTimer();
 			post.startAutoSaveTimer();
 		},
@@ -419,7 +497,6 @@ include '../_header.php';
 		onNotModified: function() {
 			post.stopAutoSaveTimer();
 			post.isModified = false;
-			$('input.save').addClass('disabled').attr('disabled', 'disabled').attr('value', 'Saved');
 			post.resetCheckStateTimer();
 		}
 	};
@@ -427,6 +504,8 @@ include '../_header.php';
 	$(function(){
 		// track state
 		post.trackState();
+		post.setCommitButtonAccordingToTrackedState();
+		post.setSaveButtonAccordingToExistingState();
 
 		// select/give focus to the body text area for new posts
 		if (!post.name) {
@@ -438,8 +517,10 @@ include '../_header.php';
 		// down. We reset scrolling after the first load.
 		$('#preview iframe').one('load', function(){ window.scrollTo(0,0); });
 		
-		// bind save button to post.save
-		$('input.save').click(function(){ post.save(); });
+		// bind ui
+		post.setSaveButton('Saved', false);
+		$('input.save').click(function(){ post.save(false); });
+		$('input.commit').click(function(){ post.save(true); });
 	});
 //]]></script>
 <div id="content" class="<?= gb_admin::$current_domid ?>">
@@ -454,17 +535,15 @@ include '../_header.php';
 		<div class="component controls">
 			<h4>&nbsp;</h4>
 			<p>
-				<? if (!$post->isTracked()): ?>
-					<input type="button" class="discard" value="Discard" />
-				<? endif ?>
+				<input type="button" class="discard" value="Discard"
+				 	<?= $post->isTracked() ? 'style="display:none"' : '' ?> />
 				<input type="button" class="save" value="Save" />
-				<? if ($post->isTracked()): ?>
-					<input type="button" class="commit" value="Commit"
-						title="Execute git commit and push changes live" />
-				<? else: ?>
-					<input type="button" class="commit publish" value="Publish"
-						title="Make this post appear on your site (after the time specified by 'Publish date')." />
-				<? endif ?>
+				<input type="button" id="commit-button" class="commit" value="Commit"
+					title="Execute git commit and push changes live"
+					<?= $post->isTracked() ? '' : 'style="display:none"' ?> />
+				<input type="button" id="publish-button" class="commit publish" value="Publish"
+					title="Make this post appear on your site (after the time specified by 'Publish date')."
+					<?= $post->isTracked() ? 'style="display:none"' : '' ?> />
 			</p>
 		</div>
 		<div class="breaker"></div>
@@ -497,26 +576,26 @@ include '../_header.php';
 		<div class="component publish-date c3">
 			<h4>Publish date</h4>
 			<p>
-				<input type="text" name="published" class="dep-save" value="<?= h($post->published) ?>" />
+				<input type="text" name="published" class="dep-save transform-null" value="<?= h($post->published) ?>" />
 			</p>
 		</div>
 		<div class="component slug c3">
 			<h4>URL slug</h4>
 			<p>
-				<input type="text" name="slug" class="dep-save" value="<?= h($post->slug) ?>" />
+				<input type="text" name="slug" class="dep-save transform-null" value="<?= h($post->slug) ?>" />
 			</p>
 		</div>
 		<div class="component slug c3">
 			<h4>Author</h4>
 			<p>
-				<input type="text" name="author" class="dep-save" value="<?= h($post->author) ?>" />
+				<input type="text" name="author" class="dep-save transform-null" value="<?= h($post->author) ?>" />
 			</p>
 		</div>
 		<div class="breaker"></div>
 	</div>
 	<!-- options -->
 	<div class="section">
-		<div class="component">
+		<div class="component c2a">
 			<h4>Options</h4>
 			<p>
 				<label>
@@ -536,6 +615,13 @@ include '../_header.php';
 						value="1" <?= $post->draft ? 'checked="checked"' : '' ?> />
 					Draft
 				</label>
+			</p>
+		</div>
+		<div class="component categories c3" title="Type of content. Leave unchanged if you are unsure about it">
+			<h4>Content type</h4>
+			<p>
+				<input type="text" name="content-type" class="dep-save" 
+					value="<?= h(isset($post->meta['content-type']) ? $post->meta['content-type'] : $post->mimeType) ?>" />
 			</p>
 		</div>
 		<div class="breaker"></div>

@@ -623,23 +623,15 @@ class gb {
 	}
 	
 	static function init($add_sample_content=true, $shared='true', $theme='default') {
-		$mkdirmode = $shared === 'all' ? 0777 : 0775;
-		$shared = $shared ? "--shared=$shared" : '';
-		
 		# sanity check
 		$themedir = gb::$dir.'/themes/'.$theme;
-		if (!is_dir($themedir))
+		if (!is_dir($themedir)) {
 			throw new InvalidArgumentException(
 				'no theme named '.$theme.' ('.$themedir.'not found or not a directory)');
-		
-		# create directories and chmod
-		if (!is_dir(gb::$site_dir.'/.git') && !mkdir(gb::$site_dir.'/.git', $mkdirmode, true))
-			return false;
-		chmod(gb::$site_dir, $mkdirmode);
-		chmod(gb::$site_dir.'/.git', $mkdirmode);
+		}
 		
 		# git init
-		git::exec('init --quiet '.$shared);
+		git::init(null, null, $shared);
 		
 		# Create empty standard directories
 		mkdir(gb::$site_dir.'/content/posts', $mkdirmode, true);
@@ -713,71 +705,6 @@ class gb {
 			self::add($name);
 		}
 		
-		return true;
-	}
-	
-	static function add($pathspec, $forceIncludeIgnored=true) {
-		git::exec(($forceIncludeIgnored ? 'add --force ' : 'add ').escapeshellarg($pathspec));
-		return $pathspec;
-	}
-	
-	static function reset($pathspec=null, $commitobj=null, $flags='-q') {
-		if ($pathspec) {
-			if (is_array($pathspec))
-				$pathspec = implode(' ', array_map('escapeshellarg',$pathspec));
-			else
-				$pathspec = escapeshellarg($pathspec);
-			$pathspec = ' '.$pathspec;
-		}
-		$commitargs = '';
-		if ($commitobj) {
-			$badtype = false;
-			if (!is_array($commitobj))
-				$commitobj = array($commitobj);
-			foreach ($commitobj as $c) {
-				if (is_object($c)) {
-					if (strtolower(get_class($c)) !== 'GitCommit')
-						$badtype = true;
-					else
-						$commitargs .= ' '.escapeshellarg($c->id);
-				}
-				elseif (is_string($c))
-					$commitargs .= escapeshellarg($c);
-				else
-					$badtype = true;
-				if ($badtype)
-					throw new InvalidArgumentException('$commitobj argument must be a string, a GitCommit '
-						.'object or an array of any of the two mentioned types');
-			}
-		}
-		git::exec('reset '.$flags.' '.$commitargs.' --'.$pathspec);
-	}
-	
-	static function commit($message, $author=null, $pathspec=null, $deferred=false) {
-		if ($deferred && gb::defer(array('gb', 'commit'), $message, $author, $pathspec, false)) {
-			$pathspec = $pathspec ? r($pathspec) : '';
-			gb::log('deferred commit -m %s --author %s %s',
-				escapeshellarg($message), escapeshellarg($author), $pathspec);
-			if (!$pathspec) {
-				gb::log(LOG_WARNING,
-					'deferred commits without pathspec might cause unexpected changesets');
-			}
-			return true;
-		}
-		
-		if ($pathspec) {
-			if (is_array($pathspec))
-				$pathspec = implode(' ', array_map('escapeshellarg',$pathspec));
-			else
-				$pathspec = escapeshellarg($pathspec);
-			$pathspec = ' '.$pathspec;
-		}
-		else {
-			$pathspec = '';
-		}
-		$author = $author ? '--author='.escapeshellarg($author) : '';
-		git::exec('commit -m '.escapeshellarg($message).' --quiet '.$author.$pathspec);
-		@chmod(gb::$site_dir.'/.git/COMMIT_EDITMSG', 0664);
 		return true;
 	}
 	
@@ -1362,27 +1289,6 @@ function gb_normalize_git_name($name) {
 	return ($name && $name{0} === '"') ? gb_utf8_unescape(substr($name, 1, -1)) : $name;
 }
 
-function gb_parse_author($gitauthor) {
-	$gitauthor = trim($gitauthor);
-	$p = strpos($gitauthor, '<');
-	$name = '';
-	$email = '';
-	if ($p === 0) {
-		$email = trim($gitauthor, '<>');
-	}
-	elseif ($p === false) {
-		if (strpos($gitauthor, '@') !== false)
-			$email = $gitauthor;
-		else
-			$name = $gitauthor;
-	}
-	else {
-		$name = rtrim(substr($gitauthor, 0, $p));
-		$email = trim(substr($gitauthor, $p+1), '<>');
-	}
-	return new GBAuthor($name, $email);
-}
-
 /** Normalize $time (any format strtotime can handle) to a ISO timestamp. */
 function gb_strtoisotime($time) {
 	$d = new DateTime($time);
@@ -1576,6 +1482,16 @@ class GBDateTime {
 		#unset($this->d);
 	}
 	
+	static function __set_state($state) {
+		if (is_array($state)) {
+			$o = new self;
+			foreach ($state as $k => $v)
+				$o->$k = $v;
+			return $o;
+		}
+		return new self($state);
+	}
+	
 	function reintrepretTimezone($tzoffset) {
 		$gmts = $this->offset === 0 ? $this->time : strtotime($this->utcformat());
 		$ds = gmstrftime('%FT%H:%M:%S', $gmts+$tzoffset) . self::formatTimezoneOffset($tzoffset);
@@ -1625,9 +1541,47 @@ class GBAuthor {
 		$this->email = $email;
 	}
 	
+	static function parse($gitauthor) {
+		$gitauthor = trim($gitauthor);
+		$p = strpos($gitauthor, '<');
+		$name = '';
+		$email = '';
+		if ($p === 0) {
+			$email = trim($gitauthor, '<>');
+		}
+		elseif ($p === false) {
+			if (strpos($gitauthor, '@') !== false)
+				$email = $gitauthor;
+			else
+				$name = $gitauthor;
+		}
+		else {
+			$name = rtrim(substr($gitauthor, 0, $p));
+			$email = trim(substr($gitauthor, $p+1), '<>');
+		}
+		return new self($name, $email);
+	}
+	
+	static function __set_state($state) {
+		if (is_array($state)) {
+			$o = new self;
+			foreach ($state as $k => $v)
+				$o->$k = $v;
+			return $o;
+		}
+		elseif (is_object($state) && $state instanceof self) {
+			return $state;
+		}
+		else {
+			return self::parse($state);
+		}
+	}
+	
 	static function gitFormat($author, $fallback=null) {
 		if (!$author)
 			throw new InvalidArgumentException('first argument is empty');
+		if (!is_object($author))
+			$author = self::parse($author);
 		$s = '';
 		if ($author->name)
 			$s = $author->name . ' ';
@@ -1723,6 +1677,10 @@ class GBContent {
 	function __sleep() {
 		return array('name','id','mimeType','author','modified','published');
 	}
+	
+	function toBlob() {
+		// subclasses should implement this
+	}
 }
 
 
@@ -1738,6 +1696,9 @@ class GBExposedContent extends GBContent {
 	public $commentsOpen = true;
 	public $pingbackOpen = true;
 	public $draft = false;
+	
+	# not serialized but only used during runtime
+	public $_rawBody = null;
 	
 	function __construct($name=null, $id=null, $slug=null, $meta=array(), $body=null) {
 		parent::__construct($name, $id);
@@ -1924,17 +1885,17 @@ class GBExposedContent extends GBContent {
 					$charset = strtolower($m[2]);
 				$this->mimeType = $m[1];
 			}
-			unset($this->meta['content-type']);
+			# we do not unset this, because it need to propagate to buildHeaderFields
 		}
 		
 		# lift charset or encoding
 		if (isset($this->meta['charset'])) {
 			$charset = strtolower(trim($this->meta['charset']));
-			unset($this->meta['charset']);
+			# we do not unset this, because it need to propagate to buildHeaderFields
 		}
 		elseif (isset($this->meta['encoding'])) {
 			$charset = strtolower(trim($this->meta['encoding']));
-			unset($this->meta['encoding']);
+			# we do not unset this, because it need to propagate to buildHeaderFields
 		}
 		
 		# convert body text encoding?
@@ -1956,7 +1917,7 @@ class GBExposedContent extends GBContent {
 		
 		# transfer author meta tag
 		if (isset($this->meta['author'])) {
-			$this->author = gb_parse_author($this->meta['author']);
+			$this->author = GBAuthor::parse($this->meta['author']);
 			unset($this->meta['author']);
 		}
 		
@@ -2047,17 +2008,34 @@ class GBExposedContent extends GBContent {
 		return is_file(gb::$site_dir.'/'.$this->name);
 	}
 	
+	function recommendedFilenameExtension() {
+		if (($ext = GBMimeType::forType($this->mimeType)))
+			return '.'.$ext;
+		return '';
+	}
+	
+	function recommendedName() {
+		return 'content/objects/'.$this->slug.$this->recommendedFilenameExtension();
+	}
+	
+	function setRawBody($body) {
+		$this->_rawBody = $body;
+	}
+	
 	function rawBody($data=null) {
-		if ($data === null) {
-			if ($this->isWorkVersion())
-				$data = file_get_contents(gb::$site_dir.'/'.$this->name);
-			else
-				$data = git::cat_file($this->id);
+		if ($this->_rawBody === null) {
+			if ($data === null) {
+				if ($this->isWorkVersion())
+					$data = file_get_contents(gb::$site_dir.'/'.$this->name);
+				else
+					$data = git::cat_file($this->id);
+			}
+			$p = self::findHeaderTerminatorOffset($data);
+			if ($p === false)
+				return '';
+			$this->_rawBody = substr($data, $p);
 		}
-		$p = self::findHeaderTerminatorOffset($data);
-		if ($p === false)
-			return '';
-		return substr($data, $p);
+		return $this->_rawBody;
 	}
 	
 	/**
@@ -2246,6 +2224,56 @@ class GBExposedContent extends GBContent {
 	function domID() {
 		return 'post-'.$this->published->utcformat('%Y-%m-%d-').gb_strtodomid($this->slug);
 	}
+	
+	function buildHeaderFields() {
+		$header = array_merge(array(
+			'title' => $this->title
+		), $this->meta);
+		# optional fields
+		if ($this->published)
+			$header['published'] = $this->published->__toString();
+		if ($this->draft !== null)
+			$header['draft'] = $this->draft ? 'yes' : 'no';
+		if ($this->commentsOpen !== null)
+			$header['comments'] = $this->commentsOpen ? 'yes' : 'no';
+		if ($this->pingbackOpen !== null)
+			$header['pingback'] = $this->pingbackOpen ? 'yes' : 'no';
+		if ($this->author)
+			$header['author'] = GBAuthor::gitFormat($this->author);
+		if ($this->tags)
+			$header['tags'] = implode(', ', $this->tags);
+		if ($this->categories)
+			$header['categories'] = implode(', ', $this->categories);
+		# content-type, charset and encoding should be preserved in $this->meta if
+		# they existed in the first place.
+		return $header;
+	}
+	
+	function toBlob() {
+		# build header
+		$header = $this->buildHeaderFields();
+		
+		# mux header and body
+		$data = '';
+		foreach ($header as $k => $v) {
+			$k = trim($k);
+			$v = trim($v);
+			if (!$k || !$v)
+				continue;
+			$data .= $k.': '.str_replace(array("\n","\r\n"), "\n\t", $v)."\n";
+		}
+		
+		# no header? still need LFLF
+		if (!$data)
+			$data .= "\n";
+		
+		# append body
+		$data .= "\n".$this->rawBody();
+		if ($data{strlen($data)-1} !== "\n")
+			$data .= "\n";
+		
+		return $data;
+	}
 }
 
 
@@ -2327,7 +2355,7 @@ class GBPagedObjects {
 
 class GBPage extends GBExposedContent {
 	public $order = null; # order in menu, etc.
-	public $hidden = false; # hidden from menu, but still accessible (i.e. not the same thing as $draft)
+	public $hidden = null; # hidden from menu, but still accessible (i.e. not the same thing as $draft)
 	
 	function parseHeaderFields() {
 		parent::parseHeaderFields();
@@ -2360,6 +2388,10 @@ class GBPage extends GBExposedContent {
 			strlen(gb::$site_path.gb::$index_prefix.gb::$pages_prefix)),'/'), $this->slug) === 0);
 	}
 	
+	function recommendedName() {
+		return 'content/pages/'.$this->slug.$this->recommendedFilenameExtension();
+	}
+	
 	static function mkCachename($slug) {
 		return 'content/pages/'.$slug.gb::$content_cache_fnext;
 	}
@@ -2379,6 +2411,15 @@ class GBPage extends GBExposedContent {
 	function __sleep() {
 		return array_merge(parent::__sleep(), array('order', 'hidden'));
 	}
+	
+	function buildHeaderFields() {
+		$header = parent::buildHeaderFields();
+		if ($this->order !== null)
+			$header['order'] = $this->order;
+		if ($this->hidden !== null)
+			$header['hidden'] = $this->hidden;
+		return $header;
+	}
 }
 
 
@@ -2396,6 +2437,14 @@ class GBPost extends GBExposedContent {
 		if ($this->name)
 			self::parsePathspec($this->name, $this->published, $this->slug, $fnext);
 		return parent::parseData($data);
+	}
+	
+	function recommendedName() {
+		if ($this->published === null || !($this->published instanceof GBDateTime))
+			throw new UnexpectedValueException('$this->published is not a valid GBDateTime and needed to create name');
+		return 'content/posts/'
+			. $this->published->utcformat(gb::$posts_cn_pattern)
+			. $this->slug . $this->recommendedFilenameExtension();
 	}
 	
 	static function mkCachename($published, $slug) {
@@ -2653,6 +2702,12 @@ class GBComments extends GBContent implements IteratorAggregate, Countable {
 	
 	function __sleep() {
 		return array_merge(parent::__sleep(), array('comments', 'cachenamePrefix'));
+	}
+	
+	function toBlob() {
+		$db = new GBCommentDB();
+		$db->set($this->comments);
+		return $db->encodeData();
 	}
 }
 
@@ -3254,6 +3309,8 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 		gb::$is_preview = true;
 		$version = $_GET[gb::$version_query_key];
 	}
+	if (gb::$is_preview)
+		header('Cache-Control: no-cache');
 	
 	# load plugins
 	gb::load_plugins('request');

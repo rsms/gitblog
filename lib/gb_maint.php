@@ -73,7 +73,7 @@ class gb_maint {
 		try {
 			# remove "/gitblog" ignore from .gitignore
 			if (self::gitignore_sub('/(?:\r?\n)\/gitblog([\t\s \r\n]+|^)/m', '$1'))
-				$added[] = gb::add('.gitignore');
+				$added[] = git::add('.gitignore');
 			
 			# register (and clone if needed) the gitblog submodule. This might take some time.
 			try {
@@ -81,7 +81,7 @@ class gb_maint {
 					. escapeshellarg(self::$branch).' -- '
 					. escapeshellarg($origin_url) . ' gitblog');
 				# add gitblog
-				$added[] = gb::add('gitblog');
+				$added[] = git::add('gitblog');
 			}
 			catch (GitError $e) {
 				if (strpos($e->getMessage(), 'already exists in the index') === false)
@@ -113,12 +113,12 @@ class gb_maint {
 		
 		# if .submodules did not exist when we started, track it
 		if (!$did_have_dotgitmodules && is_file(gb::$site_dir.'/.gitmodules'))
-			$added[] = gb::add('.gitmodules');
+			$added[] = git::add('.gitmodules');
 		
 		# commit any modifications
 		if ($added) {
 			try {
-				gb::commit('added '.implode(', ',$added), GBUser::findAdmin()->gitAuthor(), $added);
+				git::commit('added '.implode(', ',$added), GBUser::findAdmin()->gitAuthor(), $added);
 			}
 			catch (GitError $e) {
 				if (strpos($e->getMessage(), 'no changes added to commit') === false)

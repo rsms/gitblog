@@ -90,9 +90,9 @@ if (isset($_POST['submit'])) {
 	# commit changes (done by gb::init())
 	if (!$errors) {
 		# add users db
-		gb::add('gb-users.php');
+		git::add('gb-users.php');
 		try {
-			if (!gb::commit('gitblog created', GBUser::findAdmin()->gitAuthor()))
+			if (!git::commit('gitblog created', GBUser::findAdmin()->gitAuthor()))
 				$errors[] = 'failed to commit creation';
 		}
 		catch (Exception $e) {

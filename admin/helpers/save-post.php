@@ -60,6 +60,7 @@ try {
 	
 	# post-process checks before saving
 	if ($modified_state) {
+		$post->modified = new GBDateTime();
 		if (!$post->title && !$post->slug) {
 			throw new UnexpectedValueException(
 				'Both title and slug can not both be empty. Please choose a title for this post.');
@@ -74,6 +75,8 @@ try {
 	if ($created) {
 		if (!$post->mimeType)
 			$post->mimeType = 'text/html';
+		if (!$post->published)
+			$post->published = $post->modified;
 		$post->name = $post->recommendedName();
 	}
 	

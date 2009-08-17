@@ -118,14 +118,32 @@ h2 { font-size:19px; }
 		src:local('Liberation Serif Italic'), url('liberation-serif-italic.ttf') format('truetype');
 	}
 	@font-face {
+		font-family:'Liberation Serif Bold';
+		font-weight:bold;
+		src:local('Liberation Serif Bold'), url('liberation-serif-bold.ttf') format('truetype');
+	}
+	@font-face {
+		font-family:'Liberation Serif Bold Italic';
+		font-weight:bold;
+		font-style:italic;
+		src:local('Liberation Serif Bold Italic'), url('liberation-serif-bold-italic.ttf') format('truetype');
+	}
+	@font-face {
 		font-family:Inconsolata;
 		src:local(Inconsolata), url('inconsolata.ttf') format('opentype');
 	}
 	#header div.title div.name { text-shadow:#efeee1 0 1px 0; }
 	body { font-family:'Liberation Serif', georgia, times; }
-	#header div.title div.description { font-family:'Liberation Serif Italic', georgia, times; }
+	#header div.title div.description { font-family:'Liberation Serif Italic', georgia, serif; }
 	div.post code, div.post pre, div.post tt, div.post samp { font-family:'Inconsolata', monospace; }
-	div.post div.body blockquote { font-family:'Liberation Serif Italic'; }
+	div.post div.body blockquote { font-family:'Liberation Serif Italic',georgia,serif; }
+	div.post div.body b, div.post div.body strong { font-family:'Liberation Serif Bold',georgia,serif; }
+	div.post div.body em, div.post div.body i { font-family:'Liberation Serif Italic',georgia,serif; }
+	div.post div.body em b, div.post div.body i b, div.post div.body em strong, div.post div.body i strong,
+		div.post div.body b em, div.post div.body b i, div.post div.body strong em, div.post div.body strong i
+	{
+		font-family:'Liberation Serif Bold Italic',georgia,serif;
+	}
 	#header div.title div.name a:link, #header div.title div.name a:visited { color:#2d2c25; }
 	#header div.title div.name a:link:hover, #header div.title div.name a:visited:hover { color:#000; }
 	#header div.title div.description { color:#8f8d7c; text-shadow:#efeee1 0 1px 0; }

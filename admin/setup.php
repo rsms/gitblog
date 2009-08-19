@@ -94,7 +94,7 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# create admin account
 	if (!$errors) {
-		$u = new GBUser(trim($_POST['email']), $_POST['passphrase'], trim($_POST['name']), true);
+		$u = new GBUser(trim($_POST['name']), trim($_POST['email']), GBUser::passhash($_POST['passphrase']), true);
 		$u->save(); # issues git add, that's why we do this after init
 	}
 	

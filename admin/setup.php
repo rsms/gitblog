@@ -12,21 +12,21 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# check input	
 	if (!trim($_POST['email']) || strpos($_POST['email'], '@') === false) {
-		$errors[] = '<b>Missing email.</b>
+		gb::$errors[] = '<b>Missing email.</b>
 			Please supply a valid email address to be used for the administrator account.';
 	}
 	if (!trim($_POST['passphrase'])) {
-		$errors[] = '<b>Empty pass phrase.</b>
+		gb::$errors[] = '<b>Empty pass phrase.</b>
 			The pass phrase is empty or contains only spaces.';
 	}
 	if ($_POST['passphrase'] !== $_POST['passphrase2']) {
-		$errors[] = '<b>Pass phrases not matching.</b>
+		gb::$errors[] = '<b>Pass phrases not matching.</b>
 			You need to type in the same pass phrase in the two input fields below.';
 	}
 	
 	# -------------------------------------------------------------------------
 	# create gb-config.php
-	if (!$errors) {
+	if (!gb::$errors) {
 		$config_path = gb::$site_dir."/gb-config.php";
 		$s = file_get_contents(gb::$dir.'/skeleton/gb-config.php');
 		# title
@@ -53,12 +53,12 @@ if (isset($_POST['submit'])) {
 		$version = array_pop(explode(' ', trim(gb::exec("--version"))));
 		$version = array_map('intval', explode('.', $version));
 		if ($version[0] < 1 || $version[1] < 6) {
-			$errors[] = '<b>To old git version.</b> Gitblog requires git version 1.6 
+			gb::$errors[] = '<b>To old git version.</b> Gitblog requires git version 1.6 
 				or newer. Please upgrade your git. ('.h(`which git`).')';
 		}
 	}
 	catch (GitError $e) {
-		$errors[] = '<b>git not found in $PATH</b><br/><br/>
+		gb::$errors[] = '<b>git not found in $PATH</b><br/><br/>
 			
 			If git is not installed, please install it. Otherwise you need to update <tt>PATH</tt>.
 			Putting something like this in <tt>gb-config.php</tt> would do it:<br/><br/>
@@ -73,34 +73,34 @@ if (isset($_POST['submit'])) {
 	
 	# -------------------------------------------------------------------------
 	# create repository	
-	if (!$errors) {
+	if (!gb::$errors) {
 		$add_sample_content = isset($_POST['add-sample-content']) && $_POST['add-sample-content'] === 'true';
 		if (!gb::init($add_sample_content))
-			$errors[] = 'Failed to create and initialize repository at '.var_export(gb::$site_dir,1);
+			gb::$errors[] = 'Failed to create and initialize repository at '.var_export(gb::$site_dir,1);
 	}
 	
 	# -------------------------------------------------------------------------
 	# commit changes (done by gb::init())
-	if (!$errors) {
+	if (!gb::$errors) {
 		try {
 			if (!gb::commit('gitblog created', trim($_POST['name']).' <'.trim($_POST['email']).'>'))
-				$errors[] = 'failed to commit creation';
+				gb::$errors[] = 'failed to commit creation';
 		}
 		catch (Exception $e) {
-			$errors[] = 'failed to commit creation: '.nl2br(h(strval($e)));
+			gb::$errors[] = 'failed to commit creation: '.nl2br(h(strval($e)));
 		}
 	}
 	
 	# -------------------------------------------------------------------------
 	# create admin account
-	if (!$errors) {
+	if (!gb::$errors) {
 		$u = new GBUser(trim($_POST['name']), trim($_POST['email']), GBUser::passhash($_POST['passphrase']), true);
 		$u->save(); # issues git add, that's why we do this after init
 	}
 	
 	# -------------------------------------------------------------------------
 	# send the client along
-	if (!$errors) {
+	if (!gb::$errors) {
 		header('Location: '.gb::$site_url);
 		exit(0);
 	}
@@ -119,7 +119,7 @@ gb::$title[] = 'Setup';
 $is_writable = is_writable(gb::$site_dir);
 
 if (!$is_writable) {
-	$errors[] = '<b>Ooops.</b> The directory <code>'.h(gb::$site_dir).'</code> is not writable.
+	gb::$errors[] = '<b>Ooops.</b> The directory <code>'.h(gb::$site_dir).'</code> is not writable.
 		Gitblog need to create a few files in this directory.
 		<br/><br/>
 		Please make this directory (highlighted above) writable and then reload this page.';

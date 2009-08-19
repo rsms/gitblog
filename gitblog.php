@@ -666,31 +666,31 @@ class gb {
 		# Copy .gitignore
 		copy(gb::$dir.'/skeleton/gitignore', gb::$site_dir.'/.gitignore');
 		chmod(gb::$site_dir.'/.gitignore', 0664);
-		self::add('.gitignore');
+		git::add('.gitignore');
 		
 		# Copy theme
 		$lnname = gb::$site_dir.'/index.php';
 		$lntarget = gb_relpath($lnname, $themedir.'/index.php');
 		symlink($lntarget, $lnname) or exit($lntarget);
-		self::add('index.php');
+		git::add('index.php');
 		
 		# Add gb-config.php (might been added already, might be missing and/or
 		# might be ignored by custom .gitignore -- doesn't really matter)
-		self::add('gb-config.php', false);
+		git::add('gb-config.php', false);
 		
 		# Add sample content
 		if ($add_sample_content) {
 			# Copy example "about" page
 			copy(gb::$dir.'/skeleton/content/pages/about.html', gb::$site_dir.'/content/pages/about.html');
 			chmod(gb::$site_dir.'/content/pages/about.html', 0664);
-			self::add('content/pages/about.html');
+			git::add('content/pages/about.html');
 			
 			# Copy example "about/intro" snippet
 			mkdir(gb::$site_dir.'/content/pages/about', $mkdirmode);
 			chmod(gb::$site_dir.'/content/pages/about', $mkdirmode);
 			copy(gb::$dir.'/skeleton/content/pages/about/intro.html', gb::$site_dir.'/content/pages/about/intro.html');
 			chmod(gb::$site_dir.'/content/pages/about/intro.html', 0664);
-			self::add('content/pages/about/intro.html');
+			git::add('content/pages/about/intro.html');
 		
 			# Copy example "hello world" post
 			$s = file_get_contents(gb::$dir.'/skeleton/content/posts/0000-00-00-hello-world.html');
@@ -702,7 +702,7 @@ class gb {
 			$s = str_replace('0000/00-00-hello-world.html', basename(dirname($name)).'/'.basename($name), $s);
 			file_put_contents($path, $s);
 			chmod($path, 0664);
-			self::add($name);
+			git::add($name);
 		}
 		
 		return true;

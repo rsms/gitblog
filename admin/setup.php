@@ -83,7 +83,7 @@ if (isset($_POST['submit'])) {
 	# commit changes (done by gb::init())
 	if (!$errors) {
 		try {
-			if (!gb::commit('gitblog created', GBUser::findAdmin()->gitAuthor()))
+			if (!gb::commit('gitblog created', trim($_POST['name']).' <'.trim($_POST['email']).'>'))
 				$errors[] = 'failed to commit creation';
 		}
 		catch (Exception $e) {

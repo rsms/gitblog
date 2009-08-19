@@ -622,7 +622,7 @@ class gb {
 			. urlencode($category);
 	}
 	
-	static function init($add_sample_content=true, $shared='true', $theme='default') {
+	static function init($add_sample_content=true, $shared='true', $theme='default', $mkdirmode=0775) {
 		# sanity check
 		$themedir = gb::$dir.'/themes/'.$theme;
 		if (!is_dir($themedir)) {

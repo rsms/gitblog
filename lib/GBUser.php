@@ -42,7 +42,7 @@ class GBUser extends GBAuthor {
 	}
 	
 	static function passhash($email, $passphrase, $context='gb-admin') {
-		return chap::shadow($email, $passphrase, $context);
+		return CHAP::shadow($email, $passphrase, $context);
 	}
 	
 	static function findAdmin() {

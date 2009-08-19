@@ -72,18 +72,18 @@ if (isset($_POST['submit'])) {
 	}
 	
 	# -------------------------------------------------------------------------
-	# create admin account
-	if (!$errors) {
-		$u = new GBUser(trim($_POST['email']), $_POST['passphrase'], trim($_POST['name']), true);
-		$u->save();
-	}
-	
-	# -------------------------------------------------------------------------
 	# create repository	
 	if (!$errors) {
 		$add_sample_content = isset($_POST['add-sample-content']) && $_POST['add-sample-content'] === 'true';
 		if (!gb::init($add_sample_content))
 			$errors[] = 'Failed to create and initialize repository at '.var_export(gb::$site_dir,1);
+	}
+	
+	# -------------------------------------------------------------------------
+	# create admin account
+	if (!$errors) {
+		$u = new GBUser(trim($_POST['email']), $_POST['passphrase'], trim($_POST['name']), true);
+		$u->save(); # issues git add, that's why we do this after init
 	}
 	
 	# -------------------------------------------------------------------------

@@ -80,13 +80,6 @@ if (isset($_POST['submit'])) {
 	}
 	
 	# -------------------------------------------------------------------------
-	# create admin account
-	if (!$errors) {
-		$u = new GBUser(trim($_POST['email']), $_POST['passphrase'], trim($_POST['name']), true);
-		$u->save(); # issues git add, that's why we do this after init
-	}
-	
-	# -------------------------------------------------------------------------
 	# commit changes (done by gb::init())
 	if (!$errors) {
 		try {
@@ -96,6 +89,13 @@ if (isset($_POST['submit'])) {
 		catch (Exception $e) {
 			$errors[] = 'failed to commit creation: '.nl2br(h(strval($e)));
 		}
+	}
+	
+	# -------------------------------------------------------------------------
+	# create admin account
+	if (!$errors) {
+		$u = new GBUser(trim($_POST['email']), $_POST['passphrase'], trim($_POST['name']), true);
+		$u->save(); # issues git add, that's why we do this after init
 	}
 	
 	# -------------------------------------------------------------------------

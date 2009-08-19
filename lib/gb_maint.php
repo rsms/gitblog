@@ -5,7 +5,9 @@ class gb_maint {
 	
 	static function gitignore_sub($search_re, $replacement) {
 		$gitignore_path = gb::$site_dir.'/.gitignore';
-		$gitignore = file_get_contents($gitignore_path);
+		$gitignore = @file_get_contents($gitignore_path);
+		if (!$gitignore)
+			$gitignore = '';
 		$gitignore2 = preg_replace($search_re, $replacement, $gitignore);
 		if ($gitignore2 !== $gitignore) {
 			gb::log('updating %s', $gitignore_path);

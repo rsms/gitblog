@@ -217,7 +217,13 @@ div.columns.c3 {}
 		height:0;
 		border-top:1px dashed #ccc;
 	}
-	#sidebar ol.recent-comments small { color:#999; white-space:nowrap; }
+	#sidebar ol.recent-comments { list-style:none; padding:0; }
+		#sidebar ol.recent-comments li { white-space:nowrap; max-width:280px; }
+			#sidebar ol.recent-comments small { color:#999; width:75px; }
+			#sidebar ol.recent-comments a { max-width:200px; }
+			#sidebar ol.recent-comments a, #sidebar ol.recent-comments small {
+				display:inline-block; overflow:hidden; text-overflow:ellipsis; border:none;
+			}
 
 /* Posts */
 div.posts { width:600px; float:left; }

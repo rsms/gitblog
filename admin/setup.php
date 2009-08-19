@@ -50,7 +50,7 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# Can git be found and if so, what version?
 	try {
-		$version = array_pop(explode(' ', trim(git::exec("--version"))));
+		$version = array_pop(explode(' ', trim(gb::exec("--version"))));
 		$version = array_map('intval', explode('.', $version));
 		if ($version[0] < 1 || $version[1] < 6) {
 			$errors[] = '<b>To old git version.</b> Gitblog requires git version 1.6 
@@ -72,13 +72,6 @@ if (isset($_POST['submit'])) {
 	}
 	
 	# -------------------------------------------------------------------------
-	# create admin account
-	if (!$errors) {
-		$u = new GBUser(trim($_POST['email']), $_POST['passphrase'], trim($_POST['name']), true);
-		$u->save();
-	}
-	
-	# -------------------------------------------------------------------------
 	# create repository	
 	if (!$errors) {
 		$add_sample_content = isset($_POST['add-sample-content']) && $_POST['add-sample-content'] === 'true';
@@ -89,15 +82,20 @@ if (isset($_POST['submit'])) {
 	# -------------------------------------------------------------------------
 	# commit changes (done by gb::init())
 	if (!$errors) {
-		# add users db
-		git::add('gb-users.php');
 		try {
-			if (!git::commit('gitblog created', GBUser::findAdmin()->gitAuthor()))
+			if (!gb::commit('gitblog created', trim($_POST['name']).' <'.trim($_POST['email']).'>'))
 				$errors[] = 'failed to commit creation';
 		}
 		catch (Exception $e) {
 			$errors[] = 'failed to commit creation: '.nl2br(h(strval($e)));
 		}
+	}
+	
+	# -------------------------------------------------------------------------
+	# create admin account
+	if (!$errors) {
+		$u = new GBUser(trim($_POST['email']), $_POST['passphrase'], trim($_POST['name']), true);
+		$u->save(); # issues git add, that's why we do this after init
 	}
 	
 	# -------------------------------------------------------------------------

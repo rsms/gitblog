@@ -235,7 +235,7 @@ function gb_normalize_html_structure_clean_pre($matches) {
 
 
 # LF => <br />, etc
-function gb_normalize_html_structure($s, $br = 1) {
+function gb_normalize_html_structure($s, $convert_nl_to_br=true, $convert_nlnl_to_p=true) {
 	$s = $s . "\n"; # just to make things a little easier, pad the end
 	$s = preg_replace('|<br />\s*<br />|', "\n\n", $s);
 	# Space things out a little
@@ -248,7 +248,8 @@ function gb_normalize_html_structure($s, $br = 1) {
 		$s = preg_replace('|\s*</embed>\s*|', '</embed>', $s);
 	}
 	$s = preg_replace("/\n\n+/", "\n\n", $s); # take care of duplicates
-	$s = preg_replace('/\n?(.+?)(?:\n\s*\n|\z)/s', "<p>$1</p>\n", $s); # make paragraphs, including one at the end
+	if ($convert_nlnl_to_p)
+		$s = preg_replace('/\n?(.+?)(?:\n\s*\n|\z)/s', "<p>$1</p>\n", $s); # make paragraphs, including one at the end
 	$s = preg_replace('|<p>\s*?</p>|', '', $s); # under certain strange conditions it could create a P of entirely whitespace
 	$s = preg_replace('!<p>([^<]+)\s*?(</(?:div|address|form)[^>]*>)!', "<p>$1</p>$2", $s);
 	$s = preg_replace( '|<p>|', "$1<p>", $s );
@@ -258,12 +259,14 @@ function gb_normalize_html_structure($s, $br = 1) {
 	$s = str_replace('</blockquote></p>', '</p></blockquote>', $s);
 	$s = preg_replace('!<p>\s*(</?' . $allblocks . '[^>]*>)!', "$1", $s);
 	$s = preg_replace('!(</?' . $allblocks . '[^>]*>)\s*</p>!', "$1", $s);
-	if ($br) {
+	
+	if ($convert_nl_to_br) {
 		$s = preg_replace_callback('/<(script|style).*?<\/\\1>/s', 
-			create_function('$matches', 'return str_replace("\n", "<WPPreserveNewline />", $matches[0]);'), $s);
-		$s = preg_replace('|(?<!<br />)\s*\n|', "<br />\n", $s); # optionally make line breaks
-		$s = str_replace('<WPPreserveNewline />', "\n", $s);
+			create_function('$matches', 'return str_replace("\n", "<__preserve_newline__ />", $matches[0]);'), $s);
+			$s = preg_replace('|(?<!<br />)\s*\n|', "<br />\n", $s); # optionally make line breaks
+		$s = str_replace('<__preserve_newline__ />', "\n", $s);
 	}
+	
 	$s = preg_replace('!(</?' . $allblocks . '[^>]*>)\s*<br />!', "$1", $s);
 	$s = preg_replace('!<br />(\s*</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)[^>]*>)!', '$1', $s);
 	if (strpos($s, '<pre') !== false)
@@ -499,6 +502,14 @@ function gb_force_balance_tags( $text ) {
 # -----------------------------------------------------------------------------
 # GBExposedContent filters
 
+function gb_filter_br2sp($text) {
+	return str_replace("\n", ' ', $text);
+}
+
+function gb_filter_br2brlf($text) {
+	return preg_replace('/<(br[\r\n\s ]*\/?|\/?p)>/m', "$0\n", $text);
+}
+
 /** trim(c->body) */
 function gb_filter_post_reload_content(GBExposedContent $c) {
 	if ($c->body)
@@ -510,6 +521,17 @@ function gb_filter_post_reload_content(GBExposedContent $c) {
 
 /** Converts LF to <br/>LF and extracts excerpt for GBPost objects */
 function gb_filter_post_reload_content_html(GBExposedContent $c) {
+	$auto_linebreaks = true;
+	$auto_paragraphs = true;
+	if (isset($c->meta['auto-linebreaks'])) {
+		$auto_linebreaks = gb_strbool($c->meta['auto-linebreaks']);
+		unset($c->meta['auto-linebreaks']);
+	}
+	if (isset($c->meta['auto-paragraphs'])) {
+		$auto_paragraphs = gb_strbool($c->meta['auto-paragraphs']);
+		unset($c->meta['auto-paragraphs']);
+	}
+	# have body?
 	if ($c->body) {
 		# create excerpt for GBPosts if not already set
 		if (!$c->excerpt && preg_match('/<!--[ \s\t\r\n]*more[ \s\t\r\n]*--(>)/i', $c->body, $m, PREG_OFFSET_CAPTURE)) {
@@ -518,10 +540,11 @@ function gb_filter_post_reload_content_html(GBExposedContent $c) {
 				.'<div id="read-more" class="post-more-anchor"></div>'
 				.substr($c->body, $m[1][1]+1 /* pos of last ">" */ );
 		}
-		$c->body = GBFilter::apply('body.html', $c->body);
+		$c->body = GBFilter::apply('body.html', $c->body, $auto_linebreaks, $auto_paragraphs);
 	}
-	if ($c->excerpt)
-		$c->excerpt = GBFilter::apply('body.html', $c->excerpt);
+	if ($c->excerpt) {
+		$c->excerpt = GBFilter::apply('body.html', $c->excerpt, $auto_linebreaks, $auto_paragraphs);
+	}
 	return $c;
 }
 

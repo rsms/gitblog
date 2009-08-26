@@ -642,11 +642,8 @@ class gb {
 		mkdir(gb::$site_dir.'/data', $mkdirmode);
 		chmod(gb::$site_dir.'/data', $mkdirmode);
 		
-		# Copy post-* hooks
-		foreach (array('post-commit', 'post-update') as $name) {
-			copy(gb::$dir.'/skeleton/hooks/'.$name, gb::$site_dir.'/.git/hooks/'.$name);
-			chmod(gb::$site_dir.'/.git/hooks/'.$name, 0774);
-		}
+		# Create hooks and set basic config
+		gb_maint::repair_repo_setup();
 		
 		# Copy default data sets
 		$data_skeleton_dir = gb::$dir.'/skeleton/data';
@@ -659,9 +656,6 @@ class gb {
 				}
 			}
 		}
-		
-		# Enable remote pushing with a checked-out copy
-		git::exec('config receive.denyCurrentBranch ignore');
 		
 		# Copy .gitignore
 		copy(gb::$dir.'/skeleton/gitignore', gb::$site_dir.'/.gitignore');
@@ -1360,9 +1354,10 @@ function gb_hms_from_time($ts) {
 	return (intval($p{0}.$p{1})*60*60) + (intval($p{2}.$p{3})*60) + intval($p{4}.$p{5});
 }
 
-function gb_strbool($s) {
+function gb_strbool($s, $empty_is_true=false) {
 	$s = strtoupper($s);
-	return ($s === 'TRUE' || $s === 'YES' || $s === '1' || $s === 'ON');
+	return ( $s === 'TRUE' || $s === 'YES' || $s === '1' || $s === 'ON' || 
+		($s === '' && $empty_is_true) );
 }
 
 function gb_strtodomid($s) {

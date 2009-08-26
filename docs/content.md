@@ -111,7 +111,7 @@ All of these are optional and replaced by default values if not specified.
 	<tr valign="top">
 		<td>Hidden</td>
 		<td>Hide, invisible</td>
-		<td>Boolean[1] true the object should not appear in menus.</td>
+		<td>Boolean[1] true if the object should not appear in menus.</td>
 		<td>Defaults to false (is visible) if not specified. Only applies to pages.
 			Sets the <code>hidden</code> property on <tt>GBPage</tt>s.</td>
 	</tr>
@@ -150,6 +150,22 @@ All of these are optional and replaced by default values if not specified.
 			<a href="http://php.net/mbstring">Multibyte String</a> 
 			or the <a href="http://php.net/iconv">iconv</a> extension.
 			Does not set any property, but affects the <code>title</code> and <code>body</code> properties.
+		</td>
+	</tr>
+	<tr valign="top">
+		<td>Auto-linebreaks</td>
+		<td></td>
+		<td>Boolean[1] enable automatic creation of single linebreaks.</td>
+		<td>
+			True by default. For HTML content, single linebreaks are converted to <code>&lt;br/&gt;</code>. Setting this to false disables automatic <code>&lt;br/&gt;</code>.
+		</td>
+	</tr>
+	<tr valign="top">
+		<td>Auto-paragraphs</td>
+		<td></td>
+		<td>Boolean[1] enable automatic creation of text paragraphs.</td>
+		<td>
+			True by default. For HTML content, two or more linebreaks are converted into <code>&lt;p&gt;text before linebreaks&lt;/p&gt;</code>. Setting this to false disables implicit creation of paragraphs.
 		</td>
 	</tr>
 </table>

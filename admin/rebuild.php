@@ -16,9 +16,11 @@ include '_header.php';
 	p.logmsg.error { background:#faa; }
 	p.logmsg.warning { background:#ff9; }
 </style>
-<h2>Rebuilding</h2>
-<? GBRebuilder::rebuild(isset($_GET['force-full-rebuild'])); ?>
-<p>
-	<input type="button" value="Force full rebuild" onclick="document.location.href='?force-full-rebuild'" />
-</p>
+<div id="content" class="<?= gb_admin::$current_domid ?> margins">
+	<h2>Rebuilding</h2>
+	<? GBRebuilder::rebuild(isset($_GET['force-full-rebuild'])); ?>
+	<p>
+		<input type="button" value="Force full rebuild" onclick="document.location.href='?force-full-rebuild'" />
+	</p>
+</div>
 <? include '_footer.php' ?>

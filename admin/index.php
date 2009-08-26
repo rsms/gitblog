@@ -11,9 +11,8 @@ include '_header.php';
 	</p>
 	<h3>Common tasks</h3>
 	<ul>
-		<li><a href="import-wordpress.php">Import a Wordpress blog</a></li>
-		<li><a href="rebuild.php">Rebuild cache</a></li>
-		<li><a href="helpers/deauthorize.php">Log out</a></li>
+		<li><a href="maintenance/rebuild.php">Rebuild cache</a></li>
+		<li><a href="maintenance/import-wordpress.php">Import a Wordpress blog</a></li>
 	</ul>
 </div>
 <? include '_footer.php' ?>

@@ -1,7 +1,7 @@
 <?
 ini_set('upload_max_filesize', '200M');
 ini_set('post_max_size', '200M');
-require_once '_base.php';
+require_once '../_base.php';
 gb::authenticate();
 
 class WPPost extends GBPost {
@@ -551,7 +551,7 @@ if (isset($_FILES['wpxml'])) {
 		$importer->includeComments = @gb_strbool($_POST['include-comments']);
 	}
 	
-	include_once '_header.php';
+	include_once '../_header.php';
 	?><style type="text/css">
 		div.msg {
 			border-top:1px solid #ddd;
@@ -624,7 +624,7 @@ if (isset($_FILES['wpxml'])) {
 	}
 }
 if (!isset($_FILES['wpxml']) || gb::$errors) {
-	include_once '_header.php';
+	include_once '../_header.php';
 ?>
 <style type="text/css">
 	ol.steps { padding-left:3em; }
@@ -648,66 +648,69 @@ if (!isset($_FILES['wpxml']) || gb::$errors) {
 		font-family:"lucida grande", tahoma,sans-serif; }
 	input[type=checkbox] { margin-right:5px; }
 	form { margin-bottom:5em; }
-	#disclaimer { float:right; width:300px; margin-right:2em; color:#888; }
+	#disclaimer { width:540px; color:#888; border-top:1px solid #eee; padding-top:10px; }
+	#disclaimer h3 { color:#666; }
 </style>
-<h2>Import a Wordpress blog</h2>
-<div id="disclaimer">
-	<h3>Compatibility and in-case-of-emergency</h3>
-	<p>
-		Currently this has only been tested with Wordpress 2.6 and 2.7 — importing older versions might work (worst case scenario: you'll get an error message). But older versions should work, as the WordPress eXtended RSS or WXR file was introduced in 2006 and have remained more or less the same since then.
-	</p>
-	<p>
-		Due to the nature of Gitblog, the import is done in one transaction per "RSS channel". This means that if an error occurs, you abort the process or something else causes the import process to end prematurely, nothing will be imported into the live stage but will be left in your working stage. Use the regular <tt>git status</tt> to get a list of what was added or modified.
-	</p>
-</div>
-<div id="the-important-part">
-	<p>
-		This tool lets you import one or more Wordpress blogs.
-	</p>
-	<form enctype="multipart/form-data" method="post" action="import-wordpress.php">
-		<ol class="steps">
-			<li><p>
-				In your Wordpress blog admin, go to "Tools" &rarr; 
-				<a href="http://codex.wordpress.org/Tools_Export_SubPanel">"Export"</a>
-				and click the big button "Download Export File".
-			</p></li>
-			<li><p>
-				Find the downloaded file (named something like "wordpress.2009-07-15.xml"):<br/>
-				<input type="file" name="wpxml" class="wpxml" />
-			</p></li>
-			<li>
-				<p>
-					<b>Optional...options:</b>
-				</p>
-				<p>
-					<label>
-						<input type="checkbox" name="include-attachments" value="true" checked="checked" />
-						Download attachments
-						<small>
-							If you uncheck this, no attachment files will be downloaded but links to attachments (i.e. embedded images) in posts and pages will remain. Unchecking this might be a good idea if your Wordpress blog does no longer exist as there is then no point in trying to download non-existing files :P
-						</small>
-					</label>
-					<label>
-						<input type="checkbox" name="include-comments" value="true" checked="checked" />
-						Include comments
-						<small>
-							Uncheck this if you do not wish to have comments imported. It's a good idea if you're a prick and people said bad things about you. This is your chance to a clean slate! Seriously, you can easily remove all or some comments afterwards so we recommend you to keep this option checked.
-						</small>
-					</label>
-				</p>
-			</li>
-			<li>
-				<p>
-					<b>Click this pretty button to initiate the import:</b>
-					<input type="submit" value="Import" class="submit" />
-				</p>
-				<p>
-					<em>You will get live feedback during the import process. Watch this space.</em>
-				</p>
-			</li>
-		</ol>
-	</form>
+<div id="content" class="<?= gb_admin::$current_domid ?> margins">
+	<h2>Import a Wordpress blog</h2>
+	<div id="the-important-part">
+		<p>
+			This tool lets you import one or more Wordpress blogs.
+		</p>
+		<form enctype="multipart/form-data" method="post" action="import-wordpress.php">
+			<ol class="steps">
+				<li><p>
+					In your Wordpress blog admin, go to "Tools" &rarr; 
+					<a href="http://codex.wordpress.org/Tools_Export_SubPanel">"Export"</a>
+					and click the big button "Download Export File".
+				</p></li>
+				<li><p>
+					Find the downloaded file (named something like "wordpress.2009-07-15.xml"):<br/>
+					<input type="file" name="wpxml" class="wpxml" />
+				</p></li>
+				<li>
+					<p>
+						<b>Optional...options:</b>
+					</p>
+					<p>
+						<label>
+							<input type="checkbox" name="include-attachments" value="true" checked="checked" />
+							Download attachments
+							<small>
+								If you uncheck this, no attachment files will be downloaded but links to attachments (i.e. embedded images) in posts and pages will remain. Unchecking this might be a good idea if your Wordpress blog does no longer exist as there is then no point in trying to download non-existing files :P
+							</small>
+						</label>
+						<label>
+							<input type="checkbox" name="include-comments" value="true" checked="checked" />
+							Include comments
+							<small>
+								Uncheck this if you do not wish to have comments imported. It's a good idea if you're a prick and people said bad things about you. This is your chance to a clean slate! Seriously, you can easily remove all or some comments afterwards so we recommend you to keep this option checked.
+							</small>
+						</label>
+					</p>
+				</li>
+				<li>
+					<p>
+						<b>Click this pretty button to initiate the import:</b>
+						<input type="submit" value="Import" class="submit" />
+					</p>
+					<p>
+						<em>You will get live feedback during the import process. Watch this space.</em>
+					</p>
+				</li>
+			</ol>
+		</form>
+	</div>
+	<div id="disclaimer">
+		<h3>Compatibility and in-case-of-emergency</h3>
+		<p>
+			Currently this has only been tested with Wordpress 2.6 and 2.7 — importing older versions might work (worst case scenario: you'll get an error message). But older versions should work, as the WordPress eXtended RSS or WXR file was introduced in 2006 and have remained more or less the same since then.
+		</p>
+		<p>
+			Due to the nature of Gitblog, the import is done in one transaction per "RSS channel". This means that if an error occurs, you abort the process or something else causes the import process to end prematurely, nothing will be imported into the live stage but will be left in your working stage. Use the regular <tt>git status</tt> to get a list of what was added or modified.
+		</p>
+	</div>
 </div>
 <?
 } # end if posted file
-include '_footer.php' ?>
+include '../_footer.php' ?>

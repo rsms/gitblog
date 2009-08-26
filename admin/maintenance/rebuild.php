@@ -1,5 +1,5 @@
 <?
-require_once '_base.php';
+require_once '../_base.php';
 function gb_log_html($priority, $msg) {
 	echo '<p class="logmsg '.($priority === LOG_WARNING ? 'warning' : ($priority < LOG_WARNING ? 'error' : ''))
 		.'">'.h($msg).'</p>';
@@ -8,7 +8,7 @@ function gb_log_html($priority, $msg) {
 gb::$log_cb = 'gb_log_html';
 gb::authenticate();
 gb::$title[] = 'Rebuild';
-include '_header.php';
+include '../_header.php';
 ?>
 <style type="text/css">
 	p.logmsg { margin:2px 0; font-size:9px; font-family:monospace; }
@@ -23,4 +23,4 @@ include '_header.php';
 		<input type="button" value="Force full rebuild" onclick="document.location.href='?force-full-rebuild'" />
 	</p>
 </div>
-<? include '_footer.php' ?>
+<? include '../_footer.php' ?>

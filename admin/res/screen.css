@@ -70,7 +70,7 @@ h2 { font-size:19px; }
 #content { background-color:#fff; float:left; }
 	#content h2 { margin:15px 0 10px 0; font-size:24px; }
 	#content h2:first-child { margin-top:0; }
-#content.margins { padding:20px; }
+#content.margins { padding:20px; margin-bottom:1px; }
 #content.edit-post {
 	width:600px; border-left:1px solid #ccc; 
 	border-right:1px solid #ccc; margin-left:-1px;

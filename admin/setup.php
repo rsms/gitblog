@@ -129,58 +129,71 @@ if (!$is_writable) {
 	#       on directory. If so, suggest a chmod, otherwise suggest a chown.
 }
 
+if (!isset($_POST['email']))
+	$_POST['email'] = git::config('user.email');
+
+if (!isset($_POST['name']))
+	$_POST['name'] = git::config('user.name');
+
 include '_header.php';
 ?>
-<h2>Setup your gitblog</h2>
-<p>
-	It's time to setup your new gitblog.
-</p>
-<form action="setup.php" method="post">
-	
-	<div class="inputgroup">
-		<h4>Create an administrator account</h4>
-		<p>Email:</p>
-		<input type="text" name="email" value="<?= h(@$_POST['email']) ?>" />
-		<p>Real name:</p>
-		<input type="text" name="name" value="<?= h(@$_POST['name']) ?>" />
-		<p class="note">
-			This will be used for commit messages, along with email.
-			Commit history can not be changed afterwards, so please provide your real name here.
-		</p>
-		<p>Pass phrase:</p>
-		<input type="password" name="passphrase" />
-		<input type="password" name="passphrase2" />
-		<p class="note">
-			Choose a pass phrase used to authenticate as administrator. Type it twice.
-		</p>
-	</div>
-	
-	<div class="inputgroup">
-		<h4>Site settings</h4>
-		<p>Title:</p>
-		<input type="text" name="title" value="<?= h(gb::$site_title) ?>" />
-		<p class="note">
-			The title of your site can be changed later.
-		</p>
-		<p>
-			<label>
-				<input type="checkbox" value="true" checked="checked" name="add-sample-content" />
-				Add sample content
-			</label>
-		</p>
-		<p class="note">
-			Add some sample content to get you started.
-		</p>
-	</div>
-	
-	<div class="breaker"></div>
+<script type="text/javascript" charset="utf-8">
+	$(function(){
+		$('input[name=email]').focus();
+	});
+</script>
+<div id="content" class="setup margins">
+	<h2>Setup your gitblog</h2>
 	<p>
-	<? if (!$is_writable): ?>
-		<input type="button" value="Setup" disabled="true"/>
-	<? else: ?>
-		<input type="submit" name="submit" value="Setup"/>
-	<? endif; ?>
+		It's time to setup your new gitblog.
 	</p>
-</form>
-<div class="breaker"></div>
+	<form action="setup.php" method="post">
+	
+		<div class="inputgroup">
+			<h4>Create an administrator account</h4>
+			<p>Email:</p>
+			<input type="text" name="email" value="<?= h($_POST['email']) ?>" vcard_name="vCard.Email" />
+			<p>Real name:</p>
+			<input type="text" name="name" value="<?= h($_POST['name']) ?>" vcard_name="vCard.DisplayName" />
+			<p class="note">
+				This will be used for commit messages, along with email.
+				Commit history can not be changed afterwards, so please provide your real name here.
+			</p>
+			<p>Pass phrase:</p>
+			<input type="password" name="passphrase" />
+			<input type="password" name="passphrase2" />
+			<p class="note">
+				Choose a pass phrase used to authenticate as administrator. Type it twice.
+			</p>
+		</div>
+	
+		<div class="inputgroup">
+			<h4>Site settings</h4>
+			<p>Title:</p>
+			<input type="text" name="title" value="<?= h(gb::$site_title) ?>" />
+			<p class="note">
+				The title of your site can be changed later.
+			</p>
+			<p>
+				<label>
+					<input type="checkbox" value="true" checked="checked" name="add-sample-content" />
+					Add sample content
+				</label>
+			</p>
+			<p class="note">
+				Add some sample content to get you started.
+			</p>
+		</div>
+	
+		<div class="breaker"></div>
+		<p>
+		<? if (!$is_writable): ?>
+			<input type="button" value="Setup" disabled="true"/>
+		<? else: ?>
+			<input type="submit" name="submit" value="Setup"/>
+		<? endif; ?>
+		</p>
+	</form>
+	<div class="breaker"></div>
+</div>
 <? include '_footer.php'; ?>

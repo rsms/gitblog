@@ -37,7 +37,9 @@ class gb_admin {
 	# resolved by render_menu
 	public static $current_domid = '';
 	
-	function render_menu($items=null, $baseurl=null, $currurlpath=null, $liststart='<ul>', $listend='</ul>') {
+	function render_menu($disabled=false, $items=null, $baseurl=null, $currurlpath=null, 
+	                     $liststart='<ul>', $listend='</ul>')
+	{
 		if ($items === null)
 			$items = self::$menu;
 		if ($baseurl === null)
@@ -70,16 +72,16 @@ class gb_admin {
 				self::$current_domid = $dom_id;
 			}
 			$s .= '><a';
-			if ($url)
+			if ($url && !$disabled)
 				$s .= ' href="'.h($url).'"';
-			if ($accesskey)
+			if ($accesskey && !$disabled)
 				$s .= ' accesskey="'.$accesskey.'"';
 			$s .= '><span class="title">'.h($item[0]).'</span>';
-			if ($accesskey)
+			if ($accesskey && !$disabled)
 				$s .= '<span class="accesskey-hint">'.$accesskey_prefix.$accesskey.'</span>';
 			$s .= '</a>';
 			if (isset($item[2]) && $item[2])
-				$s .= self::render_menu($item[2], $baseurl, $currurlpath, $liststart, $listend);
+				$s .= self::render_menu($disabled, $item[2], $baseurl, $currurlpath, $liststart, $listend);
 			$s .= '</li>';
 		}
 		$s .= $listend;

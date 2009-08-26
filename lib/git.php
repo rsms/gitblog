@@ -3,15 +3,19 @@ class git {
 	static public $query_count = 0;
 	
 	/** Execute a git command */
-	static function exec($cmd, $input=null, $gitdir=null, $worktree=null) {
+	static function exec($cmd, $input=null, $gitdir=null, $worktree=null, $allow_guess=false) {
 		# build cmd
-		if ($gitdir === null)
+		if ($gitdir === null && !$allow_guess)
 			$gitdir = gb::$site_dir.'/.git';
-		if ($worktree === null)
+		if ($worktree === null && !$allow_guess)
 			$worktree = gb::$site_dir;
-		$cmd = 'git --git-dir='.escapeshellarg($gitdir)
-			.' --work-tree='.escapeshellarg($worktree)
-			.' '.$cmd;
+		$cmd_prefix = 'git';
+		if ($gitdir)
+			$cmd_prefix .= ' --git-dir='.escapeshellarg($gitdir);
+		if ($worktree)
+			$cmd_prefix .= ' --work-tree='.escapeshellarg($worktree);
+		$cmd = $cmd_prefix.' '.$cmd;
+		
 		#var_dump($cmd);
 		gb::log(LOG_DEBUG, 'exec$ '.$cmd);
 		$r = gb::shell($cmd, $input, gb::$site_dir);
@@ -38,6 +42,31 @@ class git {
 	
 # -----------------------------------------------------------------------------------------------
 	
+	static function config($key=null, $value=null, $guess_repo=true) {
+		if ($value !== null) {
+			$cmd = 'config --replace-all ';
+			if ($value === true || $value === false) {
+				$cmd .= ' --bool ';
+				$value = $value ? 'true' : 'false';
+			}
+			elseif (is_int($value)) {
+				$cmd .= ' --int ';
+			}
+			return trim(self::exec($cmd.escapeshellarg($key).' '.escapeshellarg($value),
+				null, null, null, $guess_repo));
+		}
+		else {
+			try {
+				return trim(self::exec('config --get '.escapeshellarg($key),
+					null, null, null, $guess_repo));
+			}
+			catch (GitError $e) {
+				if (trim($e->getMessage()) === '')
+					return null;
+				throw $e;
+			}
+		}
+	}
 	
 	static function init($gitdir=null, $worktree=null, $shared='true') {
 		$mkdirmode = $shared === 'all' ? 0777 : 0775;

@@ -39,6 +39,6 @@ header('Content-Type: application/xhtml+xml; charset=utf-8');
 				</ul>
 			</div>
 		</div>
-		<div id="menu">
-			<?= gb_admin::render_menu() ?>
+		<div id="menu" <? if($integrity == 2) echo 'class="disabled"' ?>>
+			<?= gb_admin::render_menu($integrity == 2) ?>
 		</div>

@@ -51,7 +51,6 @@ function gb_texturize_html($text) {
 	$has_pre_parent = false;
 	$output = '';
 	$curl = '';
-	$text = strtr($text, array('<?'=>'<?>', '?>'=>'</?>'));
 	$textarr = preg_split('/(<.*>|\[.*\])/Us', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
 	$stop = count($textarr);
 	
@@ -87,9 +86,9 @@ function gb_texturize_html($text) {
 			|| strpos($curl, '<style') !== false || strpos($curl, '<script') !== false)
 		{
 			$next = false;
-		} elseif (strpos($curl, '<pre') !== false || $curl === '<?>') {
+		} elseif (strpos($curl, '<pre') !== false) {
 			$has_pre_parent = true;
-		} elseif (strpos($curl, '</pre>') !== false || $curl === '</?>') {
+		} elseif (strpos($curl, '</pre>') !== false) {
 			$has_pre_parent = false;
 		} else {
 			$next = true;
@@ -98,8 +97,6 @@ function gb_texturize_html($text) {
 		$curl = preg_replace('/&([^#])(?![a-zA-Z1-4]{1,8};)/', '&#038;$1', $curl);
 		$output .= $curl;
 	}
-	
-	$output = strtr($output, array('<?>'=>'<?', '</?>'=>'?>'));
 	
 	return $output;
 }
@@ -729,7 +726,7 @@ gb_cfilter::add('body.html', 'gb_html_to_xhtml', 30);
 gb_cfilter::add('body.html', 'gb_normalize_html_structure', 40);
 gb_cfilter::add('body.html', 'gb_htmlents_to_xmlents', 50);
 gb_cfilter::add('body.html', 'gb_xmlents_to_utf8', 60);
-#gb_cfilter::add('body.html', 'gb_force_balance_tags', 70);
+gb_cfilter::add('body.html', 'gb_force_balance_tags', 70);
 gb_cfilter::add('body.html', 'gb_html_img_size', 80);
 gb_cfilter::add('body.html', 'gb_html_abspaths_to_urls', 10000);
 

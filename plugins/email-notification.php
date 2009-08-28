@@ -30,7 +30,7 @@ class email_notification_plugin {
 		else
 			$recipient = GBMail::normalizeRecipient($comment->post->author);
 		if (!$recipient[0])
-			$recipient[0] = gb::data('email')->get('admin');
+			$recipient = gb::data('email')->get('admin');
 	}
 
 	static function comment_mkbody($comment, $header='', $footer='') {

@@ -8,7 +8,7 @@
  *   Posted after a comment was removed, but before the response is sent.
  * 
  */
-require '../gitblog.php';
+require '../../gitblog.php';
 ini_set('html_errors', '0');
 header('Content-Type: text/plain; charset=utf-8');
 header('Cache-Control: no-cache');

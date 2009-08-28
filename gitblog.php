@@ -3006,27 +3006,27 @@ class GBComment {
 	}
 	
 	function approveURL($post=null, $include_referrer=true) {
-		return $this->_bounceURL('gitblog/admin/approve-comment.php?action=approve&',
+		return $this->_bounceURL('gitblog/admin/helpers/approve-comment.php?action=approve&',
 			$post, $include_referrer);
 	}
 	
 	function unapproveURL($post=null, $include_referrer=true) {
-		return $this->_bounceURL('gitblog/admin/approve-comment.php?action=unapprove&',
+		return $this->_bounceURL('gitblog/admin/helpers/approve-comment.php?action=unapprove&',
 			$post, $include_referrer);
 	}
 	
 	function hamURL($post=null, $include_referrer=true) {
-		return $this->_bounceURL('gitblog/admin/spam-comment.php?action=ham&',
+		return $this->_bounceURL('gitblog/admin/helpers/spam-comment.php?action=ham&',
 			$post, $include_referrer);
 	}
 	
 	function spamURL($post=null, $include_referrer=true) {
-		return $this->_bounceURL('gitblog/admin/spam-comment.php?action=spam&',
+		return $this->_bounceURL('gitblog/admin/helpers/spam-comment.php?action=spam&',
 			$post, $include_referrer);
 	}
 	
 	function removeURL($post=null, $include_referrer=true) {
-		return $this->_bounceURL('gitblog/admin/remove-comment.php?',
+		return $this->_bounceURL('gitblog/admin/helpers/remove-comment.php?',
 			$post, $include_referrer);
 	}
 	

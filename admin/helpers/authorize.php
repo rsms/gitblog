@@ -55,17 +55,19 @@ include '../_header.php';
 	});
 	//]]>
 </script>
-<h2>Authorize</h2>
-<form action="<?= gb::url() ?>" method="POST" 
-	onsubmit="chap.submit('<?= $auth->nonce() ?>','<?= $auth->opaque() ?>','<?= $auth->context ?>')">
-	<input type="hidden" id="chap-response" name="chap-response" value="" />
-	<p>
-		Username: <input type="text" id="chap-username" name="chap-username" 
-			value="<?= isset($_REQUEST['chap-username']) ? $_REQUEST['chap-username'] : gb_author_cookie::get('email'); ?>" /><br />
-		Password: <input type="password" id="chap-password" name="chap-password" />
-	</p>
-	<p>
-		<input type="submit" value="Login" />
-	</p>
-</form>
+<div id="content" class="authorize margins">
+	<h2>Authorize</h2>
+	<form action="<?= gb::url() ?>" method="POST" 
+		onsubmit="chap.submit('<?= $auth->nonce() ?>','<?= $auth->opaque() ?>','<?= $auth->context ?>')">
+		<input type="hidden" id="chap-response" name="chap-response" value="" />
+		<p>
+			Username: <input type="text" id="chap-username" name="chap-username" 
+				value="<?= isset($_REQUEST['chap-username']) ? $_REQUEST['chap-username'] : gb_author_cookie::get('email'); ?>" /><br />
+			Password: <input type="password" id="chap-password" name="chap-password" />
+		</p>
+		<p>
+			<input type="submit" value="Login" />
+		</p>
+	</form>
+</div>
 <? include '../_footer.php' ?>

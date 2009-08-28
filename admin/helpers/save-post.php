@@ -66,7 +66,7 @@ try {
 				'Both title and slug can not both be empty. Please choose a title for this post.');
 		}
 		if (!$post->slug)
-			$post->slug = GBFilter::apply('sanitize-title', $post->title);
+			$post->slug = gb_cfilter::apply('sanitize-title', $post->title);
 		elseif ($created && !$post->title)
 			$post->title = ucfirst($post->slug);
 	}

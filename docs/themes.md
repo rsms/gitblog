@@ -17,7 +17,7 @@ Example of an extremely simple theme:
 		if (gb::$is_post) {
 			?>
 			<h1><?= $post->title ?></h1>
-			<?= $post->body ?>
+			<?= $post->body() ?>
 			<?
 		}
 		# handle other cases ...

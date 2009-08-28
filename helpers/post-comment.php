@@ -134,7 +134,7 @@ if ( $input['client-timezone-offset'] !== false
 
 # author-url -> author-uri if set
 if ($input['author-url'] !== false)
-	$input['author-uri'] = GBFilter::apply('sanitize-url', $input['author-url']);
+	$input['author-uri'] = gb_cfilter::apply('sanitize-url', $input['author-url']);
 
 # if we are logged in, use the canonical email
 if (gb::$authorized)
@@ -162,7 +162,7 @@ if (gb::$authorized)
 	$comment->approved = true;
 
 # apply filters
-$comment = GBFilter::apply('pre-comment', $comment);
+$comment = gb_cfilter::apply('pre-comment', $comment);
 
 # aquire referrer
 $referrer = gb::referrer_url();

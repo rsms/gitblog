@@ -209,7 +209,7 @@ class WordpressImporter {
 		# Draft objects which have never been published does not have a slug, so
 		# we derive one from the title:
 		if (!$obj->slug)
-			$obj->slug = GBFilter::apply('sanitize-title', $obj->title);
+			$obj->slug = gb_cfilter::apply('sanitize-title', $obj->title);
 		else
 			$obj->slug = preg_replace('/\/+/', '-', urldecode($obj->slug));
 		# pathspec

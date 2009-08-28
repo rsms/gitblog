@@ -34,7 +34,7 @@ class email_notification_plugin {
 	}
 
 	static function comment_mkbody($comment, $header='', $footer='') {
-		$indented_comment_body = "\t".str_replace("\n", "\n\t", trim($comment->body));
+		$indented_comment_body = "\t".str_replace("\n", "\n\t", trim($comment->body()));
 		$comments_url = $comment->post->url().'#comments';
 		$comment_url = $comment->approved ? $comment->commentURL() : $comments_url;
 	

@@ -346,15 +346,6 @@ class gb {
 		if (!is_array($plugins))
 			return;
 		
-		# loaded list
-		if (isset(self::$plugins_loaded[$context])) {
-			$loaded =& self::$plugins_loaded[$context];
-		}
-		else {
-			$loaded = array();
-			self::$plugins_loaded[$context] =& $loaded;
-		}
-		
 		# load plugins
 		foreach ($plugins as $path) {
 			if (!$path)
@@ -364,18 +355,28 @@ class gb {
 			if ($path{0} !== '/')
 				$path = gb::$dir . '/plugins/'.$path;
 			
-			# skip already loaded plugins
-			$loaded_but_not_inited = false;
-			if (isset($loaded[$path]) && ($loaded_but_not_inited = $loaded[$path]))
-				continue;
+			# get loadstate
+			$loadstate = null;
+			if (isset(self::$plugins_loaded[$path]))
+				$loadstate = self::$plugins_loaded[$path];
 			
-			# load
-			if (!$loaded_but_not_inited)
+			# check loadstate
+			if ($loadstate === null) {
+				# load if not loaded
 				require $path;
+			}
+			elseif (in_array($context, $loadstate, true)) {
+				# already loaded and inited in this context
+				continue;
+			}
 			
 			# call name_plugin::init($context)
 			$name = str_replace(array('-', '.'), '_', substr(basename($path), 0, -4)); # assume .xxx
-			$loaded[$path] = call_user_func(array($name.'_plugin', 'init'), $context);
+			$did_init = call_user_func(array($name.'_plugin', 'init'), $context);
+			if ($loadstate === null)
+				self::$plugins_loaded[$path] = $did_init ? array($context) : array();
+			elseif ($did_init)
+				self::$plugins_loaded[$path][] = $context;
 		}
 	}
 	
@@ -432,6 +433,48 @@ class gb {
 			}
 		}
 		return false;
+	}
+	
+	# --------------------------------------------------------------------------
+	# Filters
+	
+	static public $filters = array();
+	
+	/**
+	 * Add a filter
+	 * 
+	 * Lower number for $priority means earlier execution of $func.
+	 * 
+	 * If $func returns boolean FALSE the filter chain is broken, not applying
+	 * any more filter after the one returning FALSE. Returning anything else
+	 * have no effect.
+	 */
+	static function add_filter($tag, $func, $priority=100) {
+		if (!isset(self::$filters[$tag]))
+			self::$filters[$tag] = array($priority => array($func));
+		elseif (!isset(self::$filters[$tag][$priority]))
+			self::$filters[$tag][$priority] = array($func);
+		else
+			self::$filters[$tag][$priority][] = $func;
+	}
+	
+	/** Apply filters for $tag on $value */
+	static function filter($tag, $value/*, [arg ..] */) {
+		$vargs = func_get_args();
+		$tag = array_shift($vargs);
+		if (!isset(self::$filters[$tag]))
+			return $value;
+		$a = self::$filters[$tag];
+		if ($a === null)
+			return $value;
+		ksort($a, SORT_NUMERIC);
+		foreach ($a as $funcs) {
+			foreach ($funcs as $func) {
+				$value = call_user_func_array($func, $vargs);
+				$vargs[0] = $value;
+			}
+		}
+		return $vargs[0];
 	}
 	
 	# --------------------------------------------------------------------------
@@ -1859,7 +1902,7 @@ class GBExposedContent extends GBContent {
 				unset($this->meta[$singular]);
 			}
 			if ($s)
-				$this->$plural = GBFilter::apply('parse-tags', $s);
+				$this->$plural = gb_cfilter::apply('parse-tags', $s);
 		}
 		
 		# lift specials, like title, from meta to this
@@ -1969,12 +2012,12 @@ class GBExposedContent extends GBContent {
 		
 		# apply filters
 		$fnext = $this->fnext();
-		GBFilter::apply('post-reload-GBExposedContent', $this);
-		GBFilter::apply('post-reload-GBExposedContent.'.$fnext, $this);
+		gb_cfilter::apply('post-reload-GBExposedContent', $this);
+		gb_cfilter::apply('post-reload-GBExposedContent.'.$fnext, $this);
 		$cls = get_class($this);
 		if ($cls !== 'GBExposedContent') {
-			GBFilter::apply('post-reload-'.$cls, $this);
-			GBFilter::apply('post-reload-'.$cls.'.'.$fnext, $this);
+			gb_cfilter::apply('post-reload-'.$cls, $this);
+			gb_cfilter::apply('post-reload-'.$cls.'.'.$fnext, $this);
 		}
 		
 		gb::event('did-reload-object', $this);
@@ -2031,6 +2074,10 @@ class GBExposedContent extends GBContent {
 			$this->_rawBody = substr($data, $p);
 		}
 		return $this->_rawBody;
+	}
+	
+	function body() {
+		return gb::filter('post-body', $this->body);
 	}
 	
 	/**
@@ -2242,6 +2289,10 @@ class GBExposedContent extends GBContent {
 		# content-type, charset and encoding should be preserved in $this->meta if
 		# they existed in the first place.
 		return $header;
+	}
+	
+	function __toString() {
+		return $this->name;
 	}
 	
 	function toBlob() {
@@ -2619,7 +2670,7 @@ class GBComments extends GBContent implements IteratorAggregate, Countable {
 		$this->comments = $db->get();
 		
 		# apply filters
-		GBFilter::apply('post-reload-comments', $this);
+		gb_cfilter::apply('post-reload-comments', $this);
 	}
 	
 	# these two are not serialized, but lazy-initialized by count()
@@ -2878,6 +2929,10 @@ class GBComment {
 				$this->$k = $v;
 			}
 		}
+	}
+	
+	function body() {
+		return gb::filter('comment-body', $this->body);
 	}
 	
 	function duplicate(GBComment $other) {

@@ -15,7 +15,7 @@
 				<? endif ?>
 			</p>
 			<div class="body">
-				<?= $post->body ?>
+				<?= $post->body() ?>
 			</div>
 		</div>
 		<div class="breaker"></div>
@@ -82,7 +82,7 @@
 						</div>
 						<div class="breaker"></div>
 						<div class="message">
-							<?= $comment->body ?>
+							<?= $comment->body() ?>
 						</div>
 					</div>
 					<div class="breaker"></div>

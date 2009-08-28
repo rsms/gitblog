@@ -5,7 +5,7 @@
 		<div class="col">
 		<? if (($snippet = GBPage::find('about/intro'))): ?>
 			<h2><?= h($snippet->title) ?></h2>
-			<?= $snippet->body ?>
+			<?= $snippet->body() ?>
 		<? endif; ?>
 		</div>
 		<div class="col recent-posts">
@@ -61,7 +61,7 @@
 				by <?= h($post->author->name) . $post->tagLinks(', tagged ') . $post->categoryLinks(', filed under ')  ?>
 			</p>
 			<div class="body">
-				<?= $post->body ?>
+				<?= $post->body() ?>
 				<? if ($post->excerpt): ?>
 					<p class="read-more"><a href="<?= h($post->url()) ?>#read-more">Continue reading...</a></p>
 				<? endif; ?>

@@ -35,7 +35,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
 		<? if ($post->excerpt): ?>
 		<summary type="html"><![CDATA[<?= $post->excerpt ?>]]></summary>
 		<? endif ?>
-		<content type="html" xml:base="<?= h($post->url()) ?>"><![CDATA[<?= $post->body ?><? if ($post->excerpt): ?>
+		<content type="html" xml:base="<?= h($post->url()) ?>"><![CDATA[<?= $post->body() ?><? if ($post->excerpt): ?>
 			<p><a href="<?= h($post->url()) ?>#<?= $post->domID() ?>-more">Read more...</a></p>
 		<? endif; ?>]]></content>
 		<link rel="replies" type="text/html" href="<?= h($post->url()) ?>#comments" thr:count="<?= $post->comments ?>" />

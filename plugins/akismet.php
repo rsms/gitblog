@@ -36,7 +36,7 @@ class akismet_plugin {
 			return false;
 		}
 		if ($context === 'admin') {
-			GBFilter::add('pre-comment', array(__CLASS__,'check_comment'));
+			gb_cfilter::add('pre-comment', array(__CLASS__,'check_comment'));
 			return true;
 		}
 		return false;
@@ -176,7 +176,7 @@ class akismet_plugin {
 			'comment_type' => $comment->type === GBComment::TYPE_COMMENT ? 'comment' : 'pingback', # comment | trackback | pingback
 			'comment_author' => $comment->name,
 			'comment_author_email' => $comment->email,
-			'comment_content' => $comment->body,
+			'comment_content' => $comment->body(),
 			#'blog_lang'    => 'en',
 			#'permalink'    => $comment->url()
 		);

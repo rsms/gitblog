@@ -22,7 +22,7 @@ class code_blocks_plugin {
 			'tabsize' => 2,
 			'pygmentize' => 'pygmentize'
 		));
-		GBFilter::add('body.html', array(__CLASS__, 'filter'), 0);
+		gb_cfilter::add('body.html', array(__CLASS__, 'filter'), 0);
 		return true;
 	}
 	

@@ -30,7 +30,8 @@ class email_notification_plugin {
 		else
 			$recipient = GBMail::normalizeRecipient($comment->post->author);
 		if (!$recipient[0])
-			$recipient[0] = gb::data('email')->get('admin');
+			$recipient = GBMail::normalizeRecipient(gb::data('email')->get('admin'));
+		return $recipient;
 	}
 
 	static function comment_mkbody($comment, $header='', $footer='') {
@@ -89,7 +90,7 @@ MESSAGE;
 	static function did_add_comment($comment) {
 		if ($comment->spam)
 			return;
-	
+		
 		# really do this?
 		if ($comment->approved && !self::$data['notify_new_comment'])
 			return;
@@ -98,10 +99,17 @@ MESSAGE;
 	
 		$subject = '['.gb::$site_title.'] '
 			.($comment->approved ? 'New' : 'Pending').' comment on "'.$comment->post->title.'"';
-	
+		
 		$body = self::comment_mkbody($comment);
 		$to = self::recipient($comment);
-		GBMail::compose($subject, $body, $to)->send(true);
+		
+		if (!$to[0]) {
+			gb::log(LOG_WARNING, 'failed to deduce recipient -- '
+				.'please add your address to "admin" in data/email.json');
+		}
+		else {
+			GBMail::compose($subject, $body, $to)->send(true);
+		}
 	}
 
 	static function did_spam_comment($comment) {

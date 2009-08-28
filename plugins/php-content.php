@@ -62,15 +62,15 @@ class php_content_plugin {
 		if ($eval === null) {
 			# no php-eval meta, so let's check the body for PHP tags
 			if (strpos($obj->body, '<?') !== false && strpos($obj->body, '?>') !== false)
-				$eval = $obj->meta['php-eval'] = 'request';
+				$eval = 'request';
 		}
 		else {
 			# normalize custom meta value
 			if (is_string($eval))
 				$eval = strtolower($eval);
 			if ($eval !== 'request' && $eval !== 'rebuild') {
-				if ($eval === gb_strbool($eval, true)) {
-					$eval = $obj->meta['php-eval'] = 'request';
+				if (gb_strbool($eval, true) === true) {
+					$eval = 'request';
 				}
 				else {
 					unset($obj->meta['php-eval']);

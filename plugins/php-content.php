@@ -89,7 +89,6 @@ class php_content_plugin {
 	
 	static function eval_body($body) {
 		if (strpos($body, '<?') !== false) {
-			gb::log('evaluating PHP for body %s', $body);
 			ob_start();
 			eval('?>'.$body.'<?');
 			$body = ob_get_clean();

@@ -852,6 +852,7 @@ class gb {
 # Initialize constants
 
 gb::$dir = dirname(__FILE__);
+ini_set('include_path', ini_get('include_path') . ':' . gb::$dir . '/lib');
 
 $u = dirname($_SERVER['SCRIPT_NAME']);
 $s = dirname($_SERVER['SCRIPT_FILENAME']);
@@ -977,8 +978,6 @@ if (gb::$site_title === null) {
 
 #------------------------------------------------------------------------------
 # Setup autoload and exception handler
-
-ini_set('include_path', ini_get('include_path') . ':' . gb::$dir . '/lib');
 
 # Lazy class loader
 function __autoload($classname) {

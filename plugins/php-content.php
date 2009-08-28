@@ -9,10 +9,23 @@
  * 
  * If any PHP code is found in HTML content, that code is evaluated at
  * runtime (like using include).
+ * 
+ * To enable this plugin, register it in both the "rebuild" and the "request"
+ * plugin context. If you are planning to only use "php-eval: rebuild" you do
+ * not need to register the for the "request" plugin context.
+ * 
+ * The meta header "php-eval" can be set to explicitly control PHP evaluation.
+ * Values can be one of the following:
+ * 
+ *  - "request" to evaluate the content when requested.
+ *  - "rebuild" to evaluate and save the content when post is rebuilt.
+ *  - Boolean: if true, "request" is assumed. If false PHP evaluation 
+ *    is explicitly disabled.
+ * 
+ * If no php-eval meta header exists, this plugin will guess if there are any
+ * PHP content, and if so assume "request" evaluation.
  */
 class php_content_plugin {
-	static public $conf;
-	
 	static function init($context) {
 		if ($context === 'rebuild') {
 			gb::observe('did-parse-object-meta', array(__CLASS__, 'check_content'));
@@ -37,11 +50,8 @@ class php_content_plugin {
 		}
 		if ($eval === null) {
 			# no php-eval meta, so let's check the body for PHP tags
-			if (strpos($obj->body, '<?') !== false && strpos($obj->body, '?>') !== false) {
-				$obj->meta['php-eval'] = 'request';
-				gb::log('post %s eval is %s', $obj, 'request');
-			}
-			gb::log('post %s eval is %s', $obj, '?');
+			if (strpos($obj->body, '<?') !== false && strpos($obj->body, '?>') !== false)
+				$eval = $obj->meta['php-eval'] = 'request';
 		}
 		else {
 			# normalize custom meta value
@@ -49,16 +59,17 @@ class php_content_plugin {
 				$eval = strtolower($eval);
 			if ($eval !== 'request' && $eval !== 'rebuild') {
 				if ($eval === gb_strbool($eval, true)) {
-					$obj->meta['php-eval'] = 'request';
+					$eval = $obj->meta['php-eval'] = 'request';
 				}
 				else {
 					unset($obj->meta['php-eval']);
 					$obj->body = strtr($obj->body, array('<?'=>'&lt;?','?>'=>'&gt;?'));
+					$eval = null;
 				}
 			}
 		}
 		# eval now, at rebuild?
-		if ($obj->meta['php-eval'] === 'rebuild') {
+		if ($eval === 'rebuild') {
 			ob_start();
 			eval('?>'.$obj->body.'<?');
 			$obj->body = ob_get_clean();

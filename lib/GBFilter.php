@@ -48,6 +48,7 @@ function gb_texturize_html($text) {
 	$has_pre_parent = false;
 	$output = '';
 	$curl = '';
+	$text = strtr($text, array('<?'=>'<?>', '?>'=>'</?>'));
 	$textarr = preg_split('/(<.*>|\[.*\])/Us', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
 	$stop = count($textarr);
 	
@@ -78,13 +79,14 @@ function gb_texturize_html($text) {
 			$curl = str_replace($static_characters, $static_replacements, $curl);
 			# regular expressions
 			$curl = preg_replace($dynamic_characters, $dynamic_replacements, $curl);
-		} elseif (strpos($curl, '<code') !== false || strpos($curl, '<kbd') !== false
+		}
+		elseif (strpos($curl, '<code') !== false || strpos($curl, '<kbd') !== false
 			|| strpos($curl, '<style') !== false || strpos($curl, '<script') !== false)
 		{
 			$next = false;
-		} elseif (strpos($curl, '<pre') !== false) {
+		} elseif (strpos($curl, '<pre') !== false || $curl === '<?>') {
 			$has_pre_parent = true;
-		} elseif (strpos($curl, '</pre>') !== false) {
+		} elseif (strpos($curl, '</pre>') !== false || $curl === '</?>') {
 			$has_pre_parent = false;
 		} else {
 			$next = true;
@@ -93,6 +95,8 @@ function gb_texturize_html($text) {
 		$curl = preg_replace('/&([^#])(?![a-zA-Z1-4]{1,8};)/', '&#038;$1', $curl);
 		$output .= $curl;
 	}
+	
+	$output = strtr($output, array('<?>'=>'<?', '</?>'=>'?>'));
 	
 	return $output;
 }
@@ -399,7 +403,7 @@ function gb_sanitize_url($s, $default_scheme='http') {
  * @param string $text Text to be balanced.
  * @return string Balanced text.
  */
-function gb_force_balance_tags( $text ) {
+function gb_force_balance_tags($text) {
 	$tagstack = array(); $stacksize = 0; $tagqueue = ''; $newtext = '';
 	$single_tags = array('br', 'hr', 'img', 'input'); #Known single-entity/self-closing tags
 	$nestable_tags = array('blockquote', 'div', 'span'); #Tags that can be immediately nested within themselves
@@ -420,8 +424,9 @@ function gb_force_balance_tags( $text ) {
 		# Pop or Push
 		if ( isset($regex[1][0]) && '/' == $regex[1][0] ) { # End Tag
 			$tag = strtolower(substr($regex[1],1));
+			
 			# if too many closing tags
-			if($stacksize <= 0) {
+			if ($stacksize <= 0) {
 				$tag = '';
 				#or close to be safe $tag = '/' . $tag;
 			}
@@ -431,7 +436,8 @@ function gb_force_balance_tags( $text ) {
 				# Pop
 				array_pop ($tagstack);
 				$stacksize--;
-			} else { # closing tag not at top, search for it
+			} 
+			else { # closing tag not at top, search for it
 				for ($j=$stacksize-1;$j>=0;$j--) {
 					if ($tagstack[$j] == $tag) {
 					# add tag to tagqueue
@@ -444,7 +450,8 @@ function gb_force_balance_tags( $text ) {
 				}
 				$tag = '';
 			}
-		} else { # Begin Tag
+		}
+		else { # Begin Tag
 			$tag = strtolower($regex[1]);
 
 			# Tag Cleaning
@@ -719,7 +726,7 @@ GBFilter::add('body.html', 'gb_html_to_xhtml', 30);
 GBFilter::add('body.html', 'gb_normalize_html_structure', 40);
 GBFilter::add('body.html', 'gb_htmlents_to_xmlents', 50);
 GBFilter::add('body.html', 'gb_xmlents_to_utf8', 60);
-GBFilter::add('body.html', 'gb_force_balance_tags', 70);
+#GBFilter::add('body.html', 'gb_force_balance_tags', 70);
 GBFilter::add('body.html', 'gb_html_img_size', 80);
 GBFilter::add('body.html', 'gb_html_abspaths_to_urls', 10000);
 

@@ -7,12 +7,13 @@
  * 
  * Google analytics tracking.
  * 
+ * This plugin is only effective in the "request" plugin context.
  */
 class google_analytics_plugin {
 	static public $conf;
 	
 	static function init($context) {
-		self::$conf = gb::data('plugins/google-analytics');
+		self::$conf = gb::data('plugins/google-analytics',array('property_id'=>''));
 		if (!self::$conf['property_id']) {
 			gb::log(LOG_WARNING, 'missing property_id in google-analytics configuration');
 		}

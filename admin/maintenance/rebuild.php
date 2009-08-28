@@ -13,7 +13,7 @@ include '../_header.php';
 <style type="text/css">
 	p.logmsg { margin:2px 0; font-size:9px; font-family:monospace; }
 	p.logmsg.error, p.logmsg.warning { padding:1em; font-size:13px; }
-	p.logmsg.error { background:#faa; }
+	p.logmsg.error { background:#faa; white-space:pre; }
 	p.logmsg.warning { background:#ff9; }
 </style>
 <div id="content" class="<?= gb_admin::$current_domid ?> margins">

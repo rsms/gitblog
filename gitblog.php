@@ -552,7 +552,7 @@ class gb {
 				}
 				catch (Exception $e) {
 					gb::log(LOG_ERR, 'deferred %s failed with %s: %s', 
-						json_encode($f), get_class($e), $e->__toString());
+						gb_strlimit(json_encode($f),40), get_class($e), $e->__toString());
 				}
 			}
 		}
@@ -1394,6 +1394,12 @@ function gb_relpath($from, $to) {
 function gb_hms_from_time($ts) {
 	$p = date('his', $ts);
 	return (intval($p{0}.$p{1})*60*60) + (intval($p{2}.$p{3})*60) + intval($p{4}.$p{5});
+}
+
+function gb_strlimit($str, $limit=20, $ellipsis='...') {
+	if (strlen($str) > $limit)
+		return substr($str,0,$limit-strlen($ellipsis)).$ellipsis;
+	return $str;
 }
 
 function gb_strbool($s, $empty_is_true=false) {

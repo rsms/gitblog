@@ -29,12 +29,23 @@ class php_content_plugin {
 	static function init($context) {
 		if ($context === 'rebuild') {
 			gb::observe('did-parse-object-meta', array(__CLASS__, 'check_content'));
+			gb_cfilter::add('body.html', array(__CLASS__, 'escape_php'), 0);
+			gb_cfilter::add('body.html', array(__CLASS__, 'unescape_php'), 9000);
+			
 			return true;
 		}
 		elseif ($context === 'request') {
 			gb::add_filter('post-body', array(__CLASS__, 'eval_body'));
 			return true;
 		}
+	}
+	
+	static function escape_php($text) {
+		return preg_replace('/<\?.+\?>/Umse', '\'???-\'.base64_encode(\'$0\').\'-???\'', $text);
+	}
+	
+	static function unescape_php($text) {
+		return preg_replace('/\?\?\?-([a-zA-Z0-9\/+=]+)-\?\?\?/Umse', 'base64_decode(\'$1\')', $text);
 	}
 	
 	static function check_content(GBExposedContent $obj) {

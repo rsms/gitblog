@@ -1,7 +1,7 @@
 * { margin:0; padding:0; }
 body { font-family:georgia,serif; background-color:#fff; color:#333; }
 body,p,li,td { font-size:15px; }
-p, ul, ol { margin:13px 0 20px 0; line-height:1.5; }
+p, ul, ol, div.codeblock { margin:13px 0 20px 0; line-height:1.5; }
 hr { border:none; height:1px; background-color:#ddd; }
 img { border:none; vertical-align:bottom; }
 ul, ol { padding-left:1.618em; }

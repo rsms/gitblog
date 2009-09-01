@@ -394,7 +394,7 @@ div.codeblock {
 	font-size:14px;
 	background-color:#fff;
 	margin-left:-10px;
-	padding:5px 0 0 9px;
+	padding-left:9px;
 	border-left:1px solid #eee;
 }
 	div.codeblock pre { overflow:auto; }

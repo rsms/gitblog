@@ -54,7 +54,7 @@ class code_blocks_plugin {
 			gb::log(LOG_WARNING,
 				'unable to highlight code because %s can not be found',
 				self::$conf['pygmentize']);
-			return self::dummy_block($content);
+			return self::dummy_block($content, $cssclass);
 		}
 		# $st => array(int status, string out, string err)
 		if ($st[0] !== 0) {
@@ -62,7 +62,7 @@ class code_blocks_plugin {
 				gb::log(LOG_NOTICE, 'pygments failed to guess language');
 			else
 				gb::log(LOG_WARNING, 'pygments failed to highlight code: '.$st[2]);
-			return self::dummy_block($content);
+			return self::dummy_block($content, $cssclass);
 		}
 		return $st[1];
 	}

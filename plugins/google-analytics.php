@@ -27,7 +27,10 @@ class google_analytics_plugin {
 	static function echo_tracking_code() {
 		static $prefix = '<script type="text/javascript">//<![CDATA[
 		var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
-		document.write(unescape("%3Cscript src=\'" + gaJsHost + "google-analytics.com/ga.js\' type=\'text/javascript\'%3E%3C/script%3E"));
+		var script = document.createElement("script");
+		script.setAttribute("src", gaJsHost + "google-analytics.com/ga.js");
+		script.setAttribute("type", "text/javascript");
+		document.getElementsByTagName("head").item(0).appendChild(script);
 		//]]></script><script type="text/javascript">//<![CDATA[
 		try {var pageTracker = _gat._getTracker("';
 		echo $prefix

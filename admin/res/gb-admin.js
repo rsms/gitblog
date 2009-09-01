@@ -24,7 +24,7 @@ var http = {
 	},
 	
 	post: function(kw) {
-		kw.type = "POST";
+		kw.type = "post";
 		c.log(kw.type, kw.url, kw.data);
 		return $.ajax(kw);
 	},

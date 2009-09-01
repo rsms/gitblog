@@ -107,12 +107,12 @@ elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->pos
 		
 		?>
 		</div>
-		<address>
+		<div id="footer">
 			<div class="wrapper">
 				<? printf('%.1f ms', 1000.0 * (microtime(true)-$gb_time_started)) ?>
 				was no match for <a href="http://gitblog.se/">Gitblog <?= gb::$version ?></a>
 			</div>
-		</address>
+		</div>
 		<? gb_footer() ?>
 	</body>
 </html>

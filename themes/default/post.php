@@ -61,7 +61,7 @@
 					if ($comment->email === $post->author->email) echo ' post-author';
 			 		?>" id="comment-<?= $comment->id ?>">
 					<div class="avatar">
-						<img src="<?= h($comment->avatarURL(48, 'default-avatar.png')) ?>" />
+						<img src="<?= h($comment->avatarURL(48, 'default-avatar.png')) ?>" alt="Avatar" />
 					</div>
 					<div class="message-wrapper">
 						<? if ($post->commentsOpen): ?>
@@ -107,10 +107,10 @@
 		<? if ($post->commentsOpen): ?>
 			<div id="reply"></div>
 			<h2 id="reply-title">Comment</h2>
-			<form id="comment-form" action="<?= h(gb::$site_url) ?>gitblog/helpers/post-comment.php" method="POST">
-				<?= gb_comment_fields() ?>
+			<form id="comment-form" action="<?= h(gb::$site_url) ?>gitblog/helpers/post-comment.php" method="post">
+				<div><?= gb_comment_fields() ?></div>
 				<p>
-					<textarea id="comment-reply-message" name="reply-message" rows="3"></textarea>
+					<textarea id="comment-reply-message" name="reply-message" cols="80" rows="3"></textarea>
 				</p>
 				<p>
 					<?= gb_comment_author_field('email', 'Email') 

@@ -57,9 +57,11 @@ include '../_header.php';
 </script>
 <div id="content" class="authorize margins">
 	<h2>Authorize</h2>
-	<form action="<?= gb::url() ?>" method="POST" 
+	<form action="<?= gb::url() ?>" method="post" 
 		onsubmit="chap.submit('<?= $auth->nonce() ?>','<?= $auth->opaque() ?>','<?= $auth->context ?>')">
-		<input type="hidden" id="chap-response" name="chap-response" value="" />
+		<div>
+			<input type="hidden" id="chap-response" name="chap-response" value="" />
+		</div>
 		<p>
 			Username: <input type="text" id="chap-username" name="chap-username" 
 				value="<?= isset($_REQUEST['chap-username']) ? $_REQUEST['chap-username'] : gb_author_cookie::get('email'); ?>" /><br />

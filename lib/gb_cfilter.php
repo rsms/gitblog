@@ -254,7 +254,6 @@ function gb_normalize_html_structure($s, $convert_nl_to_br=true, $convert_nlnl_t
 	$s = preg_replace("/\n\n+/", "\n\n", $s); # take care of duplicates
 	if ($convert_nlnl_to_p)
 		$s = preg_replace('/\n?(.+?)(?:\n\s*\n|\z)/s', "<p>$1</p>\n", $s); # make paragraphs, including one at the end
-	$s = preg_replace('|<p>\s*?</p>|', '', $s); # under certain strange conditions it could create a P of entirely whitespace
 	$s = preg_replace('!<p>([^<]+)\s*?(</(?:div|address|form)[^>]*>)!', "<p>$1</p>$2", $s);
 	$s = preg_replace( '|<p>|', "$1<p>", $s );
 	$s = preg_replace('!<p>\s*(</?' . $allblocks . '[^>]*>)\s*</p>!', "$1", $s); # don't pee all over a tag
@@ -278,6 +277,7 @@ function gb_normalize_html_structure($s, $convert_nl_to_br=true, $convert_nlnl_t
 	$s = preg_replace( "|\n</p>$|", '</p>', $s );
 	#$s = preg_replace('/<p>\s*?(' . get_shortcode_regex() . ')\s*<\/p>/s', '$1', $s);
 	# ^ don't auto-p wrap shortcodes that stand alone
+	$s = preg_replace('|<p>\s*?</p>|', '', $s);
 	return rtrim($s);
 }
 

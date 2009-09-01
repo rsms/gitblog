@@ -18,7 +18,7 @@ class code_blocks_plugin {
 		if ($context !== 'rebuild')
 			return false;
 		self::$conf = gb::data('plugins/'.gb_filenoext(basename(__FILE__)), array(
-			'classname' => '',
+			'classname' => 'codeblock',
 			'tabsize' => 2,
 			'pygmentize' => 'pygmentize'
 		));
@@ -26,16 +26,25 @@ class code_blocks_plugin {
 		return true;
 	}
 	
-	static function dummy_block($content) {
-		return '<div><pre>'.h($content).'</pre></div>';
+	static function dummy_block($content, $cssclass) {
+		return '<div'
+			.($cssclass ? ' class="'.$cssclass.'">' : '>')
+			.'<pre>'.h($content).'</pre></div>';
 	}
 	
-	static function highlight($content, $lang, $input_encoding='utf-8') {
+	static function highlight($content, $lang, $extra_cssclass=null, $input_encoding='utf-8') {
+		$cssclass = self::$conf['classname'];
+		if (!$cssclass)
+			$cssclass = 'codeblock';
+		if ($extra_cssclass)
+			$cssclass .= ' ' . $extra_cssclass;
+		
 		if (self::$previous_failure === true)
-			return self::dummy_block($content);
-	
+			return self::dummy_block($content, $cssclass);
+		
 		$cmd = self::$conf['pygmentize'].' '.($lang ? '-l '.escapeshellarg($lang) : '-g')
-			.' -f html -O cssclass=,encoding='.$input_encoding
+			.' -f html -O cssclass='.escapeshellarg($cssclass)
+			.',encoding='.$input_encoding
 			.(self::$conf['tabsize'] ? ',tabsize='.self::$conf['tabsize'] : '');
 		$st = gb::shell($cmd, $content);
 		if ($st === null || ($st[0] !== 0 && strpos($st[2], 'command not found') !== false)) {
@@ -66,7 +75,7 @@ class code_blocks_plugin {
 		$tag = '';
 
 		foreach ($tokens as $token) {
-			if (substr($token,0,5) === '<code') {
+			if (substr($token,0,10) === '<codeblock') {
 				$depth++;
 				if ($depth === 1) {
 					# code block just started
@@ -74,10 +83,10 @@ class code_blocks_plugin {
 					continue;
 				}
 			}
-			elseif (substr($token,0,7) === '</code>') {
+			elseif (substr($token,0,12) === '</codeblock>') {
 				$depth--;
 				if ($depth < 0) {
-					gb::log(LOG_WARNING, 'stray </code> messing up a code block');
+					gb::log(LOG_WARNING, 'stray </codeblock> messing up a code block');
 					$depth = 0;
 				}
 				if ($depth === 0) {
@@ -91,12 +100,9 @@ class code_blocks_plugin {
 							$tag = substr($tag, 0, $m[0][1]).($end === '>' ? '>' : ' '.$end);
 						}
 						# add CSS class name
-						if (self::$conf['classname']) {
-							if (($p = strpos($tag, 'class=')) !== false)
-								$tag = substr($tag, 0, $p+7) . self::$conf['classname'].' ' . substr($tag, $p+7);
-							else
-								$tag = substr($tag, 0, -1) . ' class="'.self::$conf['classname'].'">';
-						}
+						$extra_cssclass = '';
+						if (preg_match('/class="([^"]+)"/', $tag, $m))
+							$extra_cssclass = $m[1];
 						# remove first and last line break if present
 						if ($block{0} === "\n")
 							$block = substr($block, 1);
@@ -106,7 +112,7 @@ class code_blocks_plugin {
 						if (self::$conf['tabsize'])
 							$block = strtr($block, array("\t" => str_repeat(' ', self::$conf['tabsize'])));
 						# append block to output
-						$out .= $tag . self::highlight($block, $lang) . '</code>';
+						$out .= self::highlight($block, $lang, $extra_cssclass);
 						# clear block
 						$block = '';
 					}

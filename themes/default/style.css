@@ -130,7 +130,7 @@ h2 { font-size:19px; }
 	}
 	@font-face {
 		font-family:Inconsolata;
-		src:local(Inconsolata), url('inconsolata.ttf') format('opentype');
+		src:local(Inconsolata), url('inconsolata.otf') format('opentype');
 	}
 	#header div.title div.name { text-shadow:#efeee1 0 1px 0; }
 	body { font-family:'Liberation Serif', georgia, times; }

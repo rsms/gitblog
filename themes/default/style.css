@@ -268,6 +268,7 @@ div.post { margin-top:20px; margin-bottom:10px; width:600px; }
 		font-style:italic;
 		color:#666;
 	}
+	div.post *[align=right] { margin-left:15px; margin-bottom:15px; }
 	div.post div.body > p.read-more {
 		
 	}

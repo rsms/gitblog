@@ -239,7 +239,9 @@ function gb_normalize_html_structure_clean_pre($matches) {
 
 
 # LF => <br />, etc
-function gb_normalize_html_structure($s, $convert_nl_to_br=true, $convert_nlnl_to_p=true) {
+function gb_normalize_html_structure($s, $conf) {
+	$convert_nl_to_br = $conf && isset($conf['auto_linebreaks']) ? $conf['auto_linebreaks'] : true;
+	$convert_nlnl_to_p = $conf && isset($conf['auto_paragraphs']) ? $conf['auto_paragraphs'] : true;
 	$s = $s . "\n"; # just to make things a little easier, pad the end
 	$s = preg_replace('|<br />\s*<br />|', "\n\n", $s);
 	# Space things out a little
@@ -526,18 +528,25 @@ function gb_filter_post_reload_content(GBExposedContent $c) {
 	return $c;
 }
 
-/** Converts LF to <br/>LF and extracts excerpt for GBPost objects */
-function gb_filter_post_reload_content_html(GBExposedContent $c) {
-	$auto_linebreaks = true;
-	$auto_paragraphs = true;
+function gb_filter_post_reload_content_get_conf(GBExposedContent $c) {
+	$conf = array(
+		'auto_linebreaks' => true,
+		'auto_paragraphs' => true
+	);
 	if (isset($c->meta['auto-linebreaks'])) {
-		$auto_linebreaks = gb_strbool($c->meta['auto-linebreaks']);
+		$conf['auto_linebreaks'] = gb_strbool($c->meta['auto-linebreaks']);
 		unset($c->meta['auto-linebreaks']);
 	}
 	if (isset($c->meta['auto-paragraphs'])) {
-		$auto_paragraphs = gb_strbool($c->meta['auto-paragraphs']);
+		$conf['auto_paragraphs'] = gb_strbool($c->meta['auto-paragraphs']);
 		unset($c->meta['auto-paragraphs']);
 	}
+	return $conf;
+}
+
+/** Converts LF to <br/>LF and extracts excerpt for GBPost objects */
+function gb_filter_post_reload_content_html(GBExposedContent $c) {
+	$conf = gb_filter_post_reload_content_get_conf($c);
 	# have body?
 	if ($c->body) {
 		# create excerpt for GBPosts if not already set
@@ -547,10 +556,10 @@ function gb_filter_post_reload_content_html(GBExposedContent $c) {
 				.'<div id="read-more" class="post-more-anchor"></div>'
 				.substr($c->body, $m[1][1]+1 /* pos of last ">" */ );
 		}
-		$c->body = gb_cfilter::apply('body.html', $c->body, $auto_linebreaks, $auto_paragraphs);
+		$c->body = gb_cfilter::apply('body.html', $c->body, $conf);
 	}
 	if ($c->excerpt) {
-		$c->excerpt = gb_cfilter::apply('body.html', $c->excerpt, $auto_linebreaks, $auto_paragraphs);
+		$c->excerpt = gb_cfilter::apply('body.html', $c->excerpt, $conf);
 	}
 	return $c;
 }

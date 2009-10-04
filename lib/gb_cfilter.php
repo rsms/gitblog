@@ -239,7 +239,7 @@ function gb_normalize_html_structure_clean_pre($matches) {
 
 
 # LF => <br />, etc
-function gb_normalize_html_structure($s, $conf) {
+function gb_normalize_html_structure($s, $conf=array()) {
 	$convert_nl_to_br = $conf && isset($conf['auto_linebreaks']) ? $conf['auto_linebreaks'] : true;
 	$convert_nlnl_to_p = $conf && isset($conf['auto_paragraphs']) ? $conf['auto_paragraphs'] : true;
 	$s = $s . "\n"; # just to make things a little easier, pad the end

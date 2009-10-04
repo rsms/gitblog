@@ -2642,16 +2642,44 @@ class GBPost extends GBExposedContent {
 		# parse date and slug
 		static $subchars = '._/';
 		static $repchars = '---';
+		
 		static $ptimes = array(
 			'%Y-%m-%d' => 10, '%y-%m-%d' => 8, '%G-%m-%d' => 10, '%g-%m-%d' => 8,
 			'%Y-%m' => 7, '%y-%m' => 5, '%G-%m' => 7, '%g-%m' => 5,
 			'%Y' => 4, '%y' => 2, '%G' => 4, '%g' => 2
 		);
 		$nametest = strtr($name, $subchars, $repchars);
-		foreach ($ptimes as $pattern => $patter_len) {
-			if (($st = strptime($nametest, $pattern)) !== false) {
-				$slug = ltrim(substr($name, $patter_len), $subchars . '-');
-				break;
+		
+		# first, test gb::$posts_cn_pattern
+		if (($st = strptime($nametest, strtr(gb::$posts_cn_pattern, $subchars, $repchars))) !== false) {
+			$slug = ltrim($st['unparsed'], $subchars . '-');
+		}
+		else {
+			# next, test common patterns with as many items as gb::$posts_cn_pattern
+			$ptimes1 = array();
+			$n = 0;
+			$slug = false;
+			if (preg_match_all('/%\w/', gb::$posts_cn_pattern, $m))
+				$n = count($m[0]);
+			if ($n) {
+				if ($n == 1) $ptimes1 = array('%Y' => 4, '%y' => 2, '%G' => 4, '%g' => 2);
+				else if ($n == 2) $ptimes1 = array('%Y-%m' => 7, '%y-%m' => 5, '%G-%m' => 7, '%g-%m' => 5);
+				else if ($n == 3) $ptimes1 = array('%Y-%m-%d' => 10, '%y-%m-%d' => 8, '%G-%m-%d' => 10, '%g-%m-%d' => 8);
+				foreach ($ptimes1 as $pattern => $pattern_len) {
+					if (($st = strptime($nametest, $pattern)) !== false) {
+						$slug = ltrim(substr($name, $pattern_len), $subchars . '-');
+						break;
+					}
+				}
+			}
+			if ($slug === false) {
+				# finally, try a series of common patterns
+				foreach ($ptimes as $pattern => $pattern_len) {
+					if (($st = strptime($nametest, $pattern)) !== false) {
+						$slug = ltrim(substr($name, $pattern_len), $subchars . '-');
+						break;
+					}
+				}
 			}
 		}
 		

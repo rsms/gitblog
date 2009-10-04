@@ -1,6 +1,7 @@
 {
 	"rebuild": [
-		"code-blocks.php"
+		"code-blocks.php",
+		"markdown.php"
 	],
 	"admin": [
 		"akismet.php",

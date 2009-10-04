@@ -339,8 +339,23 @@ class gb {
 	
 	static public $plugins_loaded = array();
 	
+	static function plugin_check_enabled($context, $name) {
+		$plugin_config = self::data('plugins');
+		if (!isset($plugin_config[$context]))
+			return false;
+		$name = str_replace(array('-', '.'), '_', $name);
+		foreach ($plugin_config[$context] as $path) {
+			$plugin_name = str_replace(array('-', '.'), '_', substr(basename($path), 0, -4));
+			if ($plugin_name == $name);
+				return true;
+		}
+		return false;
+	}
+	
 	static function load_plugins($context) {
 		$plugin_config = self::data('plugins');
+		if (!isset($plugin_config[$context]))
+			return;
 		$plugins = $plugin_config[$context];
 		
 		if (!is_array($plugins))

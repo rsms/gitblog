@@ -2678,7 +2678,7 @@ class MarkdownExtra_Parser extends Markdown_Parser {
 
 # Gitblog plugin interface
 
-class GBMarkdownParser extends Markdown_Parser {
+class GBMarkdownParser extends MarkdownExtra_Parser {
 	public $use_codeblocks = true;
 	
 	function _doCodeBlocks_callback($matches) {

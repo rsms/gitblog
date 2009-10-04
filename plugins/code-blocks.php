@@ -67,13 +67,19 @@ class code_blocks_plugin {
 		return $st[1];
 	}
 	
+	static function _escapeBlockContentCB($m) {
+		return '<codeblock'.$m[1].'>'.base64_encode($m[2]).'</codeblock>';
+	}
+	
 	static function filter($text='') {
+		$text = preg_replace_callback('/<codeblock([^>]*)>(.*)<\/codeblock>/Usm',
+			array(__CLASS__, '_escapeBlockContentCB'), $text);
 		$tokens = gb_tokenize_html($text);
 		$out = '';
 		$depth = 0;
 		$block = '';
 		$tag = '';
-
+		
 		foreach ($tokens as $token) {
 			if (substr($token,0,10) === '<codeblock') {
 				$depth++;
@@ -92,6 +98,7 @@ class code_blocks_plugin {
 				if ($depth === 0) {
 					# code block ended
 					if ($block) {
+						$block = base64_decode($block);
 						$lang = '';
 						# find lang, if any
 						if (preg_match('/[\s\t ]+lang=("[^"]*"|\'[^\']*\')[\s\t ]*/', $tag, $m, PREG_OFFSET_CAPTURE)) {

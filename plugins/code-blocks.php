@@ -39,7 +39,7 @@ class code_blocks_plugin {
 		if ($extra_cssclass)
 			$cssclass .= ' ' . $extra_cssclass;
 		
-		if (self::$previous_failure === true)
+		if (self::$previous_failure === true || $lang === 'text' || $lang === 'txt')
 			return self::dummy_block($content, $cssclass);
 		
 		$cmd = self::$conf['pygmentize'].' '.($lang ? '-l '.escapeshellarg($lang) : '-g')

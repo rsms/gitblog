@@ -1049,11 +1049,17 @@ class JSONDict implements ArrayAccess, Countable {
 	 * separated by $sep.
 	 */
 	function get($key, $default=null, $sep='/') {
-		if (!$sep)
-			return $this->offsetGet($key);
+		if (!$sep) {
+			if (($value = $this->offsetGet($key)) === null)
+				return $default;
+			return $value;
+		}
 		$keys = explode($sep, trim($key,$sep));
-		if (($count = count($keys)) < 2)
-			return $this->offsetGet($key);
+		if (($count = count($keys)) < 2) {
+			if (($value = $this->offsetGet($key)) === null)
+				return $default;
+			return $value;
+		}
 		$value = $this->offsetGet($keys[0]);
 		for ($i=1; $i<$count; $i++) {
 			$key = $keys[$i];

@@ -73,12 +73,19 @@ try {
 	
 	# set newborn properties
 	if ($created) {
-		if (!$post->mimeType)
+		if (!$post->mimeType) {
 			$post->mimeType = 'text/html';
+			gb::log('did force html');
+		}
+		else {
+			gb::log('mime type is $post->mimeType');
+		}
 		if (!$post->published)
 			$post->published = $post->modified;
 		$post->name = $post->recommendedName();
 	}
+	else
+		gb::log('already exists');
 	
 	# was the state actually modified?
 	if ($modified_state) {

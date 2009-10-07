@@ -17,6 +17,7 @@ if (($q = filter_input_array(INPUT_GET, $fields)) === null)
 
 $post = false;
 $body = '';
+$admin_conf = gb::data('admin');
 
 # default version
 if ($q['version'] === null)
@@ -37,7 +38,7 @@ elseif ($q['uri']) {
 if (!$post) {
 	$post = new GBPost();
 	$post->published = new GBDateTime();
-	$post->mimeType = 'text/html';
+	$post->mimeType = $admin_conf->get('composing/default_mime_type', 'text/html');
 }
 
 include '../_header.php';
@@ -52,7 +53,7 @@ include '../_header.php';
 		checkStateInterval: 10000,
 		
 		autoSaveTimer: null,
-		autoSaveLatency: 2000,
+		autoSaveLatency: 1000,
 		autoSaveEnabled: true, // setting
 		_autoSaveEnabled: true, // runtime
 		
@@ -139,7 +140,8 @@ include '../_header.php';
 		
 		investigateField: function(j) {
 			var p = {type: j.attr('type')};
-			p.haveValue = p.type == 'text' || (p.type == null && j.get(0).nodeName.toLowerCase() == 'textarea');
+			var e = j.length ? j.get(0) : null;
+			p.haveValue = typeof e.value != 'undefined';
 			p.haveChecked = !p.haveValue && j.attr('type') == 'checkbox';
 			return p;
 		},
@@ -168,7 +170,9 @@ include '../_header.php';
 		},
 		
 		getField: function(el, applyFilters) {
-			var p = post.investigateField($(el));
+			el = $(el);
+			var p = post.investigateField(el);
+			el = el.get(0);
 			var t = {name: null, value: null};
 			if (typeof el.name != 'undefined') {
 				t.name = el.name;
@@ -282,16 +286,17 @@ include '../_header.php';
 							spec[k](oldval);
 					}
 				}
+				c.log($('*[name=body]'));
 				// fields
 				if (typeof rsp.state == 'object') {
 					for (var name in rsp.state) {
 						var value = rsp.state[name];
 						if (typeof post.savedState[name] == 'undefined' || !post.eq(post.savedState[name], value)) {
+							// todo: if changed remotely, merge in changes here: post.putField(name, value);
 							post.savedState[name] = value;
 							post.currentState[name] = value;
-							post.putField(name, value);
 							was_modified = true;
-							c.log(name+' was updated');
+							c.log(name+' was saved');
 						}
 					}
 				}
@@ -620,7 +625,7 @@ include '../_header.php';
 		<div class="component categories c3" title="Type of content. Leave unchanged if you are unsure about it">
 			<h4>Content type</h4>
 			<p>
-				<input type="text" name="content-type" class="dep-save" 
+				<input type="text" name="mimeType" class="dep-save" 
 					value="<?= h(isset($post->meta['content-type']) ? $post->meta['content-type'] : $post->mimeType) ?>" />
 			</p>
 		</div>

@@ -11,7 +11,9 @@
 		<div class="col recent-posts">
 			<h2>Recent posts</h2>
 			<ol>
-				<? foreach ($postspage->posts as $rank => $post): if ($rank === 6) break; ?>
+				<? foreach ($postspage->posts as $rank => $post):
+					if ($post->published->time > $time_now) continue;
+					if ($rank === 6) break; ?>
 					<li>
 						<a href="<?= h($post->url()) ?>"><?= h($post->title) ?></a>
 						<span class="age"><?= $post->published->age() ?></span>
@@ -52,7 +54,7 @@
 	<div class="posts">
 		<!-- For SEO purposes. Not actually displayed: -->
 		<h1><?= gb_site_title() ?></h1>
-	<? foreach ($postspage->posts as $post): ?>
+	<? foreach ($postspage->posts as $post): if ($post->published->time > $time_now) continue; ?>
 		<div class="post">
 			<?= $post->commentsLink() ?>
 			<h2><a href="<?= h($post->url()) ?>"><?= h($post->title) ?></a></h2>
@@ -69,7 +71,7 @@
 		</div>
 		<div class="breaker"></div>
 	<? endforeach ?>
-	<? if (!$postspage->posts): ?>
+	<? if (!$postspage->posts): /* todo: support for scheduled posts */ ?>
 		<p>
 			There is no published content here at the moment. Check back later my friend.
 		</p>

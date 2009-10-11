@@ -1,7 +1,7 @@
 * { margin:0; padding:0; }
 body { font-family:'helvetica neue',helvetica,arial,sans-serif; background-color:#fff; color:#333; }
 body,p,li,td { font-size:13px; }
-p, ul, ol { margin:13px 0 20px 0; line-height:1.5; }
+p, ul, ol, table { margin:13px 0 20px 0; line-height:1.5; }
 hr { border:none; height:1px; background-color:#ddd; }
 img { border:none; vertical-align:bottom; }
 ul, ol { padding-left:1.618em; }
@@ -23,6 +23,14 @@ h2 { font-size:19px; }
 /* Universal helpers */
 .highlight { background-color:#fffe95; color:#302400; }
 .breaker { clear:both; }
+
+/* Tables */
+table { border-collapse:collapse; }
+	table th, table td { border-bottom:1px solid #ccc; padding:1px 7px; }
+	table th.type-number, table td.type-number { text-align:right; }
+	table th { border-bottom:3px solid #ccc; }
+	/*table th:first-child, #content table td:first-child { padding-left:0; }
+	table th:last-child, #content table td:last-child { padding-right:0; }*/
 
 /* Top bar */
 #head { background-color:#333; }
@@ -113,6 +121,53 @@ h2 { font-size:19px; }
 		font-family:monospace; font-size:13px; resize:auto; display:block;
 	}
 	div.component.commits ol { list-style:none; padding:0; margin:0; }
+	
+	#content.manage-posts {
+		width:700px; border-left:1px solid #ccc; 
+		border-right:1px solid #ccc; margin-left:-1px;
+	}
+		#content.manage-posts h2 { padding:10px 10px; margin:0; font-size:16px; border-bottom:1px solid #ccc; }
+		#content.manage-posts div.paged-nav { margin:10px; text-align:center; }
+	
+	table.posts { width:100%; margin:0; }
+		table.posts tr td.name { overflow:hidden; text-overflow:ellipsis; max-width:500px; white-space:nowrap; }
+			table.posts tr td.name span.title { color:#111; }
+			table.posts tr.m td.name span.title { font-weight:bold; }
+			table.posts td.name span.excerpt { color:#bbb; }
+		table.posts * { cursor:pointer; }
+		table.posts tr.parent td { border-bottom:none; }
+		table.posts tr.child td:first-child { padding-left:20px; }
+		table.posts tr.child td {
+			padding-top:2px;
+			background-image:url(arrow-deco-up.png); background-repeat:repeat-x;
+		}
+		table.posts tr.m td { background-color:#fffb91; } /* tracked + modified */
+		table.posts tr.m:hover td { background-color:#fef059; }
+		table.posts tr.m td.name span.excerpt { color:#c2af56; }
+		table.posts tr.s td { background-color:#cfd; } /* tracked + scheduled */
+		table.posts tr.s td:first-child span.title {
+			background-image:url(scheduled.png);
+			background-repeat:no-repeat;
+			background-position:right center;
+			padding-right:20px;
+			display:inline-block;
+		}
+		table.posts tr.s:hover td { background-color:#a4ffc2; }
+		table.posts tr.s td.name span.excerpt { color:#98c1a6; }
+		/* untracked */
+		table.posts tr.u td { background-color:#eee; }
+		table.posts tr.u:hover td { background-color:#ddd; }
+		table.posts tr.u td.name span.title { color:#666; }
+		table.posts tr.r td { background-color:#fcc; } /* removed */
+		table.posts tr.r:hover td { background-color:#fdb8b8; }
+		table.posts tr.r td.name span.title { color:#800; }
+		table.posts tr.r td.name span.excerpt { color:#e19e9e; }
+		table.posts tr.r:hover td.name span.excerpt { color:#ce8181; }
+		table.posts tr.d td { font-style:italic; } /* draft */
+		table.posts tr.d td:first-child span.title:after { content:" Draft"; color:#c22; font-weight:normal; }
+		table.posts tr:hover td { background-color:#eee; }
+		table.posts a { border:none; }
+
 
 #preview { width:630px; float:left; border-left:1px solid #ccc; padding-left:10px; margin-left:-1px; }
 	#preview iframe { width:630px; height:800px; border:none; }
@@ -142,7 +197,9 @@ div.inputgroup {
 	div.inputgroup > input[type=text], div.inputgroup > input[type=password] { width:290px; }
 
 /* Errors from gb::$errors */
-#gb-errors { background-color:#fcc; color:#611; padding:10px; min-height:48px; border-bottom:4px solid #c00; }
+#gb-errors {
+	background-color:#fcc; color:#611; padding:10px; min-height:48px; border-bottom:4px solid #c00;
+}
 	#gb-errors a { border:none; background:transparent; }
 	#gb-errors a.close {
 		display:block; float:right;
@@ -158,9 +215,10 @@ div.inputgroup {
 		background-position:0 -48px;
 		background-repeat:no-repeat;
 		width:48px; height:48px;
-		float:left;
-		margin-left:-15px;
+		position:absolute;
+		top:50px; left:5px;
+		z-index:9;
 	}
-	#gb-errors ul { display:block; float:left; margin:0; padding:0; list-style:none; }
-	#gb-errors li { font-size:16px; }
+	#gb-errors ul { display:block; margin:0 0 0 50px; padding:0; list-style:none; }
+	#gb-errors li { font-size:16px; white-space:pre; }
 	#gb-errors li.title { font-weight:bold; line-height:1; margin:0.2em 0; }

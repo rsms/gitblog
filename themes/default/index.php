@@ -3,7 +3,7 @@ $gb_handle_request = true;
 require './gitblog/gitblog.php';
 
 # context_date is used on top-right to display the "freshness" of the current content
-$context_date = time();
+$context_date = $time_now = time();
 
 header('Content-Type: application/xhtml+xml; charset=utf-8');
 if (gb::$is_404)
@@ -13,15 +13,12 @@ elseif (gb::$is_post)
 elseif (gb::$is_page)
 	$context_date = $post->modified->time;
 elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->posts) {
-	if (is_object($postspage->posts)) {
-		# workaround for picking up first item from an iterator
-		foreach ($postspage->posts as $p) {
-			$context_date = $p->published->time;
+	foreach ($postspage->posts as $post) {
+		if ($post->published->time <= $time_now) {
+			$context_date = $post->published->time;
 			break;
 		}
 	}
-	else
-		$context_date = $postspage->posts[0]->published->time;
 }
 
 ?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">

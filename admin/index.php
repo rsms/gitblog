@@ -11,6 +11,8 @@ include '_header.php';
 	</p>
 	<h3>Common tasks</h3>
 	<ul>
+		<li><a href="edit/post.php">Write a new post</a></li>
+		<li><a href="manage/posts.php">Manage posts</a></li>
 		<li><a href="maintenance/rebuild.php">Rebuild cache</a></li>
 		<li><a href="maintenance/import-wordpress.php">Import a Wordpress blog</a></li>
 	</ul>

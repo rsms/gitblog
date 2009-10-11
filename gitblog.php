@@ -1064,7 +1064,7 @@ class JSONDict implements ArrayAccess, Countable {
 		for ($i=1; $i<$count; $i++) {
 			$key = $keys[$i];
 			if (!is_array($value) || !isset($value[$key]))
-				return null;
+				return $default;
 			$value = $value[$key];
 		}
 		return $value;
@@ -1305,6 +1305,13 @@ function gb_popen($cmd, $cwd=null, $env=null) {
 	return array('handle'=>$ps, 'pipes'=>$pipes);
 }
 
+/** Sort GBContent objects on published, descending */
+function gb_sortfunc_cobj_date_published_r(GBContent $a, GBContent $b) {
+	return $b->published->time - $a->published->time;
+}
+function gb_sortfunc_cobj_date_modified_r(GBContent $a, GBContent $b) {
+	return $b->modified->time - $a->modified->time;
+}
 
 /** path w/o extension */
 function gb_filenoext($path) {
@@ -1417,10 +1424,19 @@ function gb_hms_from_time($ts) {
 	return (intval($p{0}.$p{1})*60*60) + (intval($p{2}.$p{3})*60) + intval($p{4}.$p{5});
 }
 
-function gb_strlimit($str, $limit=20, $ellipsis='...') {
-	if (strlen($str) > $limit)
-		return substr($str,0,$limit-strlen($ellipsis)).$ellipsis;
-	return $str;
+if (function_exists('mb_substr')) {
+	function gb_strlimit($str, $limit=20, $ellipsis='…') {
+		if (mb_strlen($str, 'utf-8') > $limit)
+			return mb_substr($str,0,$limit-mb_strlen($ellipsis, 'utf-8'), 'utf-8').$ellipsis;
+		return $str;
+	}	
+}
+else {
+	function gb_strlimit($str, $limit=20, $ellipsis='…') {
+		if (strlen($str) > $limit)
+			return substr($str,0,$limit-strlen($ellipsis)).$ellipsis;
+		return $str;
+	}
 }
 
 function gb_strbool($s, $empty_is_true=false) {
@@ -1475,6 +1491,24 @@ class GBDateTime {
 	function origformat($format='%FT%H:%M:%S', $tzformat='H:i') {
 		return gmstrftime($format, $this->time + $this->offset)
 			. ($tzformat ? self::formatTimezoneOffset($this->offset, $tzformat) : '');
+	}
+	
+	function condensed($ranges=array(86400=>'%H:%M', 31536000=>'%b %e'), $compared_to=null) {
+		if ($compared_to === null)
+			$diff = time() - $this->time;
+		elseif (is_int($compared_to))
+			$diff = $compared_to - $this->time;
+		else
+			$diff = $compared_to->time - $this->time;
+		ksort($ranges);
+		$default_format = isset($ranges[0]) ? array_shift($ranges) : '%Y-%m-%d';
+		# 1, 4, 129
+		foreach ($ranges as $threshold => $format) {
+			#printf('test %d vs %d (%s, %s)', $diff, $threshold, $format, $this);
+			if ($diff < $threshold)
+				return $this->origformat($format, false);
+		}
+		return $this->origformat($default_format, false);
 	}
 	
 	#                           2592000 = 30 days
@@ -1659,6 +1693,10 @@ class GBAuthor {
 		return $s;
 	}
 	
+	function shortName() {
+		return array_shift(explode(' ', $this->gitAuthor()));
+	}
+	
 	function gitAuthor() {
 		return self::gitFormat($this);
 	}
@@ -1821,7 +1859,7 @@ class GBExposedContent extends GBContent {
 		}
 	}
 	
-	static function loadWork($path, $post=false, $class='GBExposedContent', $id=null, $slug=null) {
+	static function loadWork($path, $post=false, $class='GBExposedContent', $id=null, $slug=null, $applyBodyFilters=true) {
 		if ($post === false)
 			$post = new $class(self::pathspecFromAbsPath($path), $id, $slug);
 		
@@ -1833,7 +1871,7 @@ class GBExposedContent extends GBContent {
 		gb::load_plugins('rebuild');
 	
 		# reload post with work data
-		$post->reload(file_get_contents($path));
+		$post->reload(file_get_contents($path), null, $applyBodyFilters);
 	
 		# set modified date from file
 		$post->modified = new GBDateTime(filemtime($path));
@@ -1888,7 +1926,7 @@ class GBExposedContent extends GBContent {
 			$this->body = substr($data, $bodystart);
 		}
 		
-		if ($bodystart > 0)
+		if ($bodystart !== false && $bodystart > 0)
 			self::parseHeader(rtrim(substr($data, 0, $bodystart)), $this->meta);
 	}
 	
@@ -2029,7 +2067,7 @@ class GBExposedContent extends GBContent {
 		return $fnext;
 	}
 	
-	function reload($data, $commits=null) {
+	function reload($data, $commits=null, $applyBodyFilters=true) {
 		parent::reload($data, $commits);
 		
 		$this->parseData($data);
@@ -2037,13 +2075,15 @@ class GBExposedContent extends GBContent {
 		$this->parseHeaderFields();
 		
 		# apply filters
-		$fnext = $this->fnext();
-		gb_cfilter::apply('post-reload-GBExposedContent', $this);
-		gb_cfilter::apply('post-reload-GBExposedContent.'.$fnext, $this);
-		$cls = get_class($this);
-		if ($cls !== 'GBExposedContent') {
-			gb_cfilter::apply('post-reload-'.$cls, $this);
-			gb_cfilter::apply('post-reload-'.$cls.'.'.$fnext, $this);
+		if ($applyBodyFilters) {
+			$fnext = $this->fnext();
+			gb_cfilter::apply('post-reload-GBExposedContent', $this);
+			gb_cfilter::apply('post-reload-GBExposedContent.'.$fnext, $this);
+			$cls = get_class($this);
+			if ($cls !== 'GBExposedContent') {
+				gb_cfilter::apply('post-reload-'.$cls, $this);
+				gb_cfilter::apply('post-reload-'.$cls.'.'.$fnext, $this);
+			}
 		}
 		
 		gb::event('did-reload-object', $this);
@@ -2064,6 +2104,13 @@ class GBExposedContent extends GBContent {
 		}
 		catch (GitError $e) {}
 		return false;
+	}
+	
+	/** True if there are local, uncommitted modifications */
+	function isDirty() {
+		if (!$this->isTracked())
+			return true;
+		return rtrim(git::exec('ls-files -m -- '.escapeshellarg($this->name))) !== '';
 	}
 	
 	function exists() {
@@ -2104,6 +2151,10 @@ class GBExposedContent extends GBContent {
 	
 	function body() {
 		return gb::filter('post-body', $this->body);
+	}
+	
+	function textBody() {
+		return trim(preg_replace('/<[^>]*>/m', ' ', $this->body()));
 	}
 	
 	/**
@@ -2579,13 +2630,13 @@ class GBPost extends GBExposedContent {
 		return @unserialize(file_get_contents($path));
 	}
 	
-	static function findByName($name, $version=null) {
+	static function findByName($name, $version=null, $applyBodyFilters=true) {
 		if (strpos($name, 'content/posts/') !== 0)
 			$name = 'content/posts/' . $name;
-		return self::find($name, $version);
+		return self::find($name, $version, null, $applyBodyFilters);
 	}
 	
-	static function find($uri_path_or_slug, $version=null, $strptime=null) {
+	static function find($uri_path_or_slug, $version=null, $strptime=null, $applyBodyFilters=true) {
 		$version = self::parseVersion($version);
 		$path = false;
 		
@@ -2601,13 +2652,18 @@ class GBPost extends GBExposedContent {
 				return false;
 			
 			# parse pathspec, producing date and actual slug needed to look up cached
-			self::parsePathspec(self::pathspecFromAbsPath($path), $date, $slug, $fnext);
+			try {
+				self::parsePathspec(self::pathspecFromAbsPath($path), $date, $slug, $fnext);
+			}
+			catch(UnexpectedValueException $e) {
+				return null;
+			}
 			
 			# try to find a cached version
 			$post = self::findByDateAndSlug($date, $slug);
 			
 			# load work
-			return self::loadWork($path, $post, 'GBPost', $version, $slug);
+			return self::loadWork($path, $post, 'GBPost', $version, $slug, $applyBodyFilters);
 		}
 		elseif ($version === null) {
 			if ($path) {

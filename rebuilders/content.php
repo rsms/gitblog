@@ -79,11 +79,6 @@ class GBPostsRebuilder extends GBContentRebuilder {
 	}
 }
 
-/** Sort GBContent objects on published, descending */
-function gb_sortfunc_cobj_date_published_r(GBContent $a, GBContent $b) {
-	return $b->published->time - $a->published->time;
-}
-
 
 class GBPagesRebuilder extends GBContentRebuilder {
 	/** Handle object */
@@ -277,7 +272,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		$time_now = time();
 		
 		foreach (GBPostsRebuilder::$posts as $post)
-			if ($post->draft === false && $post->published->time <= $time_now)
+			if ($post->draft === false)
 				$published_posts[] = $post->condensedVersion();
 		
 		$numtotal = count($published_posts);
@@ -576,6 +571,26 @@ class GBPagesIndexRebuilder extends GBContentIndexRebuilder {
 	}
 }
 
+class GBDraftPostsIndexRebuilder extends GBContentIndexRebuilder {
+	function __construct() {
+		parent::__construct('draft-posts');
+	}
+	
+	function onObject($obj) {
+		if (($obj instanceof GBPost) && $obj->draft === true)
+			$this->index[] = $obj;
+	}
+	
+	function serialize() {
+		# key the index with name and save condensed versions
+		$v = $this->index;
+		$this->index = array();
+		foreach ($v as $obj)
+			$this->index[$obj->name] = $obj->condensedVersion();
+		return parent::serialize();
+	}
+}
+
 
 function init_rebuilder_content(&$rebuilders) {
 	$rebuilders[] = 'GBPostsRebuilder';
@@ -588,6 +603,7 @@ function init_rebuilder_content(&$rebuilders) {
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBTagsByPopularityIndexRebuilder';
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBCategoryToObjsIndexRebuilder';
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBPagesIndexRebuilder';
+	GBContentFinalizer::$objectIndexRebuilders[] = 'GBDraftPostsIndexRebuilder';
 	GBContentFinalizer::$commentIndexRebuilders[] = 'GBRecentCommentsIndexRebuilder';
 }
 ?>

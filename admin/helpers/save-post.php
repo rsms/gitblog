@@ -84,8 +84,9 @@ try {
 			$post->published = $post->modified;
 		$post->name = $post->recommendedName();
 	}
-	else
-		gb::log('already exists');
+	else {
+		gb::log('already exists (OK)');	
+	}
 	
 	# was the state actually modified?
 	if ($modified_state) {
@@ -124,6 +125,7 @@ try {
 		'version' => $post->id,
 		'exists' => $post->exists(),
 		'isTracked' => $post->isTracked(),
+		'isDirty' => $post->isDirty(),
 		'state' => $modified_state
 	);
 	

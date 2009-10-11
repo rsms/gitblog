@@ -152,7 +152,7 @@ class git {
 			$pathspec = '';
 		}
 		$author = $author ? '--author='.escapeshellarg($author) : '';
-		git::exec('commit -m '.escapeshellarg($message).' --quiet '.$author.$pathspec);
+		git::exec('commit -m '.escapeshellarg($message).' --quiet '.$author.' -- '.$pathspec);
 		@chmod(gb::$site_dir.'/.git/COMMIT_EDITMSG', 0664);
 		return true;
 	}
@@ -204,6 +204,72 @@ class git {
 		}
 		
 		return $id_to_data;
+	}
+	
+	static function ls_staged($paths=null) {
+		$paths = self::escargs($paths);
+		$ls = rtrim(self::exec('ls-files --stage -t -z -- '.$paths));
+		$files = array();
+		if ($ls) {
+			# Iterate objects
+			$ls = explode("\0", $ls);
+			foreach ($ls as $line) {
+				# <status char> SP <mode> SP <object> SP <stage no> TAB <name>
+				if (!$line)
+					continue;
+				$file = (object)array('status'=>null, 'id'=>null, 'name'=>null);
+				$line = explode(' ', $line, 4);
+				$file->status = $line[0];
+				$file->id = $line[2];
+				$file->name = gb_normalize_git_name(substr($line[3], strpos($line[3], "\t")+1));
+				$files[] = $file;
+			}
+		}
+		return $files;
+	}
+	
+	static function ls_basic($args=null, $paths=null) {
+		$args = self::escargs($args);
+		$paths = self::escargs($paths);
+		$ls = rtrim(self::exec('ls-files -z '.$args.' -- '.$paths));
+		$files = array();
+		if ($ls) {
+			# Iterate objects
+			$ls = explode("\0", $ls);
+			foreach ($ls as $line) {
+				if (!$line)
+					continue;
+				$files[] = gb_normalize_git_name($line);
+			}
+		}
+		return $files;
+	}
+	
+	static function ls_untracked($paths=null, $exclude=null) {
+		$args = array('--other');
+		if ($exclude) {
+			$args[] = '--exclude';
+			$args[] = $exclude;
+		}
+		return self::ls_basic($args, $paths);
+	}
+	
+	static function ls_modified($paths=null, $exclude=null) {
+		$args = array('--modified');
+		if ($exclude) {
+			$args[] = '--exclude';
+			$args[] = $exclude;
+		}
+		return self::ls_basic($args, $paths);
+	}
+	
+	static function ls_removed($paths=null, $exclude=null) {
+		$args = array('--deleted');
+		if ($exclude) {
+			$args[] = '--exclude';
+			$args[] = $exclude;
+		}
+		return self::ls_basic($args, $paths);
 	}
 	
 	/** Retrieve ids for $pathspec (string or array of strings) at the current branch head */

@@ -38,6 +38,7 @@ elseif ($q['uri']) {
 if (!$post) {
 	$post = new GBPost();
 	$post->published = new GBDateTime();
+	$post->author = gb::$authorized;
 	$post->mimeType = $admin_conf->get('composing/default_mime_type', 'text/html');
 }
 
@@ -63,6 +64,7 @@ include '../_header.php';
 		
 		exists: <?= $post->exists() ? 'true' : 'false' ?>,
 		isTracked: <?= $post->isTracked() ? 'true' : 'false' ?>,
+		isDirty: <?= $post->isDirty() ? 'true' : 'false' ?>,
 		name: <?= $post->exists() ? '"'.str_replace('"', '\"',$post->name).'"' : 'null' ?>,
 		version: <?= $post->exists() ? '"'.str_replace('"', '\"',$post->id).'"' : 'null' ?>,
 		
@@ -98,6 +100,8 @@ include '../_header.php';
 		
 		standardFilters: {	
 			csv_to_list: function(s){
+				if (typeof s != 'string')
+					return [];
 				s = s.replace(/(^[ \t\s\n\r,]+|[ \t\s\n\r,]+$)/g, '');
 				if (s == '')
 					return [];
@@ -142,7 +146,7 @@ include '../_header.php';
 			var p = {type: j.attr('type')};
 			var e = j.length ? j.get(0) : null;
 			p.haveValue = typeof e.value != 'undefined';
-			p.haveChecked = !p.haveValue && j.attr('type') == 'checkbox';
+			p.haveChecked = typeof e.checked != 'undefined';
 			return p;
 		},
 		
@@ -176,10 +180,10 @@ include '../_header.php';
 			var t = {name: null, value: null};
 			if (typeof el.name != 'undefined') {
 				t.name = el.name;
-				if (p.haveValue)
-					t.value = el.value;
-				else if (p.haveChecked)
+				if (p.haveChecked)
 					t.value = el.checked;
+				else if (p.haveValue)
+					t.value = el.value;
 				else
 					c.log('todo post.getField other type');
 			}
@@ -275,6 +279,7 @@ include '../_header.php';
 				var spec = {
 					'exists':post.onExistsChanged,
 					'isTracked':post.onIsTrackedChanged,
+					'isDirty':post.onIsDirtyChanged,
 					'name':post.onNameChanged,
 					'version':post.onVersionChanged,
 				};
@@ -340,7 +345,10 @@ include '../_header.php';
 				post._autoSaveEnabled = false;
 			}
 			ui.alert(msg);
-			c.log('failed to save post', req.status, req.statusText, req.responseText, type, exc);
+			if (req)
+				c.log('failed to save post', req.status, req.statusText, req.responseText, type, exc);
+			else
+				c.log('failed to save post', type, exc);
 			if (!post.isModified)
 				post.onModified();
 			post.setSaveButton('Save', true);
@@ -439,6 +447,22 @@ include '../_header.php';
 			j.attr('value', label);
 		},
 		
+		setCommitButton: function(label, enabled) {
+			var j = $('input.commit');
+			if (label) {
+				var label_transl = j.data('_'+label);
+				if (typeof label_transl != 'undefined')
+					label = label_transl;
+				j.attr('value', label);
+			}
+			if (typeof enabled != 'undefined') {
+				if (enabled)
+					j.removeClass('disabled').removeAttr('disabled');
+				else
+					j.addClass('disabled').attr('disabled', 'disabled');
+			}
+		},
+		
 		loadPost: function(name, version) {
 			document.location.search = '?name='+name+'&version='+version;
 		},
@@ -475,6 +499,10 @@ include '../_header.php';
 		
 		onIsTrackedChanged: function(oldval) {
 			post.setCommitButtonAccordingToTrackedState();
+		},
+		
+		onIsDirtyChanged: function(oldval) {
+			post.setCommitButton(null, post.isDirty);
 		},
 		
 		onExistsChanged: function(oldval) {
@@ -524,6 +552,7 @@ include '../_header.php';
 		
 		// bind ui
 		post.setSaveButton('Saved', false);
+		post.setCommitButton(null, post.isDirty);
 		$('input.save').click(function(){ post.save(false); });
 		$('input.commit').click(function(){ post.save(true); });
 	});
@@ -626,7 +655,7 @@ include '../_header.php';
 			<h4>Content type</h4>
 			<p>
 				<input type="text" name="mimeType" class="dep-save" 
-					value="<?= h(isset($post->meta['content-type']) ? $post->meta['content-type'] : $post->mimeType) ?>" />
+					value="<?= h(isset($post->meta['content-type']) && $post->meta['content-type'] ? $post->meta['content-type'] : $post->mimeType) ?>" />
 			</p>
 		</div>
 		<div class="breaker"></div>

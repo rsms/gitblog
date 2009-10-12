@@ -22,7 +22,7 @@ foreach (git::ls_untracked('content/posts/', '.*') as $filename) {
 	if ($post) {
 		if (!isset($offline[$post->name]))
 			$offline[$post->name] = array();
-		$offline[$post->name][] = array($post, st::UNTRACKED.st::DRAFT);
+		$offline[$post->name][] = array($post, st::UNTRACKED.($post->draft ? st::DRAFT : ''));
 	}
 }
 

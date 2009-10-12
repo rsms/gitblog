@@ -146,7 +146,7 @@ include '../_header.php';
 			var p = {type: j.attr('type')};
 			var e = j.length ? j.get(0) : null;
 			p.haveValue = typeof e.value != 'undefined';
-			p.haveChecked = typeof e.checked != 'undefined';
+			p.haveChecked = (typeof p.type != 'undefined' && p.type == 'checkbox');//typeof e.checked != 'undefined';
 			return p;
 		},
 		

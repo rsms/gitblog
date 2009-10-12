@@ -97,8 +97,6 @@ uasort($offline, create_function('$a, $b', 'return $b[0][0]->modified->time - $a
 		<? foreach ($posts as $v): $post = $v[0]; $st = $v[1]; ?>
 			<? $editurl = gb_admin::$url.'edit/post.php?name='.urlencode($post->name); ?>
 			<tr onclick="document.location.href='<?= $editurl ?>'" 
-					onmouseover="window.status='Go to &quot;<?= $editurl ?>&quot;'" 
-					onmouseout="window.status=''"
 					class="<?= implode(' ',str_split($st)) . ($childcount ? ' child' : (count($posts)>1 ? ' parent' : '')) ?>">
 				<td class="name">
 					<span class="title">

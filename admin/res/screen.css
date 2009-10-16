@@ -61,6 +61,7 @@ table { border-collapse:collapse; }
 	#menu > ul > li > ul > li > ul > li > ul > li > a { padding-left:40px; }
 	#menu > ul > li > ul > li > ul > li > ul > li > ul > li > a { padding-left:50px; }
 	#menu a span.title { color:#333; }
+	#menu li.todo span.title { color:#aaa; }
 	#menu a span.accesskey-hint { display:inline-block; float:right; color:#bbb; 
 		font-weight:normal; letter-spacing:2px; margin-left:10px; margin-right:-4px;
 	}
@@ -79,21 +80,24 @@ table { border-collapse:collapse; }
 	#content h2 { margin:15px 0 10px 0; font-size:24px; }
 	#content h2:first-child { margin-top:0; }
 #content.margins { padding:20px; margin-bottom:1px; }
-#content.edit-post {
+#content.form {
 	width:600px; border-left:1px solid #ccc; 
 	border-right:1px solid #ccc; margin-left:-1px;
 }
 	div.section { border-bottom:1px solid #ccc; clear:both; }
 	div.component { float:left; padding:10px; }
-		div.component > h4 {
+		div.component p, div.component label, div.component > h4 {
 			font-size:11px;
-			font-weight:normal;
 			font-family:'lucida grande',tahoma,sans-serif;
+		}
+		div.component > h4 {
+			font-weight:normal;
 			color:#777;
 			margin-bottom:4px;
 		}
 		div.component > h4 small { float:right; }
 		div.component > p { margin:0; }
+		div.component label.inline { display:inline-block; margin-right:10px; }
 	div.component.c2 { width:280px; }
 		div.component.c2 input[type=text] { width:276px; }
 	div.component.c2a { width:380px; }
@@ -222,3 +226,18 @@ div.inputgroup {
 	#gb-errors ul { display:block; margin:0 0 0 50px; padding:0; list-style:none; }
 	#gb-errors li { font-size:16px; white-space:pre; }
 	#gb-errors li.title { font-weight:bold; line-height:1; margin:0.2em 0; }
+
+/* Throbber */
+.throbber {
+	background-position:0 0;
+	background-repeat:no-repeat;
+}
+.throbber.small {
+	width:24px;
+	height:24px;
+	background-image:url(throbber-small-black.png);
+}
+.throbber.hidden-while-inactive {
+	display:none;
+}
+div.section div.component .throbber { float:right; margin-top:3px; }

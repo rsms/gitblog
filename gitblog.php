@@ -1075,15 +1075,19 @@ class JSONDict implements ArrayAccess, Countable {
 	 * separated by $sep.
 	 */
 	function put($key, $value, $sep='/') {
+		$temp_tx = false;
 		$keys = explode($sep, trim($key, $sep));
 		if (($count = count($keys)) < 2)
 			return $this->offsetSet($key, $value);
 		
 		$this->cache === null;
 		$storage = $this->storage();
-		$storage->begin();
+		if (!$storage->transactionActive()) {
+			$storage->begin();
+			$temp_tx = true;
+		}
 		try {
-			$storage->get();
+			$storage->get(); # make sure $storage->data is loaded
 			
 			# two-key optimisation
 			if ($count === 2) {
@@ -1138,10 +1142,13 @@ class JSONDict implements ArrayAccess, Countable {
 			
 			# commit changes
 			$this->cache = $storage->data;
-			$storage->commit();
+			if ($temp_tx === true)
+				$storage->commit();
 		}
 		catch (Exception $e) {
-			$storage->rollback();
+			if ($temp_tx === true)
+				$storage->rollback();
+			throw $e;
 		}
 	}
 	
@@ -1171,6 +1178,11 @@ class JSONDict implements ArrayAccess, Countable {
 		if ($this->cache === null)
 			$this->cache = $this->storage()->get();
 		return count($this->cache);
+	}
+	
+	function toJSON() {
+		$json = trim(file_get_contents($this->file));
+		return (!$json || $json{0} !== '{') ? '{}' : $json;
 	}
 	
 	function __toString() {

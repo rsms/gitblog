@@ -52,8 +52,8 @@ class GBException extends Exception {
 	 * @see    format()
 	 * @see    formatPlain()
 	 */
-	public static function formatHtml(Exception $e, $includingTrace=true, $skip=null) {
-		return self::format($e, $includingTrace, true, $skip);
+	public static function formatHtml(Exception $e, $includingTrace=true, $skip=null, $context_lines=2) {
+		return self::format($e, $includingTrace, true, $skip, $context_lines);
 	}
 	
 	/**
@@ -66,8 +66,8 @@ class GBException extends Exception {
 	 * @see    format()
 	 * @see    formatHtml()
 	 */
-	public static function formatPlain(Exception $e, $includingTrace=true, $skip=null) {
-		return self::format($e, $includingTrace, false, $skip);
+	public static function formatPlain(Exception $e, $includingTrace=true, $skip=null, $context_lines=2) {
+		return self::format($e, $includingTrace, false, $skip, $context_lines);
 	}
 	
 	/**
@@ -180,7 +180,7 @@ class GBException extends Exception {
 					$skip = is_array($skip) ? array_merge($skip, array('PHPException::rethrow')) : array('PHPException::rethrow');
 					foreach($trace as $i => $ti) {
 						if (isset($ti['function']) && $ti['function'] === 'gb_throw_php_error') {
-							array_splice($trace, 0, $i+2);
+							array_splice($trace, 0, $i+1);
 							break;
 						}
 					}

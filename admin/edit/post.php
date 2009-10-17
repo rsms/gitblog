@@ -17,7 +17,6 @@ if (($q = filter_input_array(INPUT_GET, $fields)) === null)
 
 $post = false;
 $body = '';
-$admin_conf = gb::data('admin');
 
 # default version
 if ($q['version'] === null)
@@ -557,7 +556,7 @@ include '../_header.php';
 		$('input.commit').click(function(){ post.save(true); });
 	});
 //]]></script>
-<div id="content" class="<?= gb_admin::$current_domid ?>">
+<div id="content" class="<?= gb_admin::$current_domid ?> form">
 	<!-- title and save/commit controls -->
 	<div class="section title">
 		<div class="component title c2">

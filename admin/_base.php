@@ -12,4 +12,7 @@ if (strpos($_SERVER['SCRIPT_NAME'], '/admin/setup.php') === false) {
 		gb::verify_config();
 	}
 }
+
+$admin_conf = gb::data('admin');
+
 ?>

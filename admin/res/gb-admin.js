@@ -1,6 +1,6 @@
-var c = {log:function(){}};
-if (typeof console != 'undefined' && typeof console.log != 'undefined')
-	c = console;
+if(typeof console=='undefined')console={};
+if(typeof console.log=='undefined')console.log=function(){};
+var c = console;
 
 var ui = {
 	alert: function(msg) {

@@ -25,6 +25,10 @@ class FileDB {
 	protected $txExclusive = true;
 	protected $txFp = false;
 	
+	function transactionActive() {
+		return $this->txFp !== false;
+	}
+	
 	function begin($exclusive=true) {
 		if ($this->txFp !== false)
 			throw new LogicException('a transaction is already active');

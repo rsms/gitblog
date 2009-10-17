@@ -537,6 +537,42 @@ class GBRecentCommentsIndexRebuilder extends GBContentIndexRebuilder {
 	}
 }
 
+class GBUnapprovedCommentsIndexRebuilder extends GBContentIndexRebuilder {
+	public $unapprovedComments = array();
+	public $spamComments = array();
+	
+	function __construct() {
+		parent::__construct('unapproved-comments');
+	}
+	
+	function onObject(GBComments $commentObject) {
+		$i = 0;
+		foreach ($commentObject->getIterator(false) as $c) {
+			if ($c->approved === false)
+				$this->index[strval($c->date->time).'0'.$i++] = array($c, gb_filenoext($commentObject->name));
+		}
+	}
+	
+	function serialize() {
+		krsort($this->index);
+		$this->index = array_values($this->index);
+		
+		# mux comments with content
+		foreach ($this->index as $i => $tuple) {
+			$object = null;
+			$objname = $tuple[1];
+			if (isset(GBContentFinalizer::$objectsByName[$objname])) {
+				$object = GBContentFinalizer::$objectsByName[$objname]->condensedVersion();
+				$object->body = null;
+			}
+			$tuple[1] = $object;
+			$this->index[$i] = $tuple;
+		}
+		
+		return parent::serialize();
+	}
+}
+
 function _gb_page_sortfunc($a, $b) {
 	if ($a->order === $b->order)
 		return strcasecmp($a->slug, $b->slug);
@@ -604,6 +640,8 @@ function init_rebuilder_content(&$rebuilders) {
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBCategoryToObjsIndexRebuilder';
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBPagesIndexRebuilder';
 	GBContentFinalizer::$objectIndexRebuilders[] = 'GBDraftPostsIndexRebuilder';
+	
 	GBContentFinalizer::$commentIndexRebuilders[] = 'GBRecentCommentsIndexRebuilder';
+	GBContentFinalizer::$commentIndexRebuilders[] = 'GBUnapprovedCommentsIndexRebuilder';
 }
 ?>

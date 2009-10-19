@@ -343,7 +343,7 @@ class GBContentFinalizer extends GBContentRebuilder {
 		# setup indexes
 		$rebuilders = array();
 		foreach ($rebuilderClasses as $cls)
-			$rebuilders[] = new $cls();
+			$rebuilders[] = new $cls($this->forceFullRebuild);
 		
 		if (!$rebuilders)
 			return;
@@ -362,11 +362,13 @@ class GBContentFinalizer extends GBContentRebuilder {
 }
 
 class GBContentIndexRebuilder {
+	public $forceFullRebuild;
 	public $name;
 	public $index;
 	public $checksum;
 	
-	function __construct($name) {
+	function __construct($name, $forceFullRebuild=false) {
+		$this->forceFullRebuild = $forceFullRebuild;
 		$this->name = $name;
 		$data = @file_get_contents($this->path());
 		$this->index = $data !== false ? @unserialize($data) : false;
@@ -383,13 +385,12 @@ class GBContentIndexRebuilder {
 		return gb::index_path($this->name);
 	}
 	
-	function sync() {
+	function sync($force=false) {
 		if ($this->index === null)
 			return false;
 		$data = $this->serialize();
-		if ($this->checksum !== null && $this->checksum === sha1($data))
+		if ($this->checksum !== null && $this->checksum === sha1($data) && $force === false)
 			return false; # no changes
-		
 		$bw = file_put_contents($this->path(), $data, LOCK_EX);
 		chmod($this->path(), 0664);
 		gb::log(LOG_NOTICE, 'wrote %s', $this->cachename());
@@ -407,13 +408,13 @@ class GBContentIndexRebuilder {
 	}
 	
 	function finalize() {
-		$this->sync();
+		$this->sync($this->forceFullRebuild);
 	}
 }
 
 class GBCategoryToObjsIndexRebuilder extends GBContentIndexRebuilder {
-	function __construct() {
-		parent::__construct('category-to-objs');
+	function __construct($forceFullRebuild=false) {
+		parent::__construct('category-to-objs', $forceFullRebuild);
 	}
 	
 	function onObject($obj) {
@@ -437,8 +438,8 @@ class GBCategoryToObjsIndexRebuilder extends GBContentIndexRebuilder {
 }
 
 class GBTagToObjsIndexRebuilder extends GBContentIndexRebuilder {
-	function __construct() {
-		parent::__construct('tag-to-objs');
+	function __construct($forceFullRebuild=false) {
+		parent::__construct('tag-to-objs', $forceFullRebuild);
 	}
 	
 	function onObject($obj) {
@@ -465,8 +466,8 @@ class GBTagsByPopularityIndexRebuilder extends GBContentIndexRebuilder {
 	public $min = 0;
 	public $max = 0;
 	
-	function __construct() {
-		parent::__construct('tags-by-popularity');
+	function __construct($forceFullRebuild=false) {
+		parent::__construct('tags-by-popularity', $forceFullRebuild);
 	}
 	
 	function onObject($obj) {
@@ -503,8 +504,8 @@ class GBTagsByPopularityIndexRebuilder extends GBContentIndexRebuilder {
 class GBRecentCommentsIndexRebuilder extends GBContentIndexRebuilder {
 	public $limit = 10;
 	
-	function __construct() {
-		parent::__construct('recent-comments');
+	function __construct($forceFullRebuild=false) {
+		parent::__construct('recent-comments', $forceFullRebuild);
 	}
 	
 	function serialize() {
@@ -545,8 +546,8 @@ class GBUnapprovedCommentsIndexRebuilder extends GBContentIndexRebuilder {
 	public $unapprovedComments = array();
 	public $spamComments = array();
 	
-	function __construct() {
-		parent::__construct('unapproved-comments');
+	function __construct($forceFullRebuild=false) {
+		parent::__construct('unapproved-comments', $forceFullRebuild);
 	}
 	
 	function onObject(GBComments $commentObject) {
@@ -588,8 +589,8 @@ function _gb_page_sortfunc($a, $b) {
 }
 
 class GBPagesIndexRebuilder extends GBContentIndexRebuilder {
-	function __construct() {
-		parent::__construct('pages');
+	function __construct($forceFullRebuild=false) {
+		parent::__construct('pages', $forceFullRebuild);
 	}
 	
 	function onObject($obj) {
@@ -612,8 +613,8 @@ class GBPagesIndexRebuilder extends GBContentIndexRebuilder {
 }
 
 class GBDraftPostsIndexRebuilder extends GBContentIndexRebuilder {
-	function __construct() {
-		parent::__construct('draft-posts');
+	function __construct($forceFullRebuild=false) {
+		parent::__construct('draft-posts', $forceFullRebuild);
 	}
 	
 	function onObject($obj) {

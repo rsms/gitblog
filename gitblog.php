@@ -598,10 +598,16 @@ class gb {
 	
 	static public $object_indices = array();
 	
-	static function index($name) {
+	static function index($name, $fallback=null) {
 		if (isset(self::$object_indices[$name]))
 			return self::$object_indices[$name];
-		$obj = unserialize(file_get_contents(self::index_path($name)));
+		if ($fallback !== null) {
+			$obj = @unserialize(file_get_contents(self::index_path($name)));
+			if ($obj === false)
+				return $fallback;
+		}
+		else
+			$obj = unserialize(file_get_contents(self::index_path($name)));
 		self::$object_indices[$name] = $obj;
 		return $obj;
 	}

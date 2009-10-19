@@ -7,53 +7,76 @@ include '../_header.php';
 $muxed_posts = array();
 
 class st {
+	const STAGED    = 't';
+	const UNSTAGED  = 'c';
 	const UNTRACKED = 'u';
+	
 	const DRAFT     = 'd';
 	const SCHEDULED = 's';
 	const MODIFIED  = 'm';
-	const STAGED    = 't';
 	const REMOVED   = 'r';
+	const RENAMED   = 'e';
+	const ADDED     = 'a';
 }
 
-# Add untracked drafts
-foreach (git::ls_untracked('content/posts/', '.*') as $filename) {
-	$post = GBPost::findByName($filename, 'work', false);
-	if ($post) {
-		if (!isset($muxed_posts[$post->name]))
-			$muxed_posts[$post->name] = array();
-		$muxed_posts[$post->name][] = array($post, st::UNTRACKED.($post->draft ? st::DRAFT : ''));
+$st = git::status();
+
+function _mkflags($post, $status='') {
+	$flags = '';
+	if ($post->draft)
+		$flags .= st::DRAFT;
+	switch ($status) {
+		# added'|'modified'|'deleted renamed
+		case 'added':
+			$flags .= st::ADDED;
+			break;
+		case 'modified':
+			$flags .= st::MODIFIED;
+			break;
+		case 'deleted':
+			$flags .= st::REMOVED;
+			break;
+		case 'renamed':
+			$flags .= st::RENAMED;
+			break;
+	}
+	return $flags;
+}
+
+function _add_posts_from_status($st, $prefixmatch, $stage, $stageflag) {
+	global $muxed_posts;
+	if (isset($st[$stage])) {
+		foreach ($st[$stage] as $name => $t) {
+			if (substr($name,0,strlen($prefixmatch)) !== $prefixmatch)
+				continue;
+			$status = is_array($t) ? $t['status'] : '';
+			$post = GBPost::findByName($name, $status === 'deleted' ? null : 'work', false);
+			if ($post) {
+				if (!isset($muxed_posts[$post->name]))
+					$muxed_posts[$post->name] = array();
+				$muxed_posts[$post->name][] = array($post, $stageflag._mkflags($post, $status));
+			}
+		}
 	}
 }
 
-# Add tracked dirty
-foreach (git::ls_modified('content/posts/', '.*') as $filename) {
-	$post = GBPost::findByName($filename, 'work', false);
-	if ($post) {
-		if (!isset($muxed_posts[$post->name]))
-			$muxed_posts[$post->name] = array();
-		$muxed_posts[$post->name][] = array($post, st::MODIFIED.($post->draft ? st::DRAFT : ''));
-	}
-}
+# Add dirty staged, unstaged and untracked files
+_add_posts_from_status($st, 'content/posts/', 'staged', st::STAGED);
+_add_posts_from_status($st, 'content/posts/', 'unstaged', st::UNSTAGED);
+_add_posts_from_status($st, 'content/posts/', 'untracked', st::UNTRACKED);
 
-# Add removed
-foreach (git::ls_removed('content/posts/', '.*') as $filename) {
-	$post = GBPost::findByName($filename);
-	if ($post) {
-		if (!isset($muxed_posts[$post->name]))
-			$muxed_posts[$post->name] = array();
-		$muxed_posts[$post->name][] = array($post, st::REMOVED);
-	}
-}
-
-# Add tracked drafts
+# Add clean drafts
 foreach (gb::index('draft-posts') as $post) {
 	if (!isset($muxed_posts[$post->name]))
 		$muxed_posts[$post->name] = array();
 	$muxed_posts[$post->name][] = array($post, st::DRAFT);
 }
 
-function sf($a,$b) {
+function _post_tuple_sortfunc($a,$b) {
 	return $b[0]->modified->time - $a[0]->modified->time;
+}
+function _muxed_posts_sortfunc($a, $b) {
+	return $b[0][0]->modified->time - $a[0][0]->modified->time;
 }
 
 # Add published and scheduled posts
@@ -69,7 +92,7 @@ do {
 			$muxed_posts[$post->name] = array();
 		if ($post->published->time > time()) {
 			$muxed_posts[$post->name][] = array($post, st::SCHEDULED.($post->draft ? st::DRAFT : ''));
-			uasort($muxed_posts[$post->name], 'sf');
+			uasort($muxed_posts[$post->name], '_post_tuple_sortfunc');
 		}
 		else {
 			#$online[] = $post;
@@ -82,29 +105,98 @@ do {
 	}
 } while ($pageno++ < $postspage->numpages);
 
-
-uasort($muxed_posts, create_function('$a, $b', 'return $b[0][0]->modified->time - $a[0][0]->modified->time;'));
+# sort by modified desc
+uasort($muxed_posts, '_muxed_posts_sortfunc');
 
 ?>
-<div id="content" class="<?= gb_admin::$current_domid ?>">
-	<h2>Posts</h2>
-	<table class="posts offline">
+<script type="text/javascript" charset="utf-8">
+	function update_visible_rows() {
+		var hiddenClasses = [];
+		$('div.filter-flags input[type=checkbox]').each(function(){
+			if (!this.checked)
+				hiddenClasses.push(this.value);
+		});
+		$('table.posts tr').each(function(){
+			var tr = $(this);
+			var hidden = false;
+			console.log(hiddenClasses);
+			for (var k in hiddenClasses) {
+				hidden = tr.hasClass(hiddenClasses[k]);
+				if (hidden)
+					break;
+			}
+			if (hidden)
+				tr.hide();
+			else
+				tr.show();
+		});
+	}
+	$(function(){
+		$('div.filter-flags input[type=checkbox]').change(update_visible_rows);
+		update_visible_rows();
+	});
+</script>
+<div id="content" class="<?= gb_admin::$current_domid ?> manage items">
+	<div class="head">
+		<h2>Posts</h2>
+		<div class="options filter-flags">
+			Show:
+			<label class="d">
+				<input type="checkbox" value="d" checked>
+				Drafts
+			</label>
+			<label class="s">
+				<input type="checkbox" value="s" checked>
+				Scheduled
+			</label>
+			<label class="m">
+				<input type="checkbox" value="m" checked>
+				Modified
+			</label>
+			<label class="u">
+				<input type="checkbox" value="u" checked>
+				Untracked
+			</label>
+			<label class="r">
+				<input type="checkbox" value="r">
+				Removed
+			</label>
+		</div>
+	</div>
+	<table class="items posts offline">
 	<? foreach ($muxed_posts as $name => $posts): $childcount = 0; ?>
-		<? foreach ($posts as $v): $post = $v[0]; $st = $v[1]; ?>
+		<? foreach ($posts as $v): $post = $v[0]; $flags = $v[1]; ?>
 			<? $editurl = gb_admin::$url.'edit/post.php?name='.urlencode($post->name); ?>
 			<tr onclick="document.location.href='<?= $editurl ?>'" 
-					class="<?= implode(' ',str_split($st)) . ($childcount ? ' child' : (count($posts)>1 ? ' parent' : '')) ?>">
+					class="<?= implode(' ',str_split($flags)) . ($childcount ? ' child' : (count($posts)>1 ? ' parent' : '')) ?>">
 				<td class="name">
 					<span class="title">
 						<?= h($post->title ? $post->title : '('.substr($post->name,strlen('content/posts/')).')') ?>
 					</span>
+					<? if (strpos($flags, st::SCHEDULED) !== false): ?>
+						<span class="scheduled">
+							<?= h($post->published->age(null, null, null, '', null, 'a second', 'in ')) ?>
+						</span>
+					<? endif ?>
+					<? if (strpos($flags, st::DRAFT) !== false): ?>
+						<span class="badge <?= st::DRAFT ?>">Draft</span>
+					<? endif ?>
+					<? if (strpos($flags, st::UNTRACKED) !== false): ?>
+						<span class="badge <?= st::UNTRACKED ?>">Untracked</span>
+					<? endif ?>
 					<span class="excerpt">
 						<? $s=h(gb_strlimit($post->textBody(), 80));echo $s ? ' – '.$s : '' ?>
 					</span>
 				</td>
 				<td class="author"><?= h($post->author->shortName()) ?></td>
-				<td class="date modified type-number"><?= h($post->modified->condensed()) ?><?/*= h($st == st::STAGED ? $post->published->condensed() : $post->modified->condensed()) */?></td>
+				<td class="date modified type-number"><?= h($post->modified->condensed()) ?></td>
 			</tr>
+		<?
+		
+		# comment-out this to show parent (staged) versions below the dirty version
+		break;
+		
+		?>
 		<? $childcount++; endforeach ?>
 	<? endforeach ?>
 	</table>

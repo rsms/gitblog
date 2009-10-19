@@ -486,12 +486,12 @@ include '../_header.php';
 				j.removeData('_Saving...');
 			}
 			else {
-				j.data('_Save', 'Create');
-				j.data('_Saved', 'Create');
-				j.data('_Saving...', 'Creating...');
+				j.data('_Save', 'Save now');
+				j.data('_Saved', 'Save now');
+				j.data('_Saving...', 'Saving...');
 			}
 			if (post.isModified)
-				post.setSaveButton('Save');
+				post.setSaveButton('Save now');
 			else
 				post.setSaveButton('Saved');
 		},
@@ -502,6 +502,7 @@ include '../_header.php';
 		
 		onIsDirtyChanged: function(oldval) {
 			post.setCommitButton(null, post.isDirty);
+			post.updateUIStateSelectors();
 		},
 		
 		onExistsChanged: function(oldval) {
@@ -530,6 +531,17 @@ include '../_header.php';
 			post.stopAutoSaveTimer();
 			post.isModified = false;
 			post.resetCheckStateTimer();
+		},
+		
+		updateUIStateSelectors: function() {
+			if (post.isDirty) {
+				$('.ui-post-visible-when-dirty').show();
+				$('.ui-post-visible-when-clean').hide();
+			}
+			else {
+				$('.ui-post-visible-when-dirty').hide();
+				$('.ui-post-visible-when-clean').show();
+			}
 		}
 	};
 	
@@ -538,6 +550,7 @@ include '../_header.php';
 		post.trackState();
 		post.setCommitButtonAccordingToTrackedState();
 		post.setSaveButtonAccordingToExistingState();
+		post.updateUIStateSelectors();
 
 		// select/give focus to the body text area for new posts
 		if (!post.name) {
@@ -571,7 +584,7 @@ include '../_header.php';
 				<input type="button" class="discard" value="Discard"
 				 	<?= $post->isTracked() ? 'style="display:none"' : '' ?> />
 				<input type="button" class="save" value="Save" />
-				<input type="button" id="commit-button" class="commit" value="Commit"
+				<input type="button" id="commit-button" class="commit" value="Commit changes"
 					title="Execute git commit and push changes live"
 					<?= $post->isTracked() ? '' : 'style="display:none"' ?> />
 				<input type="button" id="publish-button" class="commit publish" value="Publish"
@@ -665,25 +678,41 @@ include '../_header.php';
 		<div class="component commits">
 			<h4>Commits</h4>
 			<ol>
-			<? foreach ($post->findCommits() as $commit): ?>
+			<? $n=0; foreach ($post->findCommits() as $commit): ?>
 				<? $user = $commit->authorUser(); ?>
 				<li>
-					<a href="<?= gb_admin::$url ?>helpers/commit.php?id=<?= $commit->id ?>&amp;paths[]=<?= urlencode($post->name) ?>">
+					<a href="<?= gb_admin::$url ?>helpers/view-commit.php?id=<?= $commit->id ?>&amp;paths[]=<?= urlencode($post->name) ?>">
 						<samp><?= substr($commit->id, 0, 7) ?></samp>
 					</a>
-					<abbr title="<?= $commit->authorDate ?>"><?= $commit->authorDate->age(60*60*24, '%a, %B %e, %H:%M') ?></abbr>
+					<abbr title="<?= $commit->authorDate ?>"><?= $commit->authorDate->condensed() ?></abbr>
 					by <?= h($user ? $user->name : $commit->authorName) ?>
-					—
-					<a href="#revert">Undo</a>
+					
+					<a href="<?= gb_admin::$url ?>helpers/checkout.php?rev=<?= $commit->id ?>&amp;paths[]=<?= urlencode($post->name) ?>&amp;continue=<?=urlencode(gb::url())?>&amp;style=replace" 
+						<? if ($n === 0): ?>
+						class="badge button ui-post-visible-when-dirty"
+						<? else: ?>
+						class="badge button"
+						<? endif ?>
+						onclick="return confirm('Really revert to this version?')"
+						title="Checkout (git checkout -f) this version, discarding any local changes"
+						>Revert</a>
+					
+					<? if ($n): ?>
+					<a href="<?= gb_admin::$url ?>helpers/checkout.php?rev=<?= $commit->id ?>&amp;paths[]=<?= urlencode($post->name) ?>&amp;continue=<?=urlencode(gb::url())?>&amp;style=merge" 
+						class="ui-post-visible-when-dirty badge button"
+						onclick="return confirm('Really revert and keep local changes?')"
+						title="Revert (git checkout -m) to this version and perform a three-way merge, keeping your local changes"
+						>Revert &amp; keep changes</a>
+					<? endif ?>
 				</li>
-			<? endforeach ?>
+			<? $n++; endforeach ?>
 			</ol>
 		</div>
 		<div class="breaker"></div>
 	</div>
 	<? endif ?>
 </div>
-<? if ($post->exists()): ?>
+<? if ($post->exists() && $admin_conf->get('composing/preview/enabled', true)): ?>
 <div id="preview">
 	<iframe src="<?= $post->url($q['version']) ?>#post"></iframe>
 </div>

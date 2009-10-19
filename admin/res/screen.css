@@ -23,9 +23,28 @@ h2 { font-size:19px; }
 /* Universal helpers */
 .highlight { background-color:#fffe95; color:#302400; }
 .breaker { clear:both; }
+.badge {
+	display:inline-block;
+	padding:1px 4px;
+	line-height:13px;
+	font-family:'lucida grande',tahoma,sans-serif; 
+	font-size:9px;
+	background-color:#ddd;
+	border-radius:2px; -webkit-border-radius:2px; -moz-border-radius:2px;
+}
+.badge.button {
+	font-size:11px;
+	line-height:14px;
+	background-color:#999;
+	color:#fff;
+	border-radius:2px; -webkit-border-radius:2px; -moz-border-radius:2px;
+	border:none;
+}
+.badge.button:hover { background-color:#333; color:#fff; }
 
 /* Tables */
 table { border-collapse:collapse; }
+	table td { vertical-align:top; }
 	table th, table td { border-bottom:1px solid #ccc; padding:1px 7px; }
 	table th.type-number, table td.type-number { text-align:right; }
 	table th { border-bottom:3px solid #ccc; }
@@ -61,7 +80,7 @@ table { border-collapse:collapse; }
 	#menu > ul > li > ul > li > ul > li > ul > li > a { padding-left:40px; }
 	#menu > ul > li > ul > li > ul > li > ul > li > ul > li > a { padding-left:50px; }
 	#menu a span.title { color:#333; }
-	#menu li.todo span.title { color:#aaa; }
+	#menu li.todo span.title { color:#ccc; }
 	#menu a span.accesskey-hint { display:inline-block; float:right; color:#bbb; 
 		font-weight:normal; letter-spacing:2px; margin-left:10px; margin-right:-4px;
 	}
@@ -126,51 +145,102 @@ table { border-collapse:collapse; }
 	}
 	div.component.commits ol { list-style:none; padding:0; margin:0; }
 	
-	#content.manage-posts {
+	/* manage/*: */
+	#content.manage.items {
 		width:700px; border-left:1px solid #ccc; 
 		border-right:1px solid #ccc; margin-left:-1px;
 	}
-		#content.manage-posts h2 { padding:10px 10px; margin:0; font-size:16px; border-bottom:1px solid #ccc; }
-		#content.manage-posts div.paged-nav { margin:10px; text-align:center; }
+		#content.manage.items h2 { padding:10px 10px; margin:0; font-size:16px; border-bottom:1px solid #ccc; }
+		#content.manage.items div.paged-nav { margin:10px; text-align:center; }
+	table.items { width:700px; margin:0; }
+	table.items td.date { white-space:nowrap; }
+	table.items a { border:none; }
+	table.items td div.actions { display:inline-block; float:right; }
 	
-	table.posts { width:100%; margin:0; }
+	/* manage/posts: */
+	div.manage-posts div.head { border-bottom:1px solid #ccc; }
+		div.manage-posts div.head h2 { display:inline-block; border-bottom:none !important; }
+		div.manage-posts div.options { display:inline-block; float:right; margin:10px 10px 0 0; color:#666; }
+		div.manage-posts div.options.filter-flags label {
+			display:inline-block;
+			margin-left:2px;
+			padding:1px 4px;
+			line-height:18px;
+			font-family:'lucida grande',tahoma,sans-serif; 
+			font-size:11px;
+			color:#111;
+			border-radius:2px; -webkit-border-radius:2px; -moz-border-radius:2px;
+		}
+	
+	table.posts {  }
 		table.posts tr td.name { overflow:hidden; text-overflow:ellipsis; max-width:500px; white-space:nowrap; }
 			table.posts tr td.name span.title { color:#111; }
 			table.posts tr.m td.name span.title { font-weight:bold; }
 			table.posts td.name span.excerpt { color:#bbb; }
 		table.posts * { cursor:pointer; }
-		table.posts tr.parent td { border-bottom:none; }
+		/*table.posts tr.parent td { border-bottom:none; }*/
 		table.posts tr.child td:first-child { padding-left:20px; }
 		table.posts tr.child td {
 			padding-top:2px;
 			background-image:url(arrow-deco-up.png); background-repeat:repeat-x;
 		}
-		table.posts tr.m td { background-color:#fffb91; } /* tracked + modified */
+		/* tracked + modified */
+		table.posts tr.m td { background-color:#fffb91; }
 		table.posts tr.m:hover td { background-color:#fef059; }
 		table.posts tr.m td.name span.excerpt { color:#c2af56; }
-		table.posts tr.s td { background-color:#cfd; } /* tracked + scheduled */
-		table.posts tr.s td:first-child span.title {
+		div.manage-posts div.options.filter-flags label.m { background-color:#fffb91; }
+		div.manage-posts div.options.filter-flags label.m:hover { background-color:#fef059; }
+		/* tracked + scheduled */
+		table.posts tr.s td { background-color:#cfd; }
+		table.posts tr.s td span.scheduled {
 			background-image:url(scheduled.png);
 			background-repeat:no-repeat;
-			background-position:right center;
-			padding-right:20px;
+			background-position:0 center;
+			padding-left:16px;
+			margin-left:5px;
+			color:#029d4f;
 			display:inline-block;
 		}
 		table.posts tr.s:hover td { background-color:#a4ffc2; }
 		table.posts tr.s td.name span.excerpt { color:#98c1a6; }
+		div.manage-posts div.options.filter-flags label.s { background-color:#cfd; }
+		div.manage-posts div.options.filter-flags label.s:hover { background-color:#a4ffc2; }
 		/* untracked */
 		table.posts tr.u td { background-color:#eee; }
 		table.posts tr.u:hover td { background-color:#ddd; }
 		table.posts tr.u td.name span.title { color:#666; }
-		table.posts tr.r td { background-color:#fcc; } /* removed */
+		div.manage-posts div.options.filter-flags label.u { background-color:#eee; }
+		div.manage-posts div.options.filter-flags label.u:hover { background-color:#ddd; }
+		/* removed */
+		table.posts tr.r td { background-color:#fcc; }
 		table.posts tr.r:hover td { background-color:#fdb8b8; }
 		table.posts tr.r td.name span.title { color:#800; }
 		table.posts tr.r td.name span.excerpt { color:#e19e9e; }
 		table.posts tr.r:hover td.name span.excerpt { color:#ce8181; }
-		table.posts tr.d td { font-style:italic; } /* draft */
-		table.posts tr.d td:first-child span.title:after { content:" Draft"; color:#c22; font-weight:normal; }
+		div.manage-posts div.options.filter-flags label.r { background-color:#fcc; }
+		div.manage-posts div.options.filter-flags label.r:hover { background-color:#fdb8b8; }
+		/* draft */
+		table.posts tr.d td { font-style:italic; }
+			table.posts tr.d td span.badge { font-style:normal; }
+		div.manage-posts div.options.filter-flags label.d { background-color:#d4ecff; }
+		div.manage-posts div.options.filter-flags label.d:hover { background-color:#b1ddff; }
+		/* hover fx */
 		table.posts tr:hover td { background-color:#eee; }
-		table.posts a { border:none; }
+		/* badges */
+		table.posts td span.badge { margin-bottom:3px; }
+		table.posts td span.badge.d { background-color:#5faaff; color:#fff; font-style:normal; }
+		table.posts td span.badge.u { background-color:#ccc; color:#666; font-style:normal; }
+	
+	/* manage/comments: */
+	table.comments { }
+		table.comments td.avatar { padding:0; }
+		table.comments p.excerpt { color:#999; margin:2px 0 8px 0; font-size:11px; font-family:'lucida grande',tahoma,sans-serif; }
+		table.comments tr:hover { background:#eee; }
+		table.comments tr:hover p.excerpt { color:#444; }
+		table.comments tr td.info span.badge.spam { background-color:#fdd; color:#c22; }
+	
+	/* maintenance/git-status: */
+	.maintenance-git-status h2 { float:left; padding-right:15px; }
 
 
 #preview { width:630px; float:left; border-left:1px solid #ccc; padding-left:10px; margin-left:-1px; }
@@ -224,7 +294,7 @@ div.inputgroup {
 		z-index:9;
 	}
 	#gb-errors ul { display:block; margin:0 0 0 50px; padding:0; list-style:none; }
-	#gb-errors li { font-size:16px; white-space:pre; }
+	#gb-errors li { font-size:16px; }
 	#gb-errors li.title { font-weight:bold; line-height:1; margin:0.2em 0; }
 
 /* Throbber */
@@ -241,3 +311,19 @@ div.inputgroup {
 	display:none;
 }
 div.section div.component .throbber { float:right; margin-top:3px; }
+
+/* Closely related to Git output or semantics */
+.git-status {}
+	.git-status p.repo-state { border:1px solid #ccc; padding:4px 8px; display:inline-block; margin-top:0; }
+	.git-status p.tips { font-size:11px; margin-top:0; color:#888; display:inline-block; border:1px solid #ddd; padding:4px 8px; margin-left:20px; }
+	.git-status ul { list-style-type:none; margin-bottom:10px; }
+		.git-status ul { font-family:monospace; }
+		.git-status ul.staged li { color:#007a14; }
+		.git-status ul.unstaged li { color:#7a3700; }
+		.git-status ul.untracked li { color:#2d5381; }
+		.git-status ul li.added span.badge { background-color:#71fc84; color:#000; }
+		.git-status ul li.modified span.badge { background-color:#fced71; color:#000; }
+		.git-status ul li.renamed span.badge { background-color:#ffc664; color:#000; }
+		.git-status ul li.deleted span.badge { background-color:#ff9e84; color:#000; }
+
+.git-branch { background-color:#d4fff8; font-weight:bold; color:#203e3e; }

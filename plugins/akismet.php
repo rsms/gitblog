@@ -25,14 +25,18 @@ class akismet_plugin {
 	static public $key;
 	static public $host = 'rest.akismet.com';
 	static public $port = 80;
-	static public $data;
+	static public $conf;
 	
 	static function init($context) {
-		self::$data = gb::data('plugins/'.gb_filenoext(basename(__FILE__)), array('api_key' => ''));
+		$default_conf = array(
+			'api_key' => '',
+			'delete_spam' => true
+		);
+		self::$conf = gb::data('plugins/'.gb_filenoext(basename(__FILE__)), $default_conf);
 		if (!self::$key)
-			self::$key = self::$data['api_key'];
+			self::$key = self::$conf['api_key'];
 		if (!self::$key) {
-			gb::log(LOG_WARNING, 'akismet not loaded since "api_key" is not set in %s', self::$data->file);
+			gb::log(LOG_WARNING, 'akismet not loaded since "api_key" is not set in %s', self::$conf->file);
 			return false;
 		}
 		if ($context === 'admin') {
@@ -82,14 +86,14 @@ class akismet_plugin {
 	// seconds; use $cache_timeout = 0 to force an update.
 	// Returns the same associative array as akismet_check_server_connectivity()
 	static function get_server_connectivity( $cache_timeout = 86400 ) {
-		$servers = self::$data['available_servers'];
-		if ( (time() - self::$data['connectivity_time'] < $cache_timeout) && $servers )
+		$servers = self::$conf['available_servers'];
+		if ( (time() - self::$conf['connectivity_time'] < $cache_timeout) && $servers )
 			return $servers;
 
 		// There's a race condition here but the effect is harmless.
 		$servers = self::check_server_connectivity();
-		self::$data['available_servers'] = $servers;
-		self::$data['connectivity_time'] = time();
+		self::$conf['available_servers'] = $servers;
+		self::$conf['connectivity_time'] = time();
 		return $servers;
 	}
 
@@ -159,6 +163,10 @@ class akismet_plugin {
 	}
 	
 	static function check_comment($comment) {
+		# null?
+		if (!$comment)
+			return $comment;
+		
 		# already approved?
 		if ($comment->approved) {
 			gb::log(LOG_INFO, 'skipping check since comment is already approved');
@@ -198,9 +206,11 @@ class akismet_plugin {
 		# parse response
 		if ($response[1] === 'true') {
 			gb::log('comment classed as spam');
-			self::$data['spam_count'] = intval(self::$data['spam_count']) + 1;
+			self::$conf['spam_count'] = intval(self::$conf['spam_count']) + 1;
 			$comment->spam = true;
 			gb::event('did-spam-comment', $comment);
+			if (self::$conf['delete_spam'])
+				$comment = null;
 		}
 		elseif ($response[1] === 'false') {
 			gb::log('comment classed as ham');

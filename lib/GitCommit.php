@@ -53,6 +53,7 @@ class GitCommit {
 	
 	static public $logFormat = '%H%n%T%n%ae%n%an%n%ai%n%ce%n%cn%n%ci%n%s%x00';
 	
+	/** Returns array($commits, $existing, $ntoc) */
 	static function find($kwargs=null) {
 		static $defaultkwargs = array(
 			'names' => null,

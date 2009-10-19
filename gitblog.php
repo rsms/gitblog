@@ -1529,10 +1529,17 @@ class GBDateTime {
 		return $this->origformat($default_format, false);
 	}
 	
-	#                           2592000 = 30 days
-	function age($threshold=2592000, $yformat='%B %e', $absformat='%B %e, %Y', $suffix=' ago', 
-		$compared_to=null, $momentago='A second')
+	/** Relative age */
+	function age($threshold=null, $yformat=null, $absformat=null, $suffix=null, 
+		           $compared_to=null, $momentago=null, $prefix=null)
 	{
+		if ($threshold === null) $threshold = 2592000; # 30 days
+		if ($yformat === null) $yformat='%B %e';
+		if ($absformat === null) $absformat='%B %e, %Y';
+		if ($suffix === null) $suffix=' ago';
+		if ($prefix === null) $prefix='';
+		if ($momentago === null) $momentago='A second';
+		
 		if ($compared_to === null)
 			$diff = time() - $this->time;
 		elseif (is_int($compared_to))
@@ -1540,35 +1547,38 @@ class GBDateTime {
 		else
 			$diff = $compared_to->time - $this->time;
 		
+		if ($diff < 0)
+			$diff = -$diff;
+		
 		if ($diff >= $threshold)
 			return $this->origformat($diff < 31536000 ? $yformat : $absformat, false);
 		
 		if ($diff < 5)
-			return $momentago.$suffix;
+			return $prefix.$momentago.$suffix;
 		elseif ($diff < 50)
-			return $diff.' '.($diff === 1 ? 'second' : 'seconds').$suffix;
+			return $prefix.$diff.' '.($diff === 1 ? 'second' : 'seconds').$suffix;
 		elseif ($diff < 3000) {
 			$diff = (int)round($diff / 60);
-			return $diff.' '.($diff === 1 ? 'minute' : 'minutes').$suffix;
+			return $prefix.$diff.' '.($diff === 1 ? 'minute' : 'minutes').$suffix;
 		}
 		elseif ($diff < 83600) {
 			$diff = (int)round($diff / 3600);
-			return $diff.' '.($diff === 1 ? 'hour' : 'hours').$suffix;
+			return $prefix.$diff.' '.($diff === 1 ? 'hour' : 'hours').$suffix;
 		}
 		elseif ($diff < 604800) {
 			$diff = (int)round($diff / 86400);
-			return $diff.' '.($diff === 1 ? 'day' : 'days').$suffix;
+			return $prefix.$diff.' '.($diff === 1 ? 'day' : 'days').$suffix;
 		}
 		elseif ($diff < 2628000) {
 			$diff = (int)round($diff / 604800);
-			return $diff.' '.($diff === 1 ? 'week' : 'weeks').$suffix;
+			return $prefix.$diff.' '.($diff === 1 ? 'week' : 'weeks').$suffix;
 		}
 		elseif ($diff < 31536000) {
 			$diff = (int)round($diff / 2628000);
-			return $diff.' '.($diff === 1 ? 'month' : 'months').$suffix;
+			return $prefix.$diff.' '.($diff === 1 ? 'month' : 'months').$suffix;
 		}
 		$diff = (int)round($diff / 31536000);
-		return $diff.' '.($diff === 1 ? 'year' : 'years').$suffix;
+		return $prefix.$diff.' '.($diff === 1 ? 'year' : 'years').$suffix;
 	}
 	
 	/**

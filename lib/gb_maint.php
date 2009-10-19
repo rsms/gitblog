@@ -248,16 +248,12 @@ class gb_maint {
 		
 		$stages = gb_upgrade::perform($fromVersion, gb::$version);
 		
-		if ($stages) {
-			$failures = GBRebuilder::rebuild(true);
-			gb::log('gitblog is now version %s', gb::$version);
-			if ($failures) {
-				gb::log(LOG_WARNING, 'rebuilding failed with %d failures', count($failures));
-				return false;
-			}
-		}
-		else {
-			gb::log('upgrade not needed');
+		gb::log('triggering rebuild as an effect of the upgrade to %s', gb::$version);
+		$failures = GBRebuilder::rebuild($stages ? true : false);
+		gb::log('gitblog is now version %s', gb::$version);
+		if ($failures) {
+			gb::log(LOG_WARNING, 'rebuilding failed with %d failures', count($failures));
+			return false;
 		}
 		
 		return true;

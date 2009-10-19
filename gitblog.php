@@ -71,7 +71,7 @@ class gb {
 	# --------------------------------------------------------------------------
 	# Constants
 	
-	static public $version = '0.1.5';
+	static public $version = '0.1.6';
 	
 	/** Absolute path to the gitblog directory */
 	static public $dir;

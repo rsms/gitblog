@@ -5,6 +5,7 @@ class git {
 	
 	/** Execute a git command */
 	static function exec($cmd, $input=null, $gitdir=null, $worktree=null, $allow_guess=false) {
+	static function exec($cmd, $input=null, $gitdir=null, $worktree=null, $allow_guess=false, $ignore_git_errors=false) {
 		# build cmd
 		if ($gitdir === null && !$allow_guess)
 			$gitdir = gb::$site_dir.'/.git';
@@ -27,6 +28,8 @@ class git {
 		# check for errors
 		if ($r[0] != 0) {
 			$msg = trim($r[1]."\n".$r[2]);
+			if ($ignore_git_errors && strpos($msg,'sh: ') !== 0)
+				return $msg;
 			if (strpos($r[2], 'Not a git repository') !== false)
 				throw new GitUninitializedRepoError($msg, $r[0], $cmd);
 			else

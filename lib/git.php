@@ -3,8 +3,10 @@ class git {
 	/** Query counter */
 	static public $query_count = 0;
 	
+	/** Cached git status structure */
+	static public $status_cache = null;
+	
 	/** Execute a git command */
-	static function exec($cmd, $input=null, $gitdir=null, $worktree=null, $allow_guess=false) {
 	static function exec($cmd, $input=null, $gitdir=null, $worktree=null, $allow_guess=false, $ignore_git_errors=false) {
 		# build cmd
 		if ($gitdir === null && !$allow_guess)
@@ -94,10 +96,15 @@ class git {
 		
 		# git init
 		git::exec('init --quiet '.$shared, null, $gitdir, $worktree);
+		
+		# clear status cache
+		self::$status_cache = null;
 	}
 	
 	static function add($pathspec, $forceIncludeIgnored=true) {
 		git::exec(($forceIncludeIgnored ? 'add --force ' : 'add ').escapeshellarg($pathspec));
+		# clear status cache
+		self::$status_cache = null;
 		return $pathspec;
 	}
 	
@@ -130,10 +137,108 @@ class git {
 						.'object or an array of any of the two mentioned types');
 			}
 		}
-		git::exec('reset '.$flags.' '.$commitargs.' --'.$pathspec);
+		# clear status cache
+		self::$status_cache = null;
+		self::exec('reset '.$flags.' '.$commitargs.' --'.$pathspec);
+	}
+	
+	/**
+	 * git status
+	 * 
+	 * @param bool raw  If true, the raw output from 'git status' is returned rather
+	 *                  than parsing and returning a structure.
+	 * @return array    array(
+	 *   'branch' => 'master',
+	 *   ['upstream' => array('name' => 'origin/master', 'distance' => 24),]
+	 *   ['staged' => array(
+	 *     'filename' => array('status'=>'added'|'modified'|'deleted') | array('status'=>'renamed','newname'=>'filename') ], ...
+	 *   ),]
+	 *   ['unstaged' => array(
+	 *     'filename' => array('status'=>'added'|'modified'|'deleted') | array('status'=>'renamed','newname'=>'filename') ], ...
+	 *   ),]
+	 *   ['untracked' => array(
+	 *     'filename' => 1, ...
+	 *   )]
+	 * )
+	 */
+	static function status($raw=false, $cached=true) {
+		$s = self::exec('status', null, null, null, false, /* $ignore_git_errors = */true);
+		if ($raw)
+			return $s;
+		if (self::$status_cache !== null && $cached)
+			return self::$status_cache;
+		$st = array('branch' => null);
+		$i = 0;
+		$lines = explode("\n", rtrim($s));
+		$nlines = count($lines);
+		$st['branch'] = array_pop(explode(' ',$lines[0],4));
+		$i = 1;
+		$line = $lines[1];
+		if ($line && $line{0} === '#') {
+			if (preg_match('/^# Your branch is ahead of \'([^\']+)\' by ([0-9]+) /', $line, $m)) {
+				$st['upstream'] = array('name' => $m[1], 'distance' => intval($m[2]));
+			}
+		}
+		$files = array();
+		$stage = '';
+		for (;$i<$nlines; $i++) {
+			$line = $lines[$i];
+			$prevstage = false;
+			if (!$line || $line{0} !== '#')
+				break;
+			if (strlen($line) < 2)
+				continue;
+			if ($line === '# Changes to be committed:') {
+				$prevstage = $stage;
+				$stage = 'staged';
+			}
+			elseif ($line === '# Changed but not updated:') {
+				$prevstage = $stage;
+				$stage = 'unstaged';
+			}
+			elseif ($line === '# Untracked files:') {
+				$prevstage = $stage;
+				$stage = 'untracked';
+			}
+			elseif ($line{1} === "\t") {
+				if ($stage === 'untracked') {
+					$name = gb_normalize_git_name(substr($line, 2));
+					$files[$name] = 1;
+				}
+				elseif (preg_match('/^#\t([a-z ]+):[\t ]+((.+) -> (.+)|.+)$/', $line, $m)) {
+					$status = $m[1];
+					if ($status === 'renamed') {
+						$name = gb_normalize_git_name($m[3]);
+						$newname = gb_normalize_git_name($m[4]);
+						$files[$name] = array('status' => $status, 'newname' => $newname);
+					}
+					else {
+						if ($status === 'new file')
+							$status = 'added';
+						$name = gb_normalize_git_name($m[2]);
+						$files[$name] = array('status' => $status);
+					}
+				}
+			}
+			# put away previous files
+			if ($prevstage) {
+				$st[$prevstage] = $files;
+				$files = array();
+			}
+		}
+		# put away last files, if any
+		if ($stage) {
+			$st[$stage] = $files;
+			$files = array();
+		}
+		# always save cache, even if $cached is false
+		self::$status_cache = $st;
+		return $st;
 	}
 	
 	static function commit($message, $author=null, $pathspec=null, $deferred=false) {
+		# clear status cache
+		self::$status_cache = null;
 		if ($deferred && gb::defer(array('gb', 'commit'), $message, $author, $pathspec, false)) {
 			$pathspec = $pathspec ? r($pathspec) : '';
 			gb::log('deferred commit -m %s --author %s %s',

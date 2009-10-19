@@ -43,6 +43,15 @@ class GitPatch {
 					$patches[] = $currpatch;
 				# new
 				$currpatch = new GitPatch(GitPatch::EDIT_IN_PLACE);
+				
+				$s = explode(' ', $line, 3);
+				if (isset($s[2])) {
+					$s = explode(' ', $s[2]);
+					$n = intval(count($s)/2);
+					$s = trim(implode(' ', array_slice($s, $n)));
+					$s = substr($s, strpos($s, '/')+1);
+					$currpatch->currname = $s;
+				}
 				$passed_delta = false;
 			}
 		

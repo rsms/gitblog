@@ -1445,14 +1445,14 @@ function gb_hms_from_time($ts) {
 if (function_exists('mb_substr')) {
 	function gb_strlimit($str, $limit=20, $ellipsis='…') {
 		if (mb_strlen($str, 'utf-8') > $limit)
-			return mb_substr($str,0,$limit-mb_strlen($ellipsis, 'utf-8'), 'utf-8').$ellipsis;
+			return rtrim(mb_substr($str,0,$limit-mb_strlen($ellipsis, 'utf-8'), 'utf-8')).$ellipsis;
 		return $str;
 	}	
 }
 else {
 	function gb_strlimit($str, $limit=20, $ellipsis='…') {
 		if (strlen($str) > $limit)
-			return substr($str,0,$limit-strlen($ellipsis)).$ellipsis;
+			return rtrim(substr($str,0,$limit-strlen($ellipsis))).$ellipsis;
 		return $str;
 	}
 }

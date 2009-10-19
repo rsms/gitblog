@@ -146,11 +146,7 @@ class git {
 		}
 		
 		if ($pathspec) {
-			if (is_array($pathspec))
-				$pathspec = implode(' ', array_map('escapeshellarg',$pathspec));
-			else
-				$pathspec = escapeshellarg($pathspec);
-			$pathspec = ' '.$pathspec;
+			$pathspec = ' '.self::escargs($pathspec);
 		}
 		else {
 			$pathspec = '';

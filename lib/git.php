@@ -1,5 +1,6 @@
 <?
 class git {
+	/** Query counter */
 	static public $query_count = 0;
 	
 	/** Execute a git command */

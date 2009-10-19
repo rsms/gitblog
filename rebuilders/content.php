@@ -208,7 +208,9 @@ class GBContentFinalizer extends GBContentRebuilder {
 		
 		# build indexes (sub-rebuilders)
 		usort(self::$objects, 'gb_sortfunc_cobj_date_published_r');
+		gb::log('Running object index rebuilders...');
 		$this->runIndexRebuilders(self::$objectIndexRebuilders, self::$objects);
+		gb::log('Running comment index rebuilders...');
 		$this->runIndexRebuilders(self::$commentIndexRebuilders, self::$comments);
 	}
 	
@@ -345,15 +347,17 @@ class GBContentFinalizer extends GBContentRebuilder {
 		
 		if (!$rebuilders)
 			return;
-		
-		# iterate over all objects (not including comments)
+		gb::log('Running %d index rebuilders on %d objects',count($rebuilders),count($objects));
+		# iterate over all objects
 		foreach ($objects as $obj)
 			foreach ($rebuilders as $ir)
 				$ir->onObject($obj);
+		gb::log('Finalizing %d index rebuilders...',count($rebuilders));
 		
 		# let index rebuilders finalize
 		foreach ($rebuilders as $ir)
 			$ir->finalize();
+		gb::log('Ran %d index rebuilders',count($rebuilders));
 	}
 }
 

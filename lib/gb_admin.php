@@ -18,6 +18,7 @@ class gb_admin {
 		array('Manage',null, array(
 			array('Posts','manage/posts.php'),
 			array('Pages','#todo:manage/pages.php'),
+			array('Comments','manage/comments.php'),
 			array('Attachments','#todo:manage/attachments.php')
 		)),
 		array('Settings',null, array(
@@ -30,7 +31,8 @@ class gb_admin {
 		)),
 		array('Maintenance',null,array(
 			'r' => array('Rebuild', 'maintenance/rebuild.php'),
-			array('Import Wordpress site', 'maintenance/import-wordpress.php')
+			array('Import Wordpress site', 'maintenance/import-wordpress.php'),
+			array('Status', 'maintenance/git-status.php')
 		))
 	);
 	

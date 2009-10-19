@@ -3550,11 +3550,8 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 			$post = GBPost::find(urldecode($gb_request_uri), $version, $strptime);
 			if ($post === false)
 				gb::$is_404 = true;
-			elseif ($post->draft === true || $post->published->time > time())
-				gb::$is_404 = true;
 			else
 				gb::$title[] = $post->title;
-			
 			gb::$is_post = true;
 			
 			# empty prefix and 404 -- try page
@@ -3577,6 +3574,10 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 				gb::$title[] = $post->title;
 			gb::$is_page = true;
 		}
+		
+		# post 404?
+		if (isset($post) && $post && gb::$is_preview === false && ($post->draft === true || $post->published->time > time()))
+			gb::$is_404 = true;
 	}
 	else {
 		# posts

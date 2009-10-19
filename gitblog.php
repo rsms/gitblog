@@ -3079,6 +3079,10 @@ class GBComment {
 		return gb::filter('comment-body', $this->body);
 	}
 	
+	function textBody() {
+		return trim(preg_replace('/<[^>]*>/m', ' ', $this->body()));
+	}
+	
 	function duplicate(GBComment $other) {
 		return (($this->email === $other->email) && ($this->body === $other->body));
 	}

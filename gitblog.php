@@ -2143,7 +2143,8 @@ class GBExposedContent extends GBContent {
 	function isDirty() {
 		if (!$this->isTracked())
 			return true;
-		return rtrim(git::exec('ls-files -m -- '.escapeshellarg($this->name))) !== '';
+		$st = git::status();
+		return (isset($st['staged'][$this->name]) || isset($st['unstaged'][$this->name]));
 	}
 	
 	function exists() {

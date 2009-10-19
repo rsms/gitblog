@@ -2100,7 +2100,12 @@ class GBExposedContent extends GBContent {
 		
 		$this->parseData($data);
 		$this->applyInfoFromCommits($commits);
+		$path = gb::$site_dir.'/'.$this->name;
+		if (is_file($path))
+			$this->modified = new GBDateTime(filemtime($path));
 		$this->parseHeaderFields();
+		if ($this->modified === null)
+			$this->modified = $this->published;
 		
 		# apply filters
 		if ($applyBodyFilters) {

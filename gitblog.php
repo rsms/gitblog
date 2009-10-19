@@ -1739,7 +1739,7 @@ class GBContent {
 	public $id;
 	public $mimeType = null;
 	public $author = null;
-	public $modified = false; # GBDateTime
+	public $modified = null; # GBDateTime
 	public $published = false; # GBDateTime
 	
 	function __construct($name=null, $id=null) {

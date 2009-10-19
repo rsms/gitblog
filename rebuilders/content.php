@@ -554,13 +554,12 @@ class GBUnapprovedCommentsIndexRebuilder extends GBContentIndexRebuilder {
 		$i = 0;
 		foreach ($commentObject->getIterator(false) as $c) {
 			if ($c->approved === false)
-				$this->index[strval($c->date->time).'0'.$i++] = array($c, gb_filenoext($commentObject->name));
+				$this->index[] = array($c, gb_filenoext($commentObject->name));
 		}
 	}
 	
 	function serialize() {
-		krsort($this->index);
-		$this->index = array_values($this->index);
+		uasort($this->index, create_function('$a, $b', 'return $b[0]->date->time - $a[0]->date->time;'));
 		
 		# mux comments with content
 		foreach ($this->index as $i => $tuple) {

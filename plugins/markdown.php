@@ -2733,6 +2733,8 @@ class markdown_plugin {
 	
 	static function reloadExposedObject(GBExposedContent $c) {
 		$conf = gb_filter_post_reload_content_get_conf($c);
+		$conf['auto_linebreaks'] = false;
+		$conf['auto_paragraphs'] = false;
 		
 		# prefix for footnotes
 		$parser->fn_id_prefix = $c->domID();

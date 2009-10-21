@@ -38,9 +38,8 @@ if (isset($_POST['submit'])) {
 			mt_srand();
 			$secret .= base_convert(mt_rand(), 10, 36);
 		}
-		$s = preg_replace('/^(gb::\$secret[\t ]*=[\t ]*)\'\';/',
+		$s = preg_replace('/^(gb::\$secret[\t ]*=[\t ]*)\'\';/m',
 			'${1}'.var_export($secret,1).";", $s, 1);
-		#header('content-type: text/plain; charset=utf-8');var_dump($s);exit(0);
 		file_put_contents($config_path, $s);
 		chmod($config_path, 0660);
 		# reload config

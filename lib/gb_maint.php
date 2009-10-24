@@ -185,12 +185,12 @@ class gb_maint {
 					continue;
 				if ($line{0} === '*') {
 					if (strpos($line, '(no branch)') !== false) {
-						$line = explode(' ', $line, 5);
+						$line = preg_split('/[ \t]+/', $line, 5);
 						$gb_branch = null;
 						$gb_head_id = $line[3];
 					}
 					else {
-						$line = explode(' ', $line, 4);
+						$line = preg_split('/[ \t]+/', $line, 4);
 						$gb_branch = $line[1];
 						$gb_head_id = $line[2];
 					}

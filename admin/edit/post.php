@@ -228,6 +228,14 @@ include '../_header.php';
 			return post.save(false);
 		},
 		
+		snapshot: function() {
+			$('.dep-save').each(function(i){
+				var t = post.getField(this);
+				post.currentState[t.name] = t.value;
+			});
+			return post.currentState;
+		},
+		
 		save: function(commit, params) {
 			post.stopAutoSaveTimer();
 			
@@ -239,6 +247,9 @@ include '../_header.php';
 				if (modified[0] == 0 && !commit)
 					return false;
 				params = modified[1];
+			}
+			else if (params == true) {
+				params = post.snapshot();
 			}
 			
 			if (commit)
@@ -565,7 +576,7 @@ include '../_header.php';
 		// bind ui
 		post.setSaveButton('Saved', false);
 		post.setCommitButton(null, post.isDirty);
-		$('input.save').click(function(){ post.save(false); });
+		$('input.save').click(function(){ post.save(false, true); });
 		$('input.commit').click(function(){ post.save(true); });
 	});
 //]]></script>

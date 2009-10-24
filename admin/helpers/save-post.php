@@ -78,7 +78,7 @@ try {
 			gb::log('did force html');
 		}
 		else {
-			gb::log('mime type is $post->mimeType');
+			gb::log('mime type is %s', $post->mimeType);
 		}
 		if (!$post->published)
 			$post->published = $post->modified;

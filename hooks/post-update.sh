@@ -3,7 +3,7 @@ SECRET=
 if [ -f ../secret ]; then
 	SECRET=$(cat ../secret)
 else
-	SECRET=$(grep 'gb::$secret' ../gb-config.php | cut -d' ' -f 3 | sed "s/[;']//g")
+	SECRET=$(perl -lne 's/^(gb::\$secret[\t ]*=[\t ]*'"'"'([^'"'"']+)'"'"'[\t ]*;[\t ]*$|.*$)/$2/g;if($_){print $_;}' ../gb-config.php)
 fi
 curl \
 	-H 'X-gb-shared-secret: '$SECRET \

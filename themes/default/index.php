@@ -28,7 +28,7 @@ elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->pos
 		<meta http-equiv="imagetoolbar" content="no" />
 		<meta name="viewport" content="width=940" />
 		<title><?= gb_title() ?></title>
-		<link rel="stylesheet" type="text/css" href="<?= gb::$theme_url ?>style.css" media="screen" />
+		<link rel="stylesheet" type="text/css" href="<?= gb::$theme_url ?>style.css?v=<?= gb_headid() ?>" media="screen" />
 		<link rel="alternate" type="application/atom+xml" href="<?= h(gb::url_to('feed')) ?>" title="Atom feed" />
 		<? gb_head() ?>
 	</head>

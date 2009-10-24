@@ -1353,6 +1353,16 @@ function gb_fnsplit($path) {
 		$p !== false ? substr($path, $p+1) : '');
 }
 
+/**
+ * Commit id of current gitblog head. Used for URLs which should be
+ * cached in relation to gitblog versions.
+ */
+function gb_headid() {
+	if (gb::$site_state !== null && @isset(gb::$site_state['gitblog']) && @isset(gb::$site_state['gitblog']['head']))
+		return gb::$site_state['gitblog']['head'];
+	return null;
+}
+
 
 /** Like readline, but acts on a byte array. Keeps state with $p */
 function gb_sreadline(&$p, $str, $sep="\n") {

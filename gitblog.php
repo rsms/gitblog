@@ -48,6 +48,14 @@ class gb {
 	static public $version_query_key = 'version';
 	
 	/**
+	 * When this query string key is set and gb::$is_preview is true, the
+	 * object specified by pathspec is loaded. This overrides parsing the URI
+	 * and is needed in cases where there are multiple posts with the same
+	 * name but with different file extensions (content types).
+	 */
+	static public $pathspec_query_key = 'pathspec';
+	
+	/**
 	 * Log messages of priority >=$log_filter will be sent to syslog.
 	 * Disable logging by setting this to -1.
 	 * See the "Logging" section in gitblog.php for more information.
@@ -1852,7 +1860,7 @@ class GBExposedContent extends GBContent {
 		return substr($path, strlen(gb::$site_dir)+1);
 	}
 	
-	static function find($slug, $subdir='', $class='GBExposedContent', $version=null) {
+	static function find($slug, $subdir='', $class='GBExposedContent', $version=null, $applyBodyFilters=true) {
 		$version = self::parseVersion($version);
 		if ($version === 'work') {
 			# find path to raw content
@@ -1863,7 +1871,7 @@ class GBExposedContent extends GBContent {
 			$cached = self::find($slug, $subdir, $class, false);
 			
 			# load work
-			return self::loadWork($path, $cached, $class, null, $slug);
+			return self::loadWork($path, $cached, $class, null, $slug, $applyBodyFilters);
 		}
 		else {
 			$path = self::pathToCached($subdir, $slug . gb::$content_cache_fnext);
@@ -2217,13 +2225,17 @@ class GBExposedContent extends GBContent {
 		return str_replace('%2F', '/', urlencode($this->slug));
 	}
 	
-	function url($include_version=false) {
+	function url($include_version=false, $include_pathspec=false) {
 		$url = gb::$site_url . gb::$index_prefix . $this->urlpath();
 		if ($include_version !== false) {
 			if ($include_version === true)
 				$include_version = $this->id ? $this->id : 'work';
 			$url .= (strpos($url, '?') === false ? '?' : '&')
-				. gb::$version_query_key.'='.$include_version;
+				. gb::$version_query_key.'='.urlencode($include_version);
+		}
+		if ($include_pathspec === true) {
+			$url .= (strpos($url, '?') === false ? '?' : '&')
+				. gb::$pathspec_query_key.'='.urlencode($this->name);
 		}
 		return $url;
 	}
@@ -2557,8 +2569,14 @@ class GBPage extends GBExposedContent {
 		return parent::pathToCached('pages', $slug . gb::$content_cache_fnext);
 	}
 	
-	static function find($slug, $version=null) {
-		return parent::find($slug, 'pages', $class='GBPage', $version);
+	static function findByName($name, $version=null, $applyBodyFilters=true) {
+		if (strpos($name, 'content/pages/') !== 0)
+			$name = 'content/pages/' . $name;
+		return self::find($name, $version, null, $applyBodyFilters);
+	}
+	
+	static function find($uri_path_or_slug, $version=null, $applyBodyFilters=true) {
+		return parent::find($uri_path_or_slug, 'pages', 'GBPage', $version, $applyBodyFilters);
 	}
 	
 	static function urlTo($slug) {
@@ -3477,8 +3495,11 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
  */
 if (isset($gb_handle_request) && $gb_handle_request === true) {
 	$gb_request_uri = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
-	$strptime = null;
+	
+	# temporary, non-exported variables
 	$version = null;
+	$strptime = null;
+	$preview_pathspec = null;
 	
 	# verify integrity and config
 	gb::verify();
@@ -3506,6 +3527,9 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 	elseif (isset($_GET[gb::$version_query_key]) && gb::$authorized) {
 		gb::$is_preview = true;
 		$version = $_GET[gb::$version_query_key];
+	}
+	if (gb::$is_preview === true && isset($_GET[gb::$pathspec_query_key])) {
+		$preview_pathspec = $_GET[gb::$pathspec_query_key];
 	}
 	if (gb::$is_preview)
 		header('Cache-Control: no-cache');
@@ -3547,7 +3571,10 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 		}
 		elseif (gb::$posts_prefix === '' || ($strptime = strptime($gb_request_uri, gb::$posts_prefix)) !== false) {
 			# post
-			$post = GBPost::find(urldecode($gb_request_uri), $version, $strptime);
+			if ($preview_pathspec !== null)
+				$post = GBPost::findByName($preview_pathspec, $version);
+			else
+				$post = GBPost::find(urldecode($gb_request_uri), $version, $strptime);
 			if ($post === false)
 				gb::$is_404 = true;
 			else
@@ -3556,7 +3583,10 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 			
 			# empty prefix and 404 -- try page
 			if (gb::$is_404 === true && gb::$posts_prefix === '') {
-				$post = GBPage::find(urldecode($gb_request_uri), $version);
+				if ($preview_pathspec !== null)
+					$post = GBPage::findByName($preview_pathspec, $version);
+				else
+					$post = GBPage::find(urldecode($gb_request_uri), $version);
 				if ($post !== false) {
 					gb::$title[] = $post->title;
 					gb::$is_404 = false;
@@ -3567,7 +3597,10 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 		}
 		else {
 			# page
-			$post = GBPage::find(urldecode($gb_request_uri), $version);
+			if ($preview_pathspec !== null)
+				$post = GBPage::findByName($preview_pathspec, $version);
+			else
+				$post = GBPage::find(urldecode($gb_request_uri), $version);
 			if ($post === false)
 				gb::$is_404 = true;
 			else
@@ -3586,7 +3619,11 @@ if (isset($gb_handle_request) && $gb_handle_request === true) {
 		gb::$is_404 = $postspage === false;
 	}
 	
+	# unset temporary variables (not polluting global namespace)
+	unset($preview_pathspec);
 	unset($strptime);
+	unset($version);
+	
 	gb::event('will-handle-request');
 	
 	# from here on, the caller will have to do the rest

@@ -53,7 +53,7 @@ include '../_header.php';
 		checkStateInterval: 10000,
 		
 		autoSaveTimer: null,
-		autoSaveLatency: 1000,
+		autoSaveLatency: 200,
 		autoSaveEnabled: true, // setting
 		_autoSaveEnabled: true, // runtime
 		
@@ -87,8 +87,9 @@ include '../_header.php';
 				var j = $(this);
 				j.change(function(ev){ post.checkTracked(this);});
 				var type = j.attr('type');
-				if (type == 'text' || (type == null && this.nodeName.toLowerCase() == 'textarea')) {
-					j.keyup(function(ev){ post.queueCheckTracked(this); });
+				var self = this;
+				if (type == 'text' || type == 'textarea') {
+					j.keyup(function(ev){ post.queueCheckTracked(self); });
 					j.keydown(function(ev){ post.delayAutoSaveTimer(); });
 				}
 			});
@@ -330,13 +331,10 @@ include '../_header.php';
 				$('#preview iframe').each(function(i){
 					var yoffset = $(this.contentDocument.documentElement.getElementsByTagName('body').item(0)).scrollTop();
 					c.log('reloading preview');
-					$(this).one('load', function(){
+					$(this).one('load', function(ev){
 						$(this.contentDocument.documentElement.getElementsByTagName('body').item(0)).scrollTop(yoffset);
 					});
-					this.contentDocument.location.hash = null;
-					this.contentDocument.location.search = 
-						'?preview='+escape((new Date()).toUTCString())+
-						'&version='+post.version;
+					this.contentDocument.location.reload();
 				});
 			}
 		},
@@ -569,10 +567,6 @@ include '../_header.php';
 			setTimeout(function(){$('textarea[name=body]').get(0).select();}, 500);
 		}
 		
-		// the #post anchor in the iframe might cause the browser to scroll
-		// down. We reset scrolling after the first load.
-		$('#preview iframe').one('load', function(){ window.scrollTo(0,0); });
-		
 		// bind ui
 		post.setSaveButton('Saved', false);
 		post.setCommitButton(null, post.isDirty);
@@ -725,7 +719,7 @@ include '../_header.php';
 </div>
 <? if ($post->exists() && $admin_conf->get('composing/preview/enabled', true)): ?>
 <div id="preview">
-	<iframe src="<?= $post->url($q['version']) ?>#post"></iframe>
+	<iframe src="<?= $post->url($q['version'], true) ?>"></iframe>
 </div>
 <? endif ?>
 <? include '../_footer.php' ?>

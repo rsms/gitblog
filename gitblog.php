@@ -2023,7 +2023,7 @@ class GBExposedContent extends GBContent {
 					$charset = strtolower($m[2]);
 				$this->mimeType = $m[1];
 			}
-			# we do not unset this, because it need to propagate to buildHeaderFields
+			unset($this->meta['content-type']);
 		}
 		
 		# lift charset or encoding
@@ -2161,10 +2161,10 @@ class GBExposedContent extends GBContent {
 		return is_file(gb::$site_dir.'/'.$this->name);
 	}
 	
-	function recommendedFilenameExtension() {
+	function recommendedFilenameExtension($default='') {
 		if (($ext = GBMimeType::forType($this->mimeType)))
 			return '.'.$ext;
-		return '';
+		return $default;
 	}
 	
 	function recommendedName() {
@@ -2409,7 +2409,12 @@ class GBExposedContent extends GBContent {
 			$header['tags'] = implode(', ', $this->tags);
 		if ($this->categories)
 			$header['categories'] = implode(', ', $this->categories);
-		# content-type, charset and encoding should be preserved in $this->meta if
+		
+		# only set content-type if mimeType is not the same as default for file ext
+		if ($this->mimeType !== GBMimeType::forFilename($this->name))
+			$header['content-type'] = $this->mimeType;
+		
+		# charset and encoding should be preserved in $this->meta if
 		# they existed in the first place.
 		return $header;
 	}

@@ -88,7 +88,7 @@ include '../_header.php';
 				j.change(function(ev){ post.checkTracked(this);});
 				var type = j.attr('type');
 				var self = this;
-				if (type == 'text' || type == 'textarea') {
+				if (/*type == 'text' ||*/ type == 'textarea') {
 					j.keyup(function(ev){ post.queueCheckTracked(self); });
 					j.keydown(function(ev){ post.delayAutoSaveTimer(); });
 				}

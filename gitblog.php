@@ -2751,8 +2751,26 @@ class GBPost extends GBExposedContent {
 				$path = strtr($prefix, array('/'=>'{/,*,.}','-'=>'{/,*,.}','.'=>'{/,*,.}')).'*'.$suffix;
 				$path = GBExposedContent::pathToCached('posts', $path . gb::$content_cache_fnext);
 				# try any file with the cachename as prefix
-				if ( ($path = gb::glob($path)) )
+				if ( ($path = gb::glob($path)) ) {
 					$data = @file_get_contents($path);
+					/*
+					Send premanent redirect if we found a valid article.
+					 
+					Discussion: This is where things might go really wrong -- imagine we did find an 
+					            article on fuzzy matching but it's _another_ article. Fail. But that
+					            case is almost negligible since we only expand the time prefix, not
+					            the slug.
+					*/
+					global $gb_handle_request;
+					if ($data !== false 
+						&& isset($gb_handle_request) && $gb_handle_request === true 
+						&& ($post = unserialize($data)) && headers_sent() === false )
+					{
+						header('HTTP/1.1 301 Moved Permanently');
+						header('Location: '.$post->url());
+						exit('Moved to <a href="'.h($post->url()).'">'.h($post->url()).'</a>');
+					}
+				}
 			}
 			return $data === false ? false : unserialize($data);
 		}

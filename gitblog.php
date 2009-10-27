@@ -31,6 +31,9 @@ class gb {
 	/** Number of posts per page. */
 	static public $posts_pagesize = 10;
 	
+	/** Enables fuzzy URI matching of posts */
+	static public $posts_fuzzy_lookup = true;
+	
 	/** URL to gitblog index _relative_ to gb::$site_url */
 	static public $index_prefix = 'index.php/';
 	
@@ -2642,11 +2645,14 @@ class GBPost extends GBExposedContent {
 		return 'content/posts/'.$published->utcformat(gb::$posts_cn_pattern).$slug.gb::$content_cache_fnext;
 	}
 	
-	static function cachenameFromURI($slug, &$strptime) {
+	static function cachenameFromURI($slug, &$strptime, $return_struct=false) {
 		if ($strptime === null || $strptime === false)
 			$strptime = strptime($slug, gb::$posts_prefix);
-		return gmstrftime(gb::$posts_cn_pattern, gb_mkutctime($strptime))
-			.$strptime['unparsed'];
+		$prefix = gmstrftime(gb::$posts_cn_pattern, gb_mkutctime($strptime));
+		$suffix = $strptime['unparsed'];
+		if ($return_struct === true)
+			return array($prefix, $suffix);
+		return $prefix.$suffix;
 	}
 	
 	static function pageByPageno($pageno) {
@@ -2739,6 +2745,15 @@ class GBPost extends GBExposedContent {
 			}
 			$path = self::pathToCached($uri_path_or_slug, $strptime);
 			$data = @file_get_contents($path);
+			if ($data === false && gb::$posts_fuzzy_lookup === true) {
+				# exact match failed -- try fuzzy matching using glob and our knowledge of patterns
+				list($prefix, $suffix) = self::cachenameFromURI($uri_path_or_slug, $strptime, true);
+				$path = strtr($prefix, array('/'=>'{/,*,.}','-'=>'{/,*,.}','.'=>'{/,*,.}')).'*'.$suffix;
+				$path = GBExposedContent::pathToCached('posts', $path . gb::$content_cache_fnext);
+				# try any file with the cachename as prefix
+				if ( ($path = gb::glob($path)) )
+					$data = @file_get_contents($path);
+			}
 			return $data === false ? false : unserialize($data);
 		}
 		throw new Exception('arbitrary version retrieval not yet implemented');

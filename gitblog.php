@@ -932,7 +932,9 @@ if (isset($gb_site_url)) {
 }
 else {
 	gb::$site_url = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://')
-		.$_SERVER['SERVER_NAME'] . gb::$site_path;
+		.$_SERVER['SERVER_NAME'];
+		.($_SERVER['SERVER_PORT'] !== '80' && $_SERVER['SERVER_PORT'] !== '443' ? ':'.$_SERVER['SERVER_PORT'] : '')
+		.gb::$site_path;
 }
 
 # only set the following when called externally

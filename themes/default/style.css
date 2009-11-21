@@ -260,6 +260,7 @@ div.post { margin-top:20px; margin-bottom:10px; width:600px; }
 			div.post a.numcomments:link, div.post a.numcomments:visited { color:#777; }
 			div.post a.numcomments:link:hover, div.post a.numcomments:visited:hover { color:#000; }
 	div.post div.body { /*overflow-x:hidden;*/ }
+	div.post div.body a.img { background-color:transparent; border:none; }
 	div.post div.body object, div.post div.body img { max-width:600px; }
 	div.post div.body hr { border-top-style:dashed; }
 	div.post div.body blockquote {

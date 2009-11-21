@@ -110,6 +110,21 @@ elseif ((gb::$is_posts || gb::$is_tags || gb::$is_categories) && $postspage->pos
 				was no match for <a href="http://gitblog.se/">Gitblog <?= gb::$version ?></a>
 			</div>
 		</div>
+		<script type="text/javascript" charset="utf-8">//<![CDATA[
+			// assign "img" class name to all A with an IMG
+			var av=document.getElementsByTagName('a');
+			for(var i=0;i<av.length;i++) {
+				var a=av.item(i);
+				for(var x=0;x<a.childNodes.length;x++) {
+					var n=a.childNodes[x];
+					if(n.nodeType == Node.ELEMENT_NODE) {
+						if(n.nodeName == 'img')
+							a.className = a.className+' img';
+						break;
+					}
+				}
+			}
+		//]]></script>
 		<? gb_footer() ?>
 	</body>
 </html>

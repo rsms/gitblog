@@ -35,7 +35,10 @@ class gb {
 	static public $posts_fuzzy_lookup = true;
 	
 	/** URL to gitblog index _relative_ to gb::$site_url */
-	static public $index_prefix = 'index.php/';
+	static public $index_prefix = 'index.php';
+
+	/** 'PATH_INFO' or any other string which will then be matched in $_GET[string] */
+	static public $request_query = 'PATH_INFO';
 	
 	/**
 	 * When this query string key is set and the client is authorized,
@@ -885,6 +888,9 @@ class gb {
 
 gb::$dir = dirname(__FILE__);
 ini_set('include_path', ini_get('include_path') . ':' . gb::$dir . '/lib');
+
+if (gb::$request_query === 'PATH_INFO')
+  gb::$index_prefix = rtrim(gb::$index_prefix, '/').'/';
 
 $u = dirname($_SERVER['SCRIPT_NAME']);
 $s = dirname($_SERVER['SCRIPT_FILENAME']);
@@ -3544,7 +3550,10 @@ function sentenceize($collection, $applyfunc=null, $nglue=', ', $endglue=' and '
  * a chance to initialize.
  */
 if (isset($gb_handle_request) && $gb_handle_request === true) {
-	$gb_request_uri = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
+	if (gb::$request_query === 'PATH_INFO')
+		$gb_request_uri = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
+	else
+		$gb_request_uri = isset($_GET[gb::$request_query]) ? trim($_GET[gb::$request_query], '/') : '';
 	
 	# temporary, non-exported variables
 	$version = null;

@@ -19,16 +19,7 @@ Licensed under MIT means free to use for everyone. See [LICENSE](http://github.c
 - Wordpress import
 - [Plugins](http://github.com/rsms/gitblog/blob/master/docs/plugins.md)
 
-### Work in progress
-
-- Web administration
-- Markdown support
-
-### Planned
-
-- Pingback
-- Search
-
+(See section "Future features" for a list of possible future features)
 
 ## Installing & Getting started
 
@@ -94,6 +85,24 @@ Have a look in the file `gitblog/gitblog.php` -- scroll down a few lines and you
 ## Known bugs and issues
 
 - Post-hook system is a bit shaky because of the nature of itself. Running scripts directly instead of POSTing to a URL would be better but many systems does not have CLI PHP or have another version than the web PHP.
+
+## Future features
+
+### Work in progress
+
+- Web administration
+- Markdown support
+
+### Planned
+
+- Pingback
+- Search
+
+### Under consideration
+
+- Configure what parts are versioned (e.g. disable versioning of comments)
+- Alternate storage
+- Caching (memcached, redis, etc)
 
 
 ## Authors

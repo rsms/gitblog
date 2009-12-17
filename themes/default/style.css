@@ -19,6 +19,7 @@ h1 a:link, h2 a:link, h3 a:link, h4 a:link,
 	h1 a:visited, h2 a:visited, h3 a:visited, h4 a:visited { color:inherit; }
 h1 { font-size:26px; }
 h2 { font-size:19px; }
+h3 { font-size:17px; color:#555; }
 
 /* Universal helpers */
 .highlight { background-color:#fffe95; color:#302400; }
@@ -284,6 +285,14 @@ div.post { margin-top:20px; margin-bottom:10px; width:600px; }
 			background-color:#fffe95; color:#685c00; border:none;
 		}
 		div.post div.body > p.read-more a:hover { background-color:#fff000; color:#302400; }
+	div.post div.body :target { background:#fe0; }
+	div.post div.body sup:target { padding:2px 5px; }
+	div.post div.body div.footnotes {}
+  	div.post div.body div.footnotes ol:before { content:"Footnotes"; color:#999; }
+  	div.post div.body div.footnotes ol { padding-left:0; }
+  	div.post div.body div.footnotes li, div.post div.body div.footnotes p { font-size:13px; }
+  	div.post div.body div.footnotes li > p { margin:6px 0 10px 0; }
+  	div.post div.body div.footnotes li:target { background:#ffc; padding:4px 10px; margin:4px -10px; }
 
 /* Paged posts footer */
 #paged-footer {

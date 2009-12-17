@@ -502,7 +502,7 @@ class GBTagsByPopularityIndexRebuilder extends GBContentIndexRebuilder {
 }
 
 class GBRecentCommentsIndexRebuilder extends GBContentIndexRebuilder {
-	public $limit = 10;
+	public $limit = 10; # todo: make configurable through gb::data
 	
 	function __construct($forceFullRebuild=false) {
 		parent::__construct('recent-comments', $forceFullRebuild);

@@ -12,7 +12,7 @@ Licensed under MIT means free to use for everyone. See [LICENSE](http://github.c
 - Fully git-based -- no mysql or similar involved
 - Everything is versioned
 - Themes
-- No custom file formats for content (only JSON and HTML)
+- No custom file formats for content (only [JSON](http://json.org/), [Markdown](http://daringfireball.net/projects/markdown/) (with [Markdown extra](http://michelf.com/projects/php-markdown/extra/)) and HTML)
 - High performance
 - Hierarchical comments
 - Remote editing (git push/pull)
@@ -91,7 +91,6 @@ Have a look in the file `gitblog/gitblog.php` -- scroll down a few lines and you
 ### Work in progress
 
 - Web administration
-- Markdown support
 
 ### Planned
 

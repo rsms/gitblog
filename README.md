@@ -14,7 +14,7 @@ Licensed under MIT means free to use for everyone. See [LICENSE](http://github.c
 - Themes
 - No custom file formats for content (only [JSON](http://json.org/), [Markdown](http://daringfireball.net/projects/markdown/) (with [Markdown extra](http://michelf.com/projects/php-markdown/extra/)) and HTML)
 - High performance
-- Hierarchical comments
+- Hierarchical comments with optional spam filtering based on [Akismet](http://akismet.com/)
 - Remote editing (git push/pull)
 - Wordpress import
 - [Plugins](http://github.com/rsms/gitblog/blob/master/docs/plugins.md)

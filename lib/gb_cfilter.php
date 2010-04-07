@@ -736,7 +736,7 @@ gb_cfilter::add('body.html', 'gb_normalize_html_structure', 40);
 gb_cfilter::add('body.html', 'gb_htmlents_to_xmlents', 50);
 gb_cfilter::add('body.html', 'gb_xmlents_to_utf8', 60);
 gb_cfilter::add('body.html', 'gb_force_balance_tags', 70);
-gb_cfilter::add('body.html', 'gb_html_img_size', 80);
+#gb_cfilter::add('body.html', 'gb_html_img_size', 80);
 gb_cfilter::add('body.html', 'gb_html_abspaths_to_urls', 10000);
 
 # Applied to GBComment after being posted, but before being saved

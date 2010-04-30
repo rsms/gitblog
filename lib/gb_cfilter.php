@@ -622,6 +622,7 @@ function gb_filter_allowed_tags($body) {
 }
 
 function gb_filter_pre_comment(GBComment $comment) {
+  if (!$comment) return $comment; # if it was classed as spam, for instance
 	# replace CR[LF] with LF (damned be you, Windows users!)
 	$comment->body = preg_replace('/\\r\\n?/', "\n", $comment->body);
 	
@@ -708,7 +709,7 @@ function gb_vstrtolower($strings) {
 }
 
 function gb_approve_ham_comment($comment) {
-	if ($comment->spam === false)
+	if ($comment && $comment->spam === false)
 		$comment->approved = true;
 	return $comment;
 }

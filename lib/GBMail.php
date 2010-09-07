@@ -43,7 +43,7 @@ class GBMail {
 	
 	function needAuthorizedFromAddress() {
 		# currently only gmail
-		return (substr($this->mailer->Host, 'smtp.gmail.com') !== false);
+		return (strpos($this->mailer->Host, 'smtp.gmail.com') !== false);
 	}
 	
 	function authorizedFromAddress() {

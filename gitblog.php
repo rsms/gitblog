@@ -1,4 +1,4 @@
-<?
+<?php
 error_reporting(E_ALL);
 $gb_time_started = microtime(true);
 date_default_timezone_set(@date_default_timezone_get());
@@ -887,7 +887,7 @@ class gb {
 # Initialize constants
 
 gb::$dir = dirname(__FILE__);
-ini_set('include_path', ini_get('include_path') . ':' . gb::$dir . '/lib');
+ini_set('include_path', ini_get('include_path') . PATH_SEPARATOR. gb::$dir . '/lib');
 
 if (gb::$request_query === 'PATH_INFO')
   gb::$index_prefix = rtrim(gb::$index_prefix, '/').'/';
@@ -1038,7 +1038,7 @@ function gb_exception_handler($e) {
 set_exception_handler('gb_exception_handler');
 
 # PATH patches: macports git. todo: move to admin/setup.php
-$_ENV['PATH'] .= ':/opt/local/bin';
+//$_ENV['PATH'] .= ':/opt/local/bin';
 
 
 #------------------------------------------------------------------------------

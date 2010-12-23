@@ -1,4 +1,4 @@
-<?
+<?php
 require '../gitblog.php';
 ini_set('html_errors', '0');
 

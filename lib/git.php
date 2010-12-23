@@ -1,4 +1,4 @@
-<?
+<?php
 class git {
 	/** Query counter */
 	static public $query_count = 0;

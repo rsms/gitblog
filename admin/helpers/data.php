@@ -1,4 +1,4 @@
-<?
+<?php
 /**
  * REST interface to gb::data (POST, GET, DELETE)
  * 

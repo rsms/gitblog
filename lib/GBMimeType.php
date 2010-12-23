@@ -1,4 +1,4 @@
-<?
+<?php
 class GBMimeType {
 	static public $map = array(
 		'%' => 'application/x-trash',

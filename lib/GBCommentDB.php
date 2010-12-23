@@ -1,4 +1,4 @@
-<?
+<?php
 class GBCommentDB extends JSONStore {
 	public $lastComment = false;
 	public $post = null;

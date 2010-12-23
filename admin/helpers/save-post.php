@@ -1,4 +1,4 @@
-<?
+<?php
 ini_set('html_errors', '0');
 require '../_base.php';
 gb::authenticate();

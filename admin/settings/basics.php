@@ -1,4 +1,4 @@
-<?
+<?php
 require_once '../_base.php';
 gb::authenticate();
 gb::$title[] = 'Settings';
@@ -6,7 +6,7 @@ include '../_header.php';
 
 ?>
 <script type="text/javascript" charset="utf-8">//<![CDATA[
-	var settings = gb.data('admin', <?= gb::data('admin')->toJSON() ?>);
+	var settings = gb.data('admin', <?php echo gb::data('admin')->toJSON() ?>);
 	var activeRequestCount = 0;
 	var throbber = null;
 	
@@ -54,7 +54,7 @@ include '../_header.php';
 		
 	});
 //]]></script>
-<div id="content" class="<?= gb_admin::$current_domid ?> form">
+<div id="content" class="<?php echo gb_admin::$current_domid ?> form">
 	<!-- title and save/commit controls -->
 	<div class="section title">
 		<div class="component title c2">
@@ -102,4 +102,4 @@ include '../_header.php';
 		<div class="breaker"></div>
 	</div>
 </div>
-<? include '../_footer.php' ?>
+<?php include '../_footer.php' ?>

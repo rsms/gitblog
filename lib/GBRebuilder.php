@@ -1,4 +1,4 @@
-<?
+<?php
 class GBRebuilder {
 	public $forceFullRebuild;
 	

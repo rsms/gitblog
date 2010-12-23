@@ -1,4 +1,4 @@
-<?
+<?php
 # Fore details of format, see section "GENERATING PATCHES WITH -P" in man git-diff
 
 class GitPatch {

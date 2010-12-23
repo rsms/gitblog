@@ -1,4 +1,4 @@
-<?
+<?php
 /**
  * MT-safe file database baseclass.
  * 

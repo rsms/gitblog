@@ -1,4 +1,4 @@
-<?
+<?php
 # content rebuilders, for objects stored in the content directory.
 
 class GBContentRebuilder extends GBRebuilder {

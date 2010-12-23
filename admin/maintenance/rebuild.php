@@ -1,4 +1,4 @@
-<?
+<?php
 require_once '../_base.php';
 function gb_log_html($priority, $msg) {
 	echo '<p class="logmsg '.($priority === LOG_WARNING ? 'warning' : ($priority < LOG_WARNING ? 'error' : ''))
@@ -16,11 +16,11 @@ include '../_header.php';
 	p.logmsg.error { background:#faa; white-space:pre; }
 	p.logmsg.warning { background:#ff9; }
 </style>
-<div id="content" class="<?= gb_admin::$current_domid ?> margins">
+<div id="content" class="<?php echo gb_admin::$current_domid ?> margins">
 	<h2>Rebuilding</h2>
-	<? GBRebuilder::rebuild(isset($_GET['force-full-rebuild'])); ?>
+	<?php GBRebuilder::rebuild(isset($_GET['force-full-rebuild'])); ?>
 	<p>
 		<input type="button" value="Force full rebuild" onclick="document.location.href='?force-full-rebuild'" />
 	</p>
 </div>
-<? include '../_footer.php' ?>
+<?php include '../_footer.php' ?>

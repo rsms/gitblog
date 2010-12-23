@@ -1,4 +1,4 @@
-<?
+<?php
 /**
  * @name    Akismet
  * @version 0.1

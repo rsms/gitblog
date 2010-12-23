@@ -1,4 +1,4 @@
-<?
+<?php
 class GitCommit {
 	public $id;
 	public $tree;

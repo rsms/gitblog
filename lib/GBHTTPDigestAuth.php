@@ -1,4 +1,4 @@
-<?
+<?php
 class GBHTTPDigestAuth {
 	public $realm = 'auth';
 	public $domain = null;

@@ -1,4 +1,4 @@
-<?
+<?php
 # Site title and description
 gb::$site_title = 'My gitblog';
 #gb::$site_description = 'Ramblings by My Name';

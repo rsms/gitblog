@@ -1,4 +1,4 @@
-<?
+<?php
 class PHPException extends RuntimeException {
 	function __construct($msg=null, $errno=0, $file=null, $line=-1) {
 		if ($msg instanceof Exception) {

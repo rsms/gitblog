@@ -1,4 +1,4 @@
-<?
+<?php
 class GBObjectStore extends JSONStore {
 	function __construct($file, $classname, $skeleton_file=null, $createmode=0660, $autocommit=true, $pretty_output=true) {
 		parent::__construct($file, $skeleton_file, $createmode, $autocommit, $pretty_output);

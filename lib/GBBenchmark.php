@@ -1,4 +1,4 @@
-<?
+<?php
 class GBBenchmark {
 	static public $t;
 	static function iterations($iterations=100000) {

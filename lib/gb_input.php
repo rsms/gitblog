@@ -1,4 +1,4 @@
-<?
+<?php
 class gb_input {
 	static function process($filters, $source=INPUT_POST, $required_by_default=false, $strict=true) {
 		# parse filters

@@ -1,4 +1,4 @@
-<?
+<?php
 require_once '../_base.php';
 gb::authenticate();
 gb::$title[] = 'Posts';
@@ -136,7 +136,7 @@ uasort($muxed_posts, '_muxed_posts_sortfunc');
 		update_visible_rows();
 	});
 </script>
-<div id="content" class="<?= gb_admin::$current_domid ?> manage items">
+<div id="content" class="<?php echo gb_admin::$current_domid ?> manage items">
 	<div class="head">
 		<h2>Posts</h2>
 		<div class="options filter-flags">
@@ -164,46 +164,46 @@ uasort($muxed_posts, '_muxed_posts_sortfunc');
 		</div>
 	</div>
 	<table class="items posts offline">
-	<? foreach ($muxed_posts as $name => $posts): $childcount = 0; ?>
-		<? foreach ($posts as $v): $post = $v[0]; $flags = $v[1]; ?>
-			<? $editurl = gb_admin::$url.'edit/post.php?name='.urlencode($post->name); ?>
-			<tr onclick="document.location.href='<?= $editurl ?>'" 
-					class="<?= implode(' ',str_split($flags)) . ($childcount ? ' child' : (count($posts)>1 ? ' parent' : '')) ?>">
+	<?php foreach ($muxed_posts as $name => $posts): $childcount = 0; ?>
+		<?php foreach ($posts as $v): $post = $v[0]; $flags = $v[1]; ?>
+			<?php $editurl = gb_admin::$url.'edit/post.php?name='.urlencode($post->name); ?>
+			<tr onclick="document.location.href='<?php echo $editurl ?>'" 
+					class="<?php echo implode(' ',str_split($flags)) . ($childcount ? ' child' : (count($posts)>1 ? ' parent' : '')) ?>">
 				<td class="name">
 					<span class="title">
-						<?= h($post->title ? $post->title : '('.substr($post->name,strlen('content/posts/')).')') ?>
+						<?php echo h($post->title ? $post->title : '('.substr($post->name,strlen('content/posts/')).')') ?>
 					</span>
-					<? if (strpos($flags, st::SCHEDULED) !== false): ?>
+					<?php if (strpos($flags, st::SCHEDULED) !== false): ?>
 						<span class="scheduled">
-							<?= h($post->published->age(null, null, null, '', null, 'a second', 'in ')) ?>
+							<?php echo h($post->published->age(null, null, null, '', null, 'a second', 'in ')) ?>
 						</span>
-					<? endif ?>
-					<? if (strpos($flags, st::DRAFT) !== false): ?>
-						<span class="badge <?= st::DRAFT ?>">Draft</span>
-					<? endif ?>
-					<? if (strpos($flags, st::UNTRACKED) !== false): ?>
-						<span class="badge <?= st::UNTRACKED ?>">Untracked</span>
-					<? endif ?>
+					<?php endif ?>
+					<?php if (strpos($flags, st::DRAFT) !== false): ?>
+						<span class="badge <?php echo st::DRAFT ?>">Draft</span>
+					<?php endif ?>
+					<?php if (strpos($flags, st::UNTRACKED) !== false): ?>
+						<span class="badge <?php echo st::UNTRACKED ?>">Untracked</span>
+					<?php endif ?>
 					<span class="excerpt">
-						<? $s=h(gb_strlimit($post->textBody(), 80));echo $s ? ' – '.$s : '' ?>
+						<?php $s=h(gb_strlimit($post->textBody(), 80));echo $s ? ' – '.$s : '' ?>
 					</span>
 				</td>
-				<td class="author"><?= h($post->author->shortName()) ?></td>
-				<td class="date modified type-number"><?= h($post->modified->condensed()) ?></td>
+				<td class="author"><?php echo h($post->author->shortName()) ?></td>
+				<td class="date modified type-number"><?php echo h($post->modified->condensed()) ?></td>
 			</tr>
-		<?
+		<?php
 		
 		# comment-out this to show parent (staged) versions below the dirty version
 		break;
 		
 		?>
-		<? $childcount++; endforeach ?>
-	<? endforeach ?>
+		<?php $childcount++; endforeach ?>
+	<?php endforeach ?>
 	</table>
 	<div class="paged-nav">
-		<? if ($num_more_postpages): ?>
-		<a href="javascript:alert('Paging not yet implemented')">Load <?= $num_more_postpages ?> more pages</a>
-		<? endif ?>
+		<?php if ($num_more_postpages): ?>
+		<a href="javascript:alert('Paging not yet implemented')">Load <?php echo $num_more_postpages ?> more pages</a>
+		<?php endif ?>
 	</div>
 </div>
-<? include '../_footer.php' ?>
+<?php include '../_footer.php' ?>

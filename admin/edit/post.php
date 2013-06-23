@@ -1,4 +1,4 @@
-<?
+<?php
 require '../_base.php';
 gb::authenticate();
 gb::$title[] = 'New post';
@@ -61,11 +61,11 @@ include '../_header.php';
 		checkModifiedLatency: 100,
 		checkModifiedAdjustThreshold: 50, // if checkTracked run faster then this, adjust checkModifiedLatency accordingly.
 		
-		exists: <?= $post->exists() ? 'true' : 'false' ?>,
-		isTracked: <?= $post->isTracked() ? 'true' : 'false' ?>,
-		isDirty: <?= $post->isDirty() ? 'true' : 'false' ?>,
-		name: <?= $post->exists() ? '"'.str_replace('"', '\"',$post->name).'"' : 'null' ?>,
-		version: <?= $post->exists() ? '"'.str_replace('"', '\"',$post->id).'"' : 'null' ?>,
+		exists: <?php echo $post->exists() ? 'true' : 'false' ?>,
+		isTracked: <?php echo $post->isTracked() ? 'true' : 'false' ?>,
+		isDirty: <?php echo $post->isDirty() ? 'true' : 'false' ?>,
+		name: <?php echo $post->exists() ? '"'.str_replace('"', '\"',$post->name).'"' : 'null' ?>,
+		version: <?php echo $post->exists() ? '"'.str_replace('"', '\"',$post->id).'"' : 'null' ?>,
 		
 		
 		trackState: function() {
@@ -574,27 +574,27 @@ include '../_header.php';
 		$('input.commit').click(function(){ post.save(true); });
 	});
 //]]></script>
-<div id="content" class="<?= gb_admin::$current_domid ?> form">
+<div id="content" class="<?php echo gb_admin::$current_domid ?> form">
 	<!-- title and save/commit controls -->
 	<div class="section title">
 		<div class="component title c2">
 			<h4>Title</h4>
 			<p>
-				<input type="text" name="title" class="dep-save" value="<?= h($post->title) ?>" />
+				<input type="text" name="title" class="dep-save" value="<?php echo h($post->title) ?>" />
 			</p>
 		</div>
 		<div class="component controls">
 			<h4>&nbsp;</h4>
 			<p>
 				<input type="button" class="discard" value="Discard"
-				 	<?= $post->isTracked() ? 'style="display:none"' : '' ?> />
+				 	<?php echo $post->isTracked() ? 'style="display:none"' : '' ?> />
 				<input type="button" class="save" value="Save" />
 				<input type="button" id="commit-button" class="commit" value="Commit changes"
 					title="Execute git commit and push changes live"
-					<?= $post->isTracked() ? '' : 'style="display:none"' ?> />
+					<?php echo $post->isTracked() ? '' : 'style="display:none"' ?> />
 				<input type="button" id="publish-button" class="commit publish" value="Publish"
 					title="Make this post appear on your site (after the time specified by 'Publish date')."
-					<?= $post->isTracked() ? 'style="display:none"' : '' ?> />
+					<?php echo $post->isTracked() ? 'style="display:none"' : '' ?> />
 			</p>
 		</div>
 		<div class="breaker"></div>
@@ -602,7 +602,7 @@ include '../_header.php';
 	<!-- body -->
 	<div class="section body">
 		<div class="component body">
-			<textarea name="body" class="dep-save"><?= h($post->rawBody()) ?></textarea>
+			<textarea name="body" class="dep-save"><?php echo h($post->rawBody()) ?></textarea>
 		</div>
 		<div class="breaker"></div>
 	</div>
@@ -611,13 +611,13 @@ include '../_header.php';
 		<div class="component tags c2a">
 			<h4>Tags <small>(comma separated)</small></h4>
 			<p>
-				<input type="text" class="dep-save transform-csv" name="tags" value="<?= implode(', ',array_map('h', $post->tags)) ?>" />
+				<input type="text" class="dep-save transform-csv" name="tags" value="<?php echo implode(', ',array_map('h', $post->tags)) ?>" />
 			</p>
 		</div>
 		<div class="component categories c3">
 			<h4>Categories <small>(comma separated)</small></h4>
 			<p>
-				<input type="text" class="dep-save transform-csv" name="categories" value="<?= implode(', ',array_map('h', $post->categories)) ?>" />
+				<input type="text" class="dep-save transform-csv" name="categories" value="<?php echo implode(', ',array_map('h', $post->categories)) ?>" />
 			</p>
 		</div>
 		<div class="breaker"></div>
@@ -627,19 +627,19 @@ include '../_header.php';
 		<div class="component publish-date c3">
 			<h4>Publish date</h4>
 			<p>
-				<input type="text" name="published" class="dep-save transform-null" value="<?= h($post->published) ?>" />
+				<input type="text" name="published" class="dep-save transform-null" value="<?php echo h($post->published) ?>" />
 			</p>
 		</div>
 		<div class="component slug c3">
 			<h4>URL slug</h4>
 			<p>
-				<input type="text" name="slug" class="dep-save transform-null" value="<?= h($post->slug) ?>" />
+				<input type="text" name="slug" class="dep-save transform-null" value="<?php echo h($post->slug) ?>" />
 			</p>
 		</div>
 		<div class="component slug c3">
 			<h4>Author</h4>
 			<p>
-				<input type="text" name="author" class="dep-save transform-null" value="<?= h($post->author) ?>" />
+				<input type="text" name="author" class="dep-save transform-null" value="<?php echo h($post->author) ?>" />
 			</p>
 		</div>
 		<div class="breaker"></div>
@@ -651,19 +651,19 @@ include '../_header.php';
 			<p>
 				<label>
 					<input type="checkbox" name="commentsOpen" class="dep-save" 
-						value="1" <?= $post->commentsOpen ? 'checked="checked"' : '' ?> />
+						value="1" <?php echo $post->commentsOpen ? 'checked="checked"' : '' ?> />
 					Allow comments
 				</label>
 				&nbsp;&nbsp;
 				<label>
 					<input type="checkbox" name="pingbackOpen" class="dep-save"
-						value="1" <?= $post->pingbackOpen ? 'checked="checked"' : '' ?> />
+						value="1" <?php echo $post->pingbackOpen ? 'checked="checked"' : '' ?> />
 					Allow pingbacks
 				</label>
 				&nbsp;&nbsp;
 				<label>
 					<input type="checkbox" name="draft" class="dep-save"
-						value="1" <?= $post->draft ? 'checked="checked"' : '' ?> />
+						value="1" <?php echo $post->draft ? 'checked="checked"' : '' ?> />
 					Draft
 				</label>
 			</p>
@@ -672,54 +672,54 @@ include '../_header.php';
 			<h4>Content type</h4>
 			<p>
 				<input type="text" name="mimeType" class="dep-save" 
-					value="<?= h(isset($post->meta['content-type']) && $post->meta['content-type'] ? $post->meta['content-type'] : $post->mimeType) ?>" />
+					value="<?php echo h(isset($post->meta['content-type']) && $post->meta['content-type'] ? $post->meta['content-type'] : $post->mimeType) ?>" />
 			</p>
 		</div>
 		<div class="breaker"></div>
 	</div>
 	<!-- commits -->
-	<? if ($post->isTracked()): ?>
+	<?php if ($post->isTracked()): ?>
 	<div class="section">
 		<div class="component commits">
 			<h4>Commits</h4>
 			<ol>
-			<? $n=0; foreach ($post->findCommits() as $commit): ?>
-				<? $user = $commit->authorUser(); ?>
+			<?php $n=0; foreach ($post->findCommits() as $commit): ?>
+				<?php $user = $commit->authorUser(); ?>
 				<li>
-					<a href="<?= gb_admin::$url ?>helpers/view-commit.php?id=<?= $commit->id ?>&amp;paths[]=<?= urlencode($post->name) ?>">
-						<samp><?= substr($commit->id, 0, 7) ?></samp>
+					<a href="<?php echo gb_admin::$url ?>helpers/view-commit.php?id=<?php echo $commit->id ?>&amp;paths[]=<?php echo urlencode($post->name) ?>">
+						<samp><?php echo substr($commit->id, 0, 7) ?></samp>
 					</a>
-					<abbr title="<?= $commit->authorDate ?>"><?= $commit->authorDate->condensed() ?></abbr>
-					by <?= h($user ? $user->name : $commit->authorName) ?>
+					<abbr title="<?php echo $commit->authorDate ?>"><?php echo $commit->authorDate->condensed() ?></abbr>
+					by <?php echo h($user ? $user->name : $commit->authorName) ?>
 					
-					<a href="<?= gb_admin::$url ?>helpers/checkout.php?rev=<?= $commit->id ?>&amp;paths[]=<?= urlencode($post->name) ?>&amp;continue=<?=urlencode(gb::url())?>&amp;style=replace" 
-						<? if ($n === 0): ?>
+					<a href="<?php echo gb_admin::$url ?>helpers/checkout.php?rev=<?php echo $commit->id ?>&amp;paths[]=<?php echo urlencode($post->name) ?>&amp;continue=<?php echourlencode(gb::url())?>&amp;style=replace" 
+						<?php if ($n === 0): ?>
 						class="badge button ui-post-visible-when-dirty"
-						<? else: ?>
+						<?php else: ?>
 						class="badge button"
-						<? endif ?>
+						<?php endif ?>
 						onclick="return confirm('Really revert to this version?')"
 						title="Checkout (git checkout -f) this version, discarding any local changes"
 						>Revert</a>
 					
-					<? if ($n): ?>
-					<a href="<?= gb_admin::$url ?>helpers/checkout.php?rev=<?= $commit->id ?>&amp;paths[]=<?= urlencode($post->name) ?>&amp;continue=<?=urlencode(gb::url())?>&amp;style=merge" 
+					<?php if ($n): ?>
+					<a href="<?php echo gb_admin::$url ?>helpers/checkout.php?rev=<?php echo $commit->id ?>&amp;paths[]=<?php echo urlencode($post->name) ?>&amp;continue=<?php echourlencode(gb::url())?>&amp;style=merge" 
 						class="ui-post-visible-when-dirty badge button"
 						onclick="return confirm('Really revert and keep local changes?')"
 						title="Revert (git checkout -m) to this version and perform a three-way merge, keeping your local changes"
 						>Revert &amp; keep changes</a>
-					<? endif ?>
+					<?php endif ?>
 				</li>
-			<? $n++; endforeach ?>
+			<?php $n++; endforeach ?>
 			</ol>
 		</div>
 		<div class="breaker"></div>
 	</div>
-	<? endif ?>
+	<?php endif ?>
 </div>
-<? if ($post->exists() && $admin_conf->get('composing/preview/enabled', true)): ?>
+<?php if ($post->exists() && $admin_conf->get('composing/preview/enabled', true)): ?>
 <div id="preview">
-	<iframe src="<?= $post->url($q['version'], true) ?>"></iframe>
+	<iframe src="<?php echo $post->url($q['version'], true) ?>"></iframe>
 </div>
-<? endif ?>
-<? include '../_footer.php' ?>
+<?php endif ?>
+<?php include '../_footer.php' ?>

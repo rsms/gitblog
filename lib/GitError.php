@@ -1,4 +1,4 @@
-<?
+<?php
 class GitError extends GBException {
 	public $command;
 	

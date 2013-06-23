@@ -1,4 +1,4 @@
-<?
+<?php
 /**
  * @name    PHP content
  * @version 0.1

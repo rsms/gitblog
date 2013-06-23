@@ -1,4 +1,4 @@
-<?
+<?php
 /** Gitblog admin */
 class gb_admin {
 	static public $url;

@@ -1,4 +1,4 @@
-<?
+<?php
 /**
  * Simple MT-safe JSON-based key-value storage.
  * 

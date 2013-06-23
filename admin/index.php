@@ -1,4 +1,4 @@
-<?
+<?php
 require_once '_base.php';
 gb::authenticate();
 gb::$title[] = 'Admin';
@@ -17,4 +17,4 @@ include '_header.php';
 		<li><a href="maintenance/import-wordpress.php">Import a Wordpress blog</a></li>
 	</ul>
 </div>
-<? include '_footer.php' ?>
+<?php include '_footer.php' ?>

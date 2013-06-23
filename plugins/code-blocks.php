@@ -1,4 +1,4 @@
-<?
+<?php
 /**
  * @name    Code blocks
  * @version 0.1

@@ -1,4 +1,4 @@
-<?
+<?php
 /**
  * @name    Google analytics
  * @version 0.1

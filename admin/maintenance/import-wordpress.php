@@ -1,4 +1,4 @@
-<?
+<?php
 ini_set('upload_max_filesize', '200M');
 ini_set('post_max_size', '200M');
 require_once '../_base.php';
@@ -595,7 +595,7 @@ if (isset($_FILES['wpxml'])) {
 			text-align:left;
 			font-size:50%;
 		}
-	</style><?
+	</style><?php
 	
 	if (!gb::$errors) {
 		echo '<h2>Importing '. h(basename($_FILES['wpxml']['name'])) .'</h2>';
@@ -603,22 +603,22 @@ if (isset($_FILES['wpxml'])) {
 			$importer->import(DOMDocument::load($_FILES['wpxml']['tmp_name']));
 			?>
 			<p class="done">
-				Yay! I've imported <?= counted($importer->importedObjectsCount, 'object','objects','zero','one') ?>.
+				Yay! I've imported <?php echo counted($importer->importedObjectsCount, 'object','objects','zero','one') ?>.
 			</p>
 			<p class="donelink">
-				<a href="<?= gb::$site_url ?>">Have a look at your blog &rarr;</a>
+				<a href="<?php echo gb::$site_url ?>">Have a look at your blog &rarr;</a>
 			</p>
-			<?
+			<?php
 		}
 		catch (Exception $e) {
 			?>
 			<p class="failure">
-				Import failed: <em><?= h($e->getMessage()) ?></em>
+				Import failed: <em><?php echo h($e->getMessage()) ?></em>
 			</p>
 			<p>
-				<pre><?= h(strval($e)) ?></pre>
+				<pre><?php echo h(strval($e)) ?></pre>
 			</p>
-			<?
+			<?php
 		}
 		echo '<script type="text/javascript" charset="utf-8">setTimeout(\'window.scrollBy(0,999999);\',50)</script>';
 	}
@@ -651,7 +651,7 @@ if (!isset($_FILES['wpxml']) || gb::$errors) {
 	#disclaimer { width:540px; color:#888; border-top:1px solid #eee; padding-top:10px; }
 	#disclaimer h3 { color:#666; }
 </style>
-<div id="content" class="<?= gb_admin::$current_domid ?> margins">
+<div id="content" class="<?php echo gb_admin::$current_domid ?> margins">
 	<h2>Import a Wordpress blog</h2>
 	<div id="the-important-part">
 		<p>
@@ -711,6 +711,6 @@ if (!isset($_FILES['wpxml']) || gb::$errors) {
 		</p>
 	</div>
 </div>
-<?
+<?php
 } # end if posted file
 include '../_footer.php' ?>

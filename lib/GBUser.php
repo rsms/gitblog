@@ -1,4 +1,4 @@
-<?
+<?php
 class GBUser extends GBAuthor {
 	public $passhash;
 	public $admin;

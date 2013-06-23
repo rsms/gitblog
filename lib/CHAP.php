@@ -1,4 +1,4 @@
-<?
+<?php
 /**
  * Challenge-handshake authentication protocol.
  * 

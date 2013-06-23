@@ -1,4 +1,4 @@
-<?
+<?php
 /** Content filters used in admin and rebuild contexts */
 class gb_cfilter {
 	static public $filters = array();

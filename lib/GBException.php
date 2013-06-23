@@ -1,4 +1,4 @@
-<?
+<?php
 /** Base exception with some additional functionality, like pretty formatting */
 class GBException extends Exception {
 	static public $is_php53 = false;

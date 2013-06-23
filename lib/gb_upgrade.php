@@ -1,4 +1,4 @@
-<?
+<?php
 class gb_upgrade {
 	static function _000101($from, $to) {
 		# ignore site.json

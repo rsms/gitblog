@@ -1,4 +1,4 @@
-<?
+<?php
 require_once '_base.php';
 
 # do not render this page unless there is no repo
@@ -151,9 +151,9 @@ include '_header.php';
 		<div class="inputgroup">
 			<h4>Create an administrator account</h4>
 			<p>Email:</p>
-			<input type="text" name="email" value="<?= h($_POST['email']) ?>" vcard_name="vCard.Email" />
+			<input type="text" name="email" value="<?php echo h($_POST['email']) ?>" vcard_name="vCard.Email" />
 			<p>Real name:</p>
-			<input type="text" name="name" value="<?= h($_POST['name']) ?>" vcard_name="vCard.DisplayName" />
+			<input type="text" name="name" value="<?php echo h($_POST['name']) ?>" vcard_name="vCard.DisplayName" />
 			<p class="note">
 				This will be used for commit messages, along with email.
 				Commit history can not be changed afterwards, so please provide your real name here.
@@ -169,7 +169,7 @@ include '_header.php';
 		<div class="inputgroup">
 			<h4>Site settings</h4>
 			<p>Title:</p>
-			<input type="text" name="title" value="<?= h(gb::$site_title) ?>" />
+			<input type="text" name="title" value="<?php echo h(gb::$site_title) ?>" />
 			<p class="note">
 				The title of your site can be changed later.
 			</p>
@@ -186,13 +186,13 @@ include '_header.php';
 	
 		<div class="breaker"></div>
 		<p>
-		<? if (!$is_writable): ?>
+		<?php if (!$is_writable): ?>
 			<input type="button" value="Setup" disabled="true"/>
-		<? else: ?>
+		<?php else: ?>
 			<input type="submit" name="submit" value="Setup"/>
-		<? endif; ?>
+		<?php endif; ?>
 		</p>
 	</form>
 	<div class="breaker"></div>
 </div>
-<? include '_footer.php'; ?>
+<?php include '_footer.php'; ?>

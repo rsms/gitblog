@@ -1,4 +1,4 @@
-<?
+<?php
 /**
  * JSON pretty printer.
  * 

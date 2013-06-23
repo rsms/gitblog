@@ -1,4 +1,4 @@
-<?
+<?php
 /** Gitblog maintenance */
 class gb_maint {
 	static public $branch = 'stable';

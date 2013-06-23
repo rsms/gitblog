@@ -1,4 +1,4 @@
-<?
+<?php
 require '../_base.php';
 gb::verify();
 $authed = gb::authenticate(false);
@@ -28,7 +28,7 @@ if (isset($_POST['chap-username'])) {
 $auth = gb::authenticator();
 include '../_header.php';
 ?>
-<script type="text/javascript" src="<?= gb_admin::$url ?>res/sha1-min.js"></script>
+<script type="text/javascript" src="<?php echo gb_admin::$url ?>res/sha1-min.js"></script>
 <script type="text/javascript">
 	//<![CDATA[
 	var chap = {
@@ -57,14 +57,14 @@ include '../_header.php';
 </script>
 <div id="content" class="authorize margins">
 	<h2>Authorize</h2>
-	<form action="<?= gb::url() ?>" method="post" 
-		onsubmit="chap.submit('<?= $auth->nonce() ?>','<?= $auth->opaque() ?>','<?= $auth->context ?>')">
+	<form action="<?php echo gb::url() ?>" method="post" 
+		onsubmit="chap.submit('<?php echo $auth->nonce() ?>','<?php echo $auth->opaque() ?>','<?php echo $auth->context ?>')">
 		<div>
 			<input type="hidden" id="chap-response" name="chap-response" value="" />
 		</div>
 		<p>
 			Username: <input type="text" id="chap-username" name="chap-username" 
-				value="<?= isset($_REQUEST['chap-username']) ? $_REQUEST['chap-username'] : gb_author_cookie::get('email'); ?>" /><br />
+				value="<?php echo isset($_REQUEST['chap-username']) ? $_REQUEST['chap-username'] : gb_author_cookie::get('email'); ?>" /><br />
 			Password: <input type="password" id="chap-password" name="chap-password" />
 		</p>
 		<p>
@@ -72,4 +72,4 @@ include '../_header.php';
 		</p>
 	</form>
 </div>
-<? include '../_footer.php' ?>
+<?php include '../_footer.php' ?>

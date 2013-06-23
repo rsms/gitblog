@@ -1,4 +1,4 @@
-<?
+<?php
 /**
  * @name    Email notification
  * @version 0.1

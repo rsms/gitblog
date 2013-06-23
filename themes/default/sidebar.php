@@ -1,16 +1,16 @@
 <div id="sidebar">
-	<? if (($recent_comments = gb::index('recent-comments'))): ?>
+	<?php if (($recent_comments = gb::index('recent-comments'))): ?>
 	<h2>Recent comments</h2>
 	<ol class="recent-comments">
-	<? foreach ($recent_comments as $tuple): list($comment, $_post) = $tuple; ?>
+	<?php foreach ($recent_comments as $tuple): list($comment, $_post) = $tuple; ?>
 		<li>
-			<a href="<?= h($_post->url()) ?>#comment-<?= $comment->id ?>"><?= h($comment->name) ?>
-				on <em><?= h($_post->title) ?></em></a>
-			<small><?= $comment->date->age() ?></small>
+			<a href="<?php echo h($_post->url()) ?>#comment-<?php echo $comment->id ?>"><?php echo h($comment->name) ?>
+				on <em><?php echo h($_post->title) ?></em></a>
+			<small><?php echo $comment->date->age() ?></small>
 		</li>
-	<? endforeach ?>
+	<?php endforeach ?>
 	</ol>
-	<? endif ?>
+	<?php endif ?>
 	
 	<!--h2>Popular</h2>
 	<p>Posts &amp; pages</p>

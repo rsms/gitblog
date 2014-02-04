@@ -35,6 +35,8 @@ If your web server is not running as yourself, your group, or the root user, you
 
 Open a web browser and point it to your `/my-blog/gitblog`. Enter email and your real name -- these will be used for commit messages. Also choose a good pass phrase which in combination with your email will grant you administration privileges in the web administration interface.
 
+> **Notice:** If a blank page appears. You should set `short_open_tags` to `On` in your `php.ini` and restart the Webserver.
+
 When you're done you should see a single "Hello world" post. Okay, all good.
 
 > **What did just happen?** Gitblog initialized a git repository in `/path/to/my-blog` and added a few standard files and directories. If you ever would like to start over, just delete everything except the gitblog directory and visit `/my-blog/gitblog` in a browser again.
